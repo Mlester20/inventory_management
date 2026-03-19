@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -29,10 +30,8 @@ class AuthenticatedSessionController extends Controller
         ]);
 
         if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
-            return back()->withInput($request->only('email'))
-                ->withErrors([
-                    'email' => 'The provided credentials do not match our records.',
-                ]);
+            Alert::error('Login Failed', 'Invalid email or password');
+            return back()->withInput($request->only('email'));
         }
 
         $request->session()->regenerate();

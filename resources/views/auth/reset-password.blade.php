@@ -115,7 +115,7 @@
         </form>
 
         <div class="auth-link">
-            <a href="{{ route('login') }}">Back to login</a>
+            <a href="{{ route('auth') }}">Back to login</a>
         </div>
     </div>
 
