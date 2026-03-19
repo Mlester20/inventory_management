@@ -8,6 +8,8 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\ActivityLogController;
 
 //redirect to login page if not authenticated, otherwise redirect to appropriate dashboard
 Route::get('/', function () {
@@ -42,4 +44,6 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/suppliers', SupplierController::class);
     Route::resource('admin/items', ItemController::class);
     Route::resource('admin/users', UserController::class);
+    Route::resource('admin/purchases', PurchaseController::class);    
+    Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 });
