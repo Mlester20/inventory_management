@@ -14,6 +14,18 @@
             Add Item
         </button>
 
+        <!-- Filter Button -->
+        @if($showLowStockOnly)
+            <a href="{{ route('items.index') }}" class="btn btn-warning">
+                <i class="fas fa-times"></i> Clear Filter
+            </a>
+            <span class="badge bg-warning text-dark ms-2">Showing Low Stock Items</span>
+        @else
+            <a href="{{ route('items.index', ['filter' => 'low-stock']) }}" class="btn btn-danger">
+                <i class="fas fa-exclamation-triangle"></i> Low Stock Items
+            </a>
+        @endif
+
         <!-- Add Item Modal -->
         <div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -382,7 +394,13 @@
     </div>
 
     <div class="card mt-4">
-        <h5 class="card-header">Suppliers</h5>
+        <h5 class="card-header">
+            @if($showLowStockOnly)
+                Low Stock Items
+            @else
+                All Items
+            @endif
+        </h5>
         <div class="table-responsive nowrap">
             <table class="table">
                 <thead>

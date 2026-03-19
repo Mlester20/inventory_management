@@ -13,12 +13,21 @@ class ItemController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $items = Item::all();
+        $query = Item::query();
+        
+        // Filter for low stock items if requested
+        if ($request->query('filter') === 'low-stock') {
+            $query->whereColumn('quantity', '<=', 'low_stock_threshold');
+        }
+        
+        $items = $query->get();
         $categories = Category::all();
         $suppliers = Supplier::all();
-        return view('admin.items', compact('items', 'categories', 'suppliers'));
+        $showLowStockOnly = $request->query('filter') === 'low-stock';
+        
+        return view('admin.items', compact('items', 'categories', 'suppliers', 'showLowStockOnly'));
     }
 
     /**
@@ -89,4 +98,15 @@ class ItemController extends Controller
         Alert::success('Success', 'Item deleted successfully');
         return redirect()->route('items.index');
     }
+
+    /** 
+     * Display a listing of low stock items.
+    */
+    public function lowStock()
+    {
+        // Fetch items where quantity is less than or equal to low stock threshold
+        $items = Item::whereColumn('quantity', '<=', 'low_stock_threshold')->get();
+        return view('admin.items.low-stock', compact('items'));
+    }
+    
 }
