@@ -7,6 +7,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Admin\ProfileController;
 
 //redirect to login page if not authenticated, otherwise redirect to appropriate dashboard
 Route::get('/', function () {
@@ -20,11 +21,6 @@ Route::get('/', function () {
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest')->name('login');
 Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
-// Password Reset Routes temporarily added here for testing
-Route::get('auth/forgot-password', function () {
-    return view('auth.forgot-password');
-})->name('forgot.password');
-
 
 // User Home Page
 Route::get('/pages/home', function () {
@@ -37,6 +33,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/dashboard', function () {
         return view('admin.dashboard');
     })->name('admin.dashboard');
+
+    // Admin Profile Routes
+    Route::get('admin/profile/edit', [ProfileController::class, 'edit'])->name('admin.profile.edit');
+    Route::put('admin/profile', [ProfileController::class, 'update'])->name('admin.profile.update');
 
     Route::resource('admin/categories', CategoryController::class);
     Route::resource('admin/suppliers', SupplierController::class);

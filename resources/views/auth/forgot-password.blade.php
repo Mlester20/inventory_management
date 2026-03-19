@@ -43,15 +43,41 @@
                             Enter your email and we'll send you instructions to reset your password
                         </p>
 
-                        <form method="POST" action="">
+                        @if (session('status'))
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                {{ session('status') }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        @endif
+
+                        @if ($errors->any())
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                @foreach ($errors->all() as $error)
+                                    <div>{{ $error }}</div>
+                                @endforeach
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        @endif
+
+                        <form method="POST" action="{{ route('password.email') }}">
                             @csrf
 
                             <div class="mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" name="email" class="form-control" placeholder="Enter your email" required>
+                                <label class="form-label" for="email">Email</label>
+                                <input 
+                                    type="email" 
+                                    id="email"
+                                    name="email" 
+                                    class="form-control @error('email') is-invalid @enderror" 
+                                    placeholder="Enter your email"
+                                    value="{{ old('email') }}"
+                                    required>
+                                @error('email')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
                             </div>
 
-                            <button class="btn btn-primary w-100">
+                            <button type="submit" class="btn btn-primary w-100">
                                 Send Reset Link
                             </button>
                         </form>
