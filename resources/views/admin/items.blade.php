@@ -53,10 +53,16 @@
                                     type="text"
                                     name="item_name"
                                     id="item_name"
-                                    class="form-control"
+                                    class="form-control @error('item_name') is-invalid @enderror"
                                     placeholder="Enter item name"
+                                    value="{{ old('item_name') }}"
                                     required
                                 >
+                                @error('item_name')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
 
                             <div class="mb-3">
@@ -66,16 +72,21 @@
                                 <select
                                     name="category_id"
                                     id="category_id"
-                                    class="form-select"
+                                    class="form-select @error('category_id') is-invalid @enderror"
                                     required
                                 >
                                     <option value="">-- Select Category --</option>
                                     @foreach ($categories as $category)
-                                        <option value="{{ $category->id }}">
+                                        <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
                                             {{ $category->category_name }}
                                         </option>
                                     @endforeach
                                 </select>
+                                @error('category_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
 
                             <div class="mb-3">
@@ -85,16 +96,21 @@
                                 <select
                                     name="supplier_id"
                                     id="supplier_id"
-                                    class="form-select"
+                                    class="form-select @error('supplier_id') is-invalid @enderror"
                                     required
                                 >
                                     <option value="">-- Select Supplier --</option>
                                     @foreach ($suppliers as $supplier)
-                                        <option value="{{ $supplier->id }}">
+                                        <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
                                             {{ $supplier->supplier_name }}
                                         </option>
                                     @endforeach
                                 </select>
+                                @error('supplier_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
 
                             <div class="mb-3">
@@ -104,10 +120,15 @@
                                 <textarea
                                     name="description"
                                     id="description"
-                                    class="form-control"
+                                    class="form-control @error('description') is-invalid @enderror"
                                     placeholder="Enter description"
                                     rows="2"
-                                ></textarea>
+                                >{{ old('description') }}</textarea>
+                                @error('description')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
 
                             <div class="row">
@@ -119,10 +140,16 @@
                                         type="number"
                                         name="quantity"
                                         id="quantity"
-                                        class="form-control"
+                                        class="form-control @error('quantity') is-invalid @enderror"
                                         placeholder="Enter quantity"
+                                        value="{{ old('quantity') }}"
                                         required
                                     >
+                                    @error('quantity')
+                                        <div class="invalid-feedback d-block">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
                                 </div>
 
                                 <div class="col-md-6 mb-3">
@@ -133,11 +160,17 @@
                                         type="number"
                                         name="unit_price"
                                         id="unit_price"
-                                        class="form-control"
+                                        class="form-control @error('unit_price') is-invalid @enderror"
                                         placeholder="Enter unit price"
                                         step="0.01"
+                                        value="{{ old('unit_price') }}"
                                         required
                                     >
+                                    @error('unit_price')
+                                        <div class="invalid-feedback d-block">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
                                 </div>
                             </div>
 
@@ -149,10 +182,16 @@
                                     type="number"
                                     name="low_stock_threshold"
                                     id="low_stock_threshold"
-                                    class="form-control"
+                                    class="form-control @error('low_stock_threshold') is-invalid @enderror"
                                     placeholder="Enter low stock threshold"
+                                    value="{{ old('low_stock_threshold') }}"
                                     required
                                 >
+                                @error('low_stock_threshold')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
                         </div>
 
@@ -202,10 +241,15 @@
                                     type="text"
                                     name="item_name"
                                     id="update_item_name"
-                                    class="form-control"
+                                    class="form-control @error('item_name') is-invalid @enderror"
                                     placeholder="Enter item name"
                                     required
                                 >
+                                @error('item_name')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
 
                             <div class="mb-3">
@@ -215,7 +259,7 @@
                                 <select
                                     name="category_id"
                                     id="update_category_id"
-                                    class="form-select"
+                                    class="form-select @error('category_id') is-invalid @enderror"
                                     required
                                 >
                                     <option value="">-- Select Category --</option>
@@ -225,6 +269,11 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                @error('category_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
 
                             <div class="mb-3">
@@ -234,7 +283,7 @@
                                 <select
                                     name="supplier_id"
                                     id="update_supplier_id"
-                                    class="form-select"
+                                    class="form-select @error('supplier_id') is-invalid @enderror"
                                     required
                                 >
                                     <option value="">-- Select Supplier --</option>
@@ -244,6 +293,11 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                @error('supplier_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
 
                             <div class="mb-3">
@@ -253,10 +307,15 @@
                                 <textarea
                                     name="description"
                                     id="update_description"
-                                    class="form-control"
+                                    class="form-control @error('description') is-invalid @enderror"
                                     placeholder="Enter description"
                                     rows="2"
                                 ></textarea>
+                                @error('description')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
 
                             <div class="row">
@@ -268,10 +327,15 @@
                                         type="number"
                                         name="quantity"
                                         id="update_quantity"
-                                        class="form-control"
+                                        class="form-control @error('quantity') is-invalid @enderror"
                                         placeholder="Enter quantity"
                                         required
                                     >
+                                    @error('quantity')
+                                        <div class="invalid-feedback d-block">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
                                 </div>
 
                                 <div class="col-md-6 mb-3">
@@ -282,11 +346,16 @@
                                         type="number"
                                         name="unit_price"
                                         id="update_unit_price"
-                                        class="form-control"
+                                        class="form-control @error('unit_price') is-invalid @enderror"
                                         placeholder="Enter unit price"
                                         step="0.01"
                                         required
                                     >
+                                    @error('unit_price')
+                                        <div class="invalid-feedback d-block">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
                                 </div>
                             </div>
 
@@ -298,10 +367,15 @@
                                     type="number"
                                     name="low_stock_threshold"
                                     id="update_low_stock_threshold"
-                                    class="form-control"
+                                    class="form-control @error('low_stock_threshold') is-invalid @enderror"
                                     placeholder="Enter low stock threshold"
                                     required
                                 >
+                                @error('low_stock_threshold')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
                         </div>
 

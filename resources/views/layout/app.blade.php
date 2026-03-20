@@ -156,6 +156,11 @@
                     <div data-i18n="Error">Items</div>
                   </a>
                 </li>
+                <li class="menu-item">
+                  <a href="{{ route('stock.restock-page') }}" class="menu-link">
+                    <div data-i18n="Error">Restock</div>
+                  </a>
+                </li>
               </ul>
             </li>
             <!-- Users -->
