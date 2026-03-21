@@ -12,6 +12,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th>Cashier</th>
                         <th>Item Name</th>
                         <th>Quantity Sold</th>
                         <th>Unit Price</th>
@@ -23,10 +24,17 @@
                     @foreach ($purchases as $purchase)
                         <tr>
                             <td>{{ $purchase->id }}</td>
+                            <td>
+                                @if($purchase->user)
+                                    <span class="badge bg-label-info">{{ $purchase->user->name }}</span>
+                                @else
+                                    <span class="badge bg-label-secondary">System</span>
+                                @endif
+                            </td>
                             <td>{{ $purchase->item->item_name }}</td>
                             <td>{{ $purchase->quantity_sold }}</td>
-                            <td>${{ number_format($purchase->unit_price, 2) }}</td>
-                            <td>${{ number_format($purchase->total_price, 2) }}</td>
+                            <td>₱{{ number_format($purchase->unit_price, 2) }}</td>
+                            <td>₱{{ number_format($purchase->total_price, 2) }}</td>
                             <td>{{ $purchase->purchase_date }}</td>
                             <td>
                                 <form
