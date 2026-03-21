@@ -28,7 +28,73 @@
     <link rel="stylesheet" href="{{ asset('assets/css/demo.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/apex-charts/apex-charts.css') }}" />
-    <script src="{{ asset('assets/vendor/js/helpers.js') }}"></script>
+    <style>
+        .search-results-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1050;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-top: 5px;
+        }
+        .search-result-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.15s;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
+        }
+        .search-result-item:hover {
+            background-color: #f8f9fa;
+        }
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+        .search-result-item i {
+            margin-right: 12px;
+            width: 20px;
+            text-align: center;
+            color: #696cff;
+        }
+        .search-result-content {
+            flex: 1;
+        }
+        .search-result-title {
+            font-weight: 500;
+            font-size: 14px;
+            color: #333;
+        }
+        .search-result-subtitle {
+            font-size: 12px;
+            color: #999;
+            margin-top: 3px;
+        }
+        .search-results-section-header {
+            padding: 8px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            background-color: #fafafa;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .search-no-results {
+            padding: 16px;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+        }
+    </style>
+    <script src="{{ asset('assets/vendor/js/helpers.js') }}"></style>
     <script src="{{ asset('assets/js/config.js') }}"></script>
 </head>
 
@@ -163,6 +229,19 @@
                 </li>
               </ul>
             </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-cart"></i>
+                <div data-i18n="Misc">Purchases</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('purchases.index') }}" class="menu-link">
+                    <div data-i18n="Error">Purchases</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>
             <!-- User interface -->
@@ -225,15 +304,21 @@
 
             <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
               <!-- Search -->
-              <div class="navbar-nav align-items-center">
-                <div class="nav-item d-flex align-items-center">
-                  <i class="bx bx-search fs-4 lh-0"></i>
+              <div class="navbar-nav align-items-center" style="position: relative; flex: 1; max-width: 400px;">
+                <div class="nav-item d-flex align-items-center position-relative" style="width: 100%;">
+                  <i class="bx bx-search fs-4 lh-0" style="margin-right: 10px;"></i>
                   <input
                     type="text"
+                    id="searchInput"
                     class="form-control border-0 shadow-none"
-                    placeholder="Search..."
+                    placeholder="Search items, sales, suppliers..."
                     aria-label="Search..."
+                    autocomplete="off"
                   />
+                  <!-- Search Results Dropdown -->
+                  <div id="searchResults" class="search-results-dropdown" style="display: none;">
+                    <div class="search-results-content"></div>
+                  </div>
                 </div>
               </div>
               <!-- /Search -->
@@ -243,7 +328,7 @@
                 <li class="nav-item navbar-dropdown dropdown-user dropdown">
                   <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
                     <div class="avatar avatar-online">
-                      <img src="../assets/img/avatars/8.jpg" alt class="w-px-40 h-auto rounded-circle" />
+                      <img src="{{ asset('assets/img/avatars/8.jpg') }}" alt class="w-px-40 h-auto rounded-circle" />
                     </div>
                   </a>
                   <ul class="dropdown-menu dropdown-menu-end">
@@ -252,7 +337,7 @@
                         <div class="d-flex">
                           <div class="flex-shrink-0 me-3">
                             <div class="avatar avatar-online">
-                              <img src="../assets/img/avatars/8.jpg" alt="alt" class="w-px-40 h-auto rounded-circle" />
+                              <img src="{{ asset('assets/img/avatars/8.jpg') }}" alt="alt" class="w-px-40 h-auto rounded-circle" />
                              
                             </div>
                           </div>
@@ -347,9 +432,136 @@
     <script src="{{ asset('assets/vendor/js/bootstrap.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js') }}"></script>
     <script src="{{ asset('assets/vendor/js/menu.js') }}"></script>
+    <script src="{{ asset('assets/js/config.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
     <script src="{{ asset('assets/js/dashboards-analytics.js') }}"></script>
+    
+    <!-- Global Search Script -->
+    <script>
+        let searchTimeout;
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        const searchResultsContent = searchResults.querySelector('.search-results-content');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+
+                if (query.length < 2) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+
+                // Debounce the search
+                searchTimeout = setTimeout(() => {
+                    performSearch(query);
+                }, 300);
+            });
+
+            // Close search results when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.nav-item.d-flex.align-items-center.position-relative')) {
+                    searchResults.style.display = 'none';
+                }
+            });
+
+            // Prevent closing when clicking inside the results
+            searchResults.addEventListener('click', function(e) {
+                if (e.target.closest('.search-result-item')) {
+                    const link = e.target.closest('.search-result-item');
+                    window.location.href = link.href;
+                }
+            });
+        }
+
+        function performSearch(query) {
+            fetch('{{ route("api.search") }}?q=' + encodeURIComponent(query))
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Search failed with status ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displaySearchResults(data);
+                })
+                .catch(error => {
+                    console.error('Search error:', error);
+                    searchResultsContent.innerHTML = '<div class="search-no-results">Search error occurred</div>';
+                    searchResults.style.display = 'block';
+                });
+        }
+
+        function displaySearchResults(data) {
+            if (data.total === 0) {
+                searchResultsContent.innerHTML = '<div class="search-no-results">No results found</div>';
+                searchResults.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+
+            // Items Section
+            if (data.results.items.length > 0) {
+                html += '<div class="search-results-section-header">Items</div>';
+                data.results.items.forEach(item => {
+                    html += createResultItemHTML(item);
+                });
+            }
+
+            // Purchases Section
+            if (data.results.purchases.length > 0) {
+                html += '<div class="search-results-section-header">Sales</div>';
+                data.results.purchases.forEach(purchase => {
+                    html += createResultItemHTML(purchase);
+                });
+            }
+
+            // Suppliers Section
+            if (data.results.suppliers.length > 0) {
+                html += '<div class="search-results-section-header">Suppliers</div>';
+                data.results.suppliers.forEach(supplier => {
+                    html += createResultItemHTML(supplier);
+                });
+            }
+
+            // Categories Section
+            if (data.results.categories.length > 0) {
+                html += '<div class="search-results-section-header">Categories</div>';
+                data.results.categories.forEach(category => {
+                    html += createResultItemHTML(category);
+                });
+            }
+
+            searchResultsContent.innerHTML = html;
+            searchResults.style.display = 'block';
+        }
+
+        function createResultItemHTML(item) {
+            return `
+                <a href="${item.url}" class="search-result-item">
+                    <i class="bx ${item.icon}"></i>
+                    <div class="search-result-content">
+                        <div class="search-result-title">${escapeHtml(item.title)}</div>
+                        <div class="search-result-subtitle">${escapeHtml(item.subtitle)}</div>
+                    </div>
+                </a>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
     <script async defer src="https://buttons.github.io/buttons.js"></script>
 </body>
 </html>

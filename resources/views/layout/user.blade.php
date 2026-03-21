@@ -15,6 +15,7 @@
     />
     <title>@yield('title', 'Inventory App')</title>
     <meta name="description" content="" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/x-icon" href="../assets/img/favicon/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -39,7 +40,7 @@
         <!-- Menu -->
         <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
           <div class="app-brand demo">
-            <a href="{{ route('admin.dashboard') }}" class="app-brand-link">
+            <a href="{{ route('pages.home') }}" class="app-brand-link">
               <span class="app-brand-logo demo">
                 <svg
                   width="25"
@@ -95,7 +96,7 @@
                   </g>
                 </svg>
               </span>
-              <span class="app-brand-text demo menu-text fw-bolder ms-2">Inventory</span>
+              <span class="app-brand-text demo menu-text fw-bolder ms-2">Point of Sale</span>
             </a>
 
             <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none">
@@ -108,9 +109,25 @@
           <ul class="menu-inner py-1">
             <!-- Dashboard -->
             <li class="menu-item">
-              <a href="{{ route('admin.dashboard') }}" class="menu-link">
+              <a href="{{ route('pages.home') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-home-circle"></i>
                 <div data-i18n="Analytics">Dashboard</div>
+              </a>
+            </li>
+
+            <!-- POS -->
+            <li class="menu-item">
+              <a href="{{ route('pos') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-shopping-bag"></i>
+                <div data-i18n="POS">Point of Sale</div>
+              </a>
+            </li>
+
+            <!-- Sales History -->
+            <li class="menu-item">
+              <a href="{{ route('purchases.history') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-history"></i>
+                <div data-i18n="History">Sales History</div>
               </a>
             </li>
 
@@ -268,13 +285,13 @@
                       <div class="dropdown-divider"></div>
                     </li>
                     <li>
-                      <a class="dropdown-item" href="{{ route('admin.profile.edit') }}">
+                      <a class="dropdown-item" href="#">
                         <i class="bx bx-user me-2"></i>
                         <span class="align-middle">My Profile</span>
                       </a>
                     </li>
                     <li>
-                      <a class="dropdown-item" href="{{ route('activity-logs.index') }}">
+                      <a class="dropdown-item" href="#">
                         <i class="bx bx-cog me-2"></i>
                         <span class="align-middle">Activies Log</span>
                       </a>
@@ -340,8 +357,7 @@
 
     @include('sweetalert::alert')
 
-    {{-- yield scripts --}}
-    @yield('scripts')
+    {{-- Core Scripts --}}
     <script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/popper/popper.js') }}"></script>
     <script src="{{ asset('assets/vendor/js/bootstrap.js') }}"></script>
@@ -350,6 +366,13 @@
     <script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
     <script src="{{ asset('assets/js/dashboards-analytics.js') }}"></script>
+    
+    {{-- External Libraries --}}
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    {{-- yield scripts --}}
+    @yield('scripts')
     <script async defer src="https://buttons.github.io/buttons.js"></script>
 </body>
 </html>

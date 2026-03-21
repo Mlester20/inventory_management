@@ -1,26 +1,19 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Purchase;
 use App\Models\Item;
+use App\Services\StockService;
 use Illuminate\Http\Request;
-use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        $purchases = Purchase::all();
-        $items = Item::all();
-        return view('admin.purchases', compact('purchases', 'items'));
-    }
-
-    /**
-     * Store a newly created resource in storage.
+     * Create a new purchase transaction with stock deduction
+     * Note: user_id tracks the cashier/staff member who processed the sale
      */
     public function store(Request $request)
     {
@@ -35,9 +28,10 @@ class PurchaseController extends Controller
         try {
             $purchases = [];
             $transactionId = uniqid('TXN-');
+            $totalAmount = 0;
 
-            \DB::transaction(function () use ($validated, &$purchases, $transactionId) {
-                $stockService = new \App\Services\StockService();
+            \DB::transaction(function () use ($validated, &$purchases, $transactionId, &$totalAmount) {
+                $stockService = new StockService();
                 $userId = auth()->id();
 
                 foreach ($validated['items'] as $cartItem) {
@@ -45,8 +39,8 @@ class PurchaseController extends Controller
 
                     // Check stock availability
                     if ($item->quantity < $cartItem['quantity']) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
-                            'stock' => "Insufficient stock for {$item->item_name}. Available: {$item->quantity}",
+                        throw ValidationException::withMessages([
+                            'stock' => "Insufficient stock for {$item->item_name}. Available: {$item->quantity}, Requested: {$cartItem['quantity']}",
                         ]);
                     }
 
@@ -64,11 +58,12 @@ class PurchaseController extends Controller
                     $stockService->deduct(
                         $item,
                         $cartItem['quantity'],
-                        "Purchase by user (TXN: {$transactionId})",
+                        "POS Purchase (TXN: {$transactionId})",
                         $userId
                     );
 
                     $purchases[] = $purchase;
+                    $totalAmount += $cartItem['total_price'];
                 }
             });
 
@@ -76,15 +71,20 @@ class PurchaseController extends Controller
                 'success' => true,
                 'transaction_id' => $transactionId,
                 'message' => 'Purchase completed successfully',
-                'purchases' => $purchases->count(),
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+                'purchase_count' => count($purchases),
+                'total_amount' => $totalAmount,
+            ], 201);
+
+        } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->errors()['stock'] ?? 'Validation failed',
+                'message' => $e->errors()['stock'][0] ?? 'Validation failed',
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('Purchase Error: ' . $e->getMessage());
+            \Log::error('Purchase Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Purchase failed: ' . $e->getMessage(),
@@ -93,28 +93,17 @@ class PurchaseController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Get purchase history for logged-in user
      */
-    public function edit(Purchase $purchase)
+    public function history()
     {
-        //
-    }
+        $userId = auth()->id();
+        
+        $purchases = Purchase::with('item.category', 'user')
+            ->where('user_id', $userId)
+            ->orderBy('purchase_date', 'desc')
+            ->paginate(15);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Purchase $purchase)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Purchase $purchase)
-    {
-        $purchase->delete();
-        Alert::success('Success', 'Purchase deleted successfully');
-        return redirect()->route('purchases.index');
+        return response()->json($purchases);
     }
 }

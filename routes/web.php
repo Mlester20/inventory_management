@@ -11,6 +11,10 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\Api\ItemController as ApiItemController;
+use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
 
 //redirect to login page if not authenticated, otherwise redirect to appropriate dashboard
 Route::get('/', function () {
@@ -25,17 +29,29 @@ Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middlew
 Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
 
-// User Home Page
-Route::get('/pages/home', function () {
-    return view('pages.home');
-})->middleware('auth')->name('pages.home');
+//User Route - Protected with auth middleware
+Route::middleware(['auth'])->group(function() {
+    // Dashboard / Home Page
+    Route::get('/pages/home', function() {
+        return view('pages.home');
+    })->name('pages.home');
+
+    // Purchase History
+    Route::get('/purchases/history', function() {
+        return view('pages.purchase-history');
+
+    })->name('purchases.history');
+    // POS - Point of Sale
+    Route::get('/pos', function() {
+        return view('pages.pos');
+    })->name('pos');
+
+});
 
 
 // Admin Routes - Protected with admin middleware
 Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('admin/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('admin.dashboard');
+    Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
     // Admin Profile Routes
     Route::get('admin/profile/edit', [ProfileController::class, 'edit'])->name('admin.profile.edit');
@@ -60,3 +76,17 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('out-of-stock', [StockController::class, 'outOfStockItems'])->name('out-of-stock');
     });
 });
+
+// API Routes - Protected with auth middleware
+Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
+    // Items API
+    Route::get('items', [ApiItemController::class, 'index'])->name('items.index');
+    Route::get('items/{item}', [ApiItemController::class, 'show'])->name('items.show');
+
+    // Purchases API
+    Route::post('purchases', [ApiPurchaseController::class, 'store'])->name('purchases.store');
+    Route::get('purchases/history', [ApiPurchaseController::class, 'history'])->name('purchases.history');
+});
+
+// Search API - Protected with auth middleware
+Route::middleware(['auth'])->get('api/search', [SearchController::class, 'search'])->name('api.search');

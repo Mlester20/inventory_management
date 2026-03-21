@@ -96,7 +96,7 @@
                       </g>
                     </svg>
                   </span>
-                  <span class="app-brand-text demo text-body fw-bolder">Sneat</span>
+                  <span class="app-brand-text demo text-body fw-bolder">Inventory</span>
                 </a>
               </div>
               <h4 class="mb-2">Welcome to Inventory Management! 👋</h4>
@@ -114,6 +114,7 @@
                   />
                 </div>
                 <div class="mb-3 form-password-toggle">
+                  <label for="password">Password</label>
                   <div class="input-group input-group-merge">
                     <input
                       type="password"

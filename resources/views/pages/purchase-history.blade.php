@@ -1,6 +1,6 @@
 @extends('layout.user')
 
-@section('title', 'Sales History')
+@section('title', 'My Purchases')
 
 @section('content')
 
@@ -31,7 +31,7 @@
                             <tr>
                                 <td colspan="7" class="text-center text-muted py-4">
                                     <i class="bx bx-loader bx-spin fs-1"></i>
-                                    <p>Loading sales history...</p>
+                                    <p>Loading purchases...</p>
                                 </td>
                             </tr>
                         </tbody>
@@ -41,7 +41,7 @@
         </div>
     </div>
 
-    <!-- Sales Summary Cards -->
+    <!-- Purchase Summary Cards -->
     <div class="row mt-4">
         <div class="col-md-4 mb-3">
             <div class="card">
@@ -102,7 +102,7 @@
             
             if (!purchases || purchases.length === 0) {
                 document.getElementById('purchasesTableBody').innerHTML = 
-                    '<tr><td colspan="7" class="text-center text-muted py-4">No sales yet</td></tr>';
+                    '<tr><td colspan="7" class="text-center text-muted py-4">No purchases yet</td></tr>';
                 return;
             }
 
@@ -140,12 +140,13 @@
             document.getElementById('totalSpent').textContent = `₱${totalSpent.toFixed(2)}`;
 
         } catch (error) {
-            console.error('Error loading sales history:', error);
+            console.error('Error loading purchases:', error);
             document.getElementById('purchasesTableBody').innerHTML = 
-                '<tr><td colspan="7" class="text-center text-danger py-4">Error loading sales history</td></tr>';
+                '<tr><td colspan="7" class="text-center text-danger py-4">Error loading purchases</td></tr>';
         }
     }
 
     // Load on page load
     document.addEventListener('DOMContentLoaded', loadPurchaseHistory);
 </script>
+@endsection
