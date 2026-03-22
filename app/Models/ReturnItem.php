@@ -26,4 +26,21 @@ class ReturnItem extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Scope to filter only approved returns.
+     */
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    /**
+     * Scope to get total value of approved returns joined with items unit_price.
+     */
+    public function scopeTotalReturnValue($query)
+    {
+        return $query->join('items', 'items.id', '=', 'return_items.item_id')
+            ->selectRaw('SUM(return_items.quantity * items.unit_price) as return_value');
+    }
 }

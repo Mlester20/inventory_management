@@ -255,6 +255,16 @@
                 </li>
               </ul>
             </li>
+
+            <!-- Reports -->
+            <li class="menu-header small text-uppercase"><span class="menu-header-text">Reports</span></li>
+            <li class="menu-item">
+              <a href="{{ route('admin.cogs.index') }}" class="menu-link {{ request()->routeIs('admin.cogs.*') ? 'active' : '' }}">
+                <i class="menu-icon tf-icons bx bx-chart"></i>
+                <div data-i18n="COGS Report">COGS Report</div>
+              </a>
+            </li>
+
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>
             <!-- User interface -->
