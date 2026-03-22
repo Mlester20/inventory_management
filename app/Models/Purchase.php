@@ -37,4 +37,24 @@ class Purchase extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Scope to filter purchases within a date range.
+     * Uses the purchase_date column.
+     */
+    public function scopeDateRange($query, ?string $start, ?string $end)
+    {
+        if ($start && $end) {
+            return $query->whereBetween('purchase_date', [$start, $end]);
+        }
+        return $query;
+    }
+
+    /**
+     * Scope to get total COGS as a single aggregated value.
+     */
+    public function scopeTotalCogs($query)
+    {
+        return $query->selectRaw('SUM(quantity_sold * unit_price) as cogs');
+    }
 }
