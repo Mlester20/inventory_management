@@ -53,7 +53,7 @@
                     </div>
                     <div class="d-grid gap-2">
                         <button class="btn btn-primary" id="checkoutBtn">
-                            <i class="bx bx-check me-2"></i>Checkout
+                            <i class="bx bx-check me-2"></i>Process Order/s
                         </button>
                         <button class="btn btn-outline-secondary" id="clearCartBtn">
                             <i class="bx bx-trash me-2"></i>Clear Cart

@@ -15,6 +15,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Api\ItemController as ApiItemController;
 use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
+use App\Http\Controllers\ReturnItemController;
+use App\Http\Controllers\ReturnItemController as ApiReturnItemController;
+use App\Http\Controllers\UserProfileController;
 
 //redirect to login page if not authenticated, otherwise redirect to appropriate dashboard
 Route::get('/', function () {
@@ -25,6 +28,9 @@ Route::get('/', function () {
 })->name('auth');
 
 // Authentication Routes
+Route::get('/login', function () {
+    return view('auth');
+})->middleware('guest')->name('login');
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest')->name('login');
 Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
@@ -41,10 +47,25 @@ Route::middleware(['auth'])->group(function() {
         return view('pages.purchase-history');
 
     })->name('purchases.history');
+
+    // Return Items
+    Route::get('/returns', function() {
+        return view('pages.return-items');
+    })->name('returns');
+
     // POS - Point of Sale
     Route::get('/pos', function() {
         return view('pages.pos');
     })->name('pos');
+
+    // User Profile
+    Route::get('/profile', function() {
+        $user = Auth::user();
+        return view('pages.profile', compact('user'));
+    })->name('profile');
+    
+    Route::get('/profile/edit', [UserProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [UserProfileController::class, 'update'])->name('profile.update');
 
 });
 
@@ -63,6 +84,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/users', UserController::class);
     Route::resource('admin/purchases', PurchaseController::class);    
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+    Route::resource('admin/return-items', ReturnItemController::class);
+    
+    // Return Items Actions
+    Route::post('admin/return-items/{returnItem}/approve', [ReturnItemController::class, 'approve'])->name('return-items.approve');
+    Route::post('admin/return-items/{returnItem}/reject', [ReturnItemController::class, 'reject'])->name('return-items.reject');
 
     // Stock Management Routes
     Route::prefix('admin/stock')->name('stock.')->group(function () {
@@ -86,6 +112,10 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
     // Purchases API
     Route::post('purchases', [ApiPurchaseController::class, 'store'])->name('purchases.store');
     Route::get('purchases/history', [ApiPurchaseController::class, 'history'])->name('purchases.history');
+
+    // Return Item API
+    Route::post('return-items', [ApiReturnItemController::class, 'store'])->name('return-items.store');
+    Route::get('return-items', [ApiReturnItemController::class, 'index'])->name('return-items.index');
 });
 
 // Search API - Protected with auth middleware

@@ -232,12 +232,25 @@
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-cart"></i>
-                <div data-i18n="Misc">Purchases</div>
+                <div data-i18n="Purchases">Purchases</div>
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
                   <a href="{{ route('purchases.index') }}" class="menu-link">
                     <div data-i18n="Error">Purchases</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-arrow-back"></i>
+                <div data-i18n="Return Items">Return Items</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('return-items.index') }}" class="menu-link">
+                    <div data-i18n="Error">Return Items</div>
                   </a>
                 </li>
               </ul>

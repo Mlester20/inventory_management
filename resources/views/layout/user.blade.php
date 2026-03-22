@@ -133,17 +133,17 @@
 
 
             <li class="menu-header small text-uppercase">
-              <span class="menu-header-text">Inventory</span>
+              <span class="menu-header-text">Reports</span>
             </li>
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-receipt"></i>
-                <div data-i18n="Account Settings">Categories</div>
+                <div data-i18n="Return Item">Return Item</div>
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('categories.index') }}" class="menu-link">
-                    <div data-i18n="Account">Categories</div>
+                  <a href="{{route('returns')}}" class="menu-link">
+                    <div data-i18n="Return Item">Return Item</div>
                   </a>
                 </li>
                 </li>
@@ -285,7 +285,7 @@
                       <div class="dropdown-divider"></div>
                     </li>
                     <li>
-                      <a class="dropdown-item" href="#">
+                      <a class="dropdown-item" href="{{ route('profile.edit') }}">
                         <i class="bx bx-user me-2"></i>
                         <span class="align-middle">My Profile</span>
                       </a>

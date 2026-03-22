@@ -76,6 +76,14 @@ class Item extends Model
     }
 
     /**
+     * Get all return items for this item.
+     */
+    public function returnItems(): HasMany
+    {
+        return $this->hasMany(ReturnItem::class);
+    }
+
+    /**
      * Get total quantity restocked.
      */
     public function getTotalRestockedAttribute(): int
