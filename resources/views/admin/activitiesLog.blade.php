@@ -42,7 +42,7 @@
                                 @if($log->action === 'login')
                                     <span class="badge bg-success">{{ ucfirst($log->action) }}</span>
                                 @elseif($log->action === 'logout')
-                                    <span class="badge bg-warning ">{{ ucfirst($log->action) }}</span>
+                                    <span class="badge bg-warning">{{ ucfirst($log->action) }}</span>
                                 @else
                                     <span class="badge bg-secondary">{{ ucfirst($log->action) }}</span>
                                 @endif
@@ -80,13 +80,65 @@
         @endif
     </div>
 
-    @if($activityLogs->count() > 0)
-        <div class="card-footer bg-light d-flex justify-content-center">
-            {{ $activityLogs->links() }}
+    @if($activityLogs->hasPages())
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <small class="text-muted">
+                        Showing {{ $activityLogs->firstItem() }}–{{ $activityLogs->lastItem() }}
+                        of {{ $activityLogs->total() }} results
+                    </small>
+                </div>
+                <div class="col d-flex justify-content-end">
+                    <nav aria-label="Activity log pagination">
+                        <ul class="pagination mb-0">
+
+                            {{-- First Page --}}
+                            <li class="page-item first {{ $activityLogs->onFirstPage() ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ $activityLogs->onFirstPage() ? 'javascript:void(0);' : $activityLogs->url(1) }}">
+                                    <i class="tf-icon bx bx-chevrons-left"></i>
+                                </a>
+                            </li>
+
+                            {{-- Previous Page --}}
+                            <li class="page-item prev {{ $activityLogs->onFirstPage() ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ $activityLogs->onFirstPage() ? 'javascript:void(0);' : $activityLogs->previousPageUrl() }}">
+                                    <i class="tf-icon bx bx-chevron-left"></i>
+                                </a>
+                            </li>
+
+                            {{-- Page Numbers --}}
+                            @foreach($activityLogs->getUrlRange(
+                                max(1, $activityLogs->currentPage() - 2),
+                                min($activityLogs->lastPage(), $activityLogs->currentPage() + 2)
+                            ) as $page => $url)
+                                <li class="page-item {{ $page == $activityLogs->currentPage() ? 'active' : '' }}">
+                                    <a class="page-link" href="{{ $url }}">{{ $page }}</a>
+                                </li>
+                            @endforeach
+
+                            {{-- Next Page --}}
+                            <li class="page-item next {{ !$activityLogs->hasMorePages() ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ $activityLogs->hasMorePages() ? $activityLogs->nextPageUrl() : 'javascript:void(0);' }}">
+                                    <i class="tf-icon bx bx-chevron-right"></i>
+                                </a>
+                            </li>
+
+                            {{-- Last Page --}}
+                            <li class="page-item last {{ !$activityLogs->hasMorePages() ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ $activityLogs->hasMorePages() ? $activityLogs->url($activityLogs->lastPage()) : 'javascript:void(0);' }}">
+                                    <i class="tf-icon bx bx-chevrons-right"></i>
+                                </a>
+                            </li>
+
+                        </ul>
+                    </nav>
+                </div>
+            </div>
         </div>
     @endif
-</div>
 
+</div>
 @endsection
 
 @section('scripts')

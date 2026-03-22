@@ -126,56 +126,6 @@
         </div>
     </div>
 
-    <!-- Stock Overview Table -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title m-0">Stock Overview</h5>
-                    <small class="text-muted">Current stock vs thresholds</small>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th>Category</th>
-                                <th>Supplier</th>
-                                <th>Current Stock</th>
-                                <th>Low Stock Threshold</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($stockItems as $item)
-                            <tr>
-                                <td>{{ $item->item_name }}</td>
-                                <td>{{ $item->category->category_name ?? 'N/A' }}</td>
-                                <td>{{ $item->supplier->supplier_name ?? 'N/A' }}</td>
-                                <td>{{ $item->quantity }}</td>
-                                <td>{{ $item->low_stock_threshold }}</td>
-                                <td>
-                                    @if($item->quantity <= $item->low_stock_threshold)
-                                        <span class="badge bg-danger">Low Stock</span>
-                                    @else
-                                        <span class="badge bg-success">OK</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-4">
-                                    <i class="bx bx-inbox fs-4 mb-2"></i>
-                                    <p class="mb-0">No items available</p>
-                                </td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Recent Purchases Table -->
     <div class="row">
