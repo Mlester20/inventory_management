@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('purchases', function (Blueprint $table) {
-            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
+        Schema::table('return_items', function (Blueprint $table) {
+            $table->text('notes')->nullable()->after('reason');
         });
     }
 
@@ -21,9 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('purchases', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-            $table->dropColumn('user_id');
+        Schema::table('return_items', function (Blueprint $table) {
+            $table->dropColumn('notes');
         });
     }
 };
