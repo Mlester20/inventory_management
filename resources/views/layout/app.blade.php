@@ -94,7 +94,7 @@
             font-size: 14px;
         }
     </style>
-    <script src="{{ asset('assets/vendor/js/helpers.js') }}"></style>
+    <script src="{{ asset('assets/vendor/js/helpers.js') }}"></script>
     <script src="{{ asset('assets/js/config.js') }}"></script>
 </head>
 
@@ -244,7 +244,7 @@
             </li>
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-arrow-back"></i>
+                <i class="menu-icon tf-icons bx bx-box"></i>
                 <div data-i18n="Return Items">Return Items</div>
               </a>
               <ul class="menu-sub">
@@ -448,7 +448,6 @@
     <script src="{{ asset('assets/js/config.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
-    <script src="{{ asset('assets/js/dashboards-analytics.js') }}"></script>
     
     <!-- Global Search Script -->
     <script>
