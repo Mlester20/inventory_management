@@ -116,8 +116,7 @@
    │
    ▼
 3. CONTROLLER: Validates input
-   │ quantity: required, integer, min:1 ✓
-   │
+   │ quantity: required, integer, min:1    │
    ▼
 4. SERVICE: Calls restock() method
    │ Database Transaction begins
@@ -125,8 +124,7 @@
    ├─► Fetch Item from database
    │   items.id=1, quantity=50
    │
-   ├─► Validate quantity > 0 ✓
-   │
+   ├─► Validate quantity > 0    │
    ├─► UPDATE item quantity
    │   UPDATE items SET quantity = 150 WHERE id = 1
    │
@@ -157,8 +155,7 @@
    │
    ▼
 3. CONTROLLER: Validates input
-   │ quantity: required, integer, min:1 ✓
-   │
+   │ quantity: required, integer, min:1    │
    ▼
 4. SERVICE: Calls deduct() method
    │ Database Transaction begins
@@ -166,11 +163,9 @@
    ├─► Fetch Item from database
    │   items.id=1, quantity=150
    │
-   ├─► Validate quantity > 0 ✓
-   │
+   ├─► Validate quantity > 0    │
    ├─► Check if sufficient stock
-   │   Available: 150 >= Requested: 25 ✓
-   │
+   │   Available: 150 >= Requested: 25    │
    ├─► UPDATE item quantity DOWN
    │   UPDATE items SET quantity = 125 WHERE id = 1
    │
@@ -201,16 +196,14 @@
    │
    ▼
 3. CONTROLLER: Validates input
-   │ quantity: required, integer, min:1 ✓
-   │
+   │ quantity: required, integer, min:1    │
    ▼
 4. SERVICE: Calls deduct() method
    │ Database Transaction begins
    │
    ├─► Fetch Item: quantity = 125
    │
-   ├─► Validate quantity > 0 ✓
-   │
+   ├─► Validate quantity > 0    │
    ├─► Check if sufficient stock
    │   Available: 125 >= Requested: 200 ✗ FAILS!
    │
@@ -453,9 +446,9 @@ StockMovement::with(['item', 'user'])
 ---
 
 This architecture ensures:
-✓ No duplicate items on restock
-✓ Complete, immutable audit trail
-✓ Data consistency and integrity
-✓ Accountability and traceability
-✓ High performance and scalability
-✓ Easy to test and maintain
+No duplicate items on restock
+Complete, immutable audit trail
+Data consistency and integrity
+Accountability and traceability
+High performance and scalability
+Easy to test and maintain

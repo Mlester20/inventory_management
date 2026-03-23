@@ -357,6 +357,7 @@
                             </td>
                         </tr>
                     @endforeach
+                </tbody>
             </table>
         </div>
     </div>
@@ -403,7 +404,7 @@
             
             // Set the form action to the update route
             const form = document.getElementById('updateSupplierForm');
-            form.action = `{{ route('suppliers.index') }}/${supplierId}`;
+            form.action = `/admin/suppliers/${supplierId}`;
         });
     });
 
@@ -415,6 +416,16 @@
         document.getElementById('email').value = '';
         document.getElementById('phone').value = '';
         document.getElementById('address').value = '';
+    });
+
+    // Clear the update supplier form when the modal is hidden
+    const updateSupplierModal = document.getElementById('updateSupplierModal');
+    updateSupplierModal.addEventListener('hide.bs.modal', function() {
+        document.getElementById('update_supplier_name').value = '';
+        document.getElementById('update_contact_person').value = '';
+        document.getElementById('update_email').value = '';
+        document.getElementById('update_phone').value = '';
+        document.getElementById('update_address').value = '';
     });
 </script>
 @endsection

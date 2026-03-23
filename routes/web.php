@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
 use App\Http\Controllers\ReturnItemController;
 use App\Http\Controllers\ReturnItemController as ApiReturnItemController;
 use App\Http\Controllers\UserProfileController;
+use App\Http\Controllers\Api\ActivityLogController as ApiActivityLogController;
 
 //redirect to login page if not authenticated, otherwise redirect to appropriate dashboard
 Route::get('/', function () {
@@ -68,8 +69,12 @@ Route::middleware(['auth'])->group(function() {
     Route::get('/profile/edit', [UserProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [UserProfileController::class, 'update'])->name('profile.update');
 
-});
+    // Activity Log
+    Route::get('/activity-log', function() {
+        return view('pages.activity-log');
+    })->name('pages.activity-log');
 
+});
 
 // Admin Routes - Protected with admin middleware
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -118,6 +123,9 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
     // Return Item API
     Route::post('return-items', [ApiReturnItemController::class, 'store'])->name('return-items.store');
     Route::get('return-items', [ApiReturnItemController::class, 'index'])->name('return-items.index');
+    // Get Activity Log Api
+
+    Route::get('activity-log', [ApiActivityLogController::class, 'index'])->name('activity-log.index');
 });
 
 // Search API - Protected with auth middleware
