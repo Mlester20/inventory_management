@@ -30,7 +30,7 @@
         <div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog" role="document">
 
-                <form action="{{ route('items.store') }}" method="POST">
+                <form action="{{ route('items.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
                     <div class="modal-content">
@@ -59,6 +59,25 @@
                                     required
                                 >
                                 @error('item_name')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="serial_number" class="form-label">
+                                    Serial Number
+                                </label>
+                                <input
+                                    type="text"
+                                    name="serial_number"
+                                    id="serial_number"
+                                    class="form-control @error('serial_number') is-invalid @enderror"
+                                    placeholder="Enter serial number (optional)"
+                                    value="{{ old('serial_number') }}"
+                                >
+                                @error('serial_number')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -107,6 +126,48 @@
                                     @endforeach
                                 </select>
                                 @error('supplier_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="tax_id" class="form-label">
+                                    Tax / VAT Classification
+                                </label>
+                                <select
+                                    name="tax_id"
+                                    id="tax_id"
+                                    class="form-select @error('tax_id') is-invalid @enderror"
+                                >
+                                    <option value="">-- No Tax --</option>
+                                    @foreach ($taxes as $tax)
+                                        <option value="{{ $tax->id }}" {{ old('tax_id') == $tax->id ? 'selected' : '' }}>
+                                            {{ $tax->name }} ({{ $tax->rate }}%){{ !$tax->is_active ? ' — Inactive' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('tax_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="image" class="form-label">
+                                    Item Image
+                                </label>
+                                <input
+                                    type="file"
+                                    name="image"
+                                    id="image"
+                                    class="form-control @error('image') is-invalid @enderror"
+                                    accept="image/png,image/jpeg,image/webp"
+                                >
+                                <div class="form-text">JPG, PNG or WEBP, up to 2MB.</div>
+                                @error('image')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -217,7 +278,7 @@
         <div class="modal fade" id="updateItemModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog" role="document">
 
-                <form id="updateItemForm" method="POST">
+                <form id="updateItemForm" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
@@ -246,6 +307,24 @@
                                     required
                                 >
                                 @error('item_name')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="update_serial_number" class="form-label">
+                                    Serial Number
+                                </label>
+                                <input
+                                    type="text"
+                                    name="serial_number"
+                                    id="update_serial_number"
+                                    class="form-control @error('serial_number') is-invalid @enderror"
+                                    placeholder="Enter serial number (optional)"
+                                >
+                                @error('serial_number')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -294,6 +373,58 @@
                                     @endforeach
                                 </select>
                                 @error('supplier_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="update_tax_id" class="form-label">
+                                    Tax / VAT Classification
+                                </label>
+                                <select
+                                    name="tax_id"
+                                    id="update_tax_id"
+                                    class="form-select @error('tax_id') is-invalid @enderror"
+                                >
+                                    <option value="">-- No Tax --</option>
+                                    @foreach ($taxes as $tax)
+                                        <option value="{{ $tax->id }}">
+                                            {{ $tax->name }} ({{ $tax->rate }}%){{ !$tax->is_active ? ' — Inactive' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('tax_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="update_image" class="form-label">
+                                    Item Image
+                                </label>
+                                <div class="mb-2">
+                                    <img
+                                        id="update_image_preview"
+                                        src=""
+                                        alt="Current item image"
+                                        class="img-thumbnail d-none"
+                                        style="max-height: 100px;"
+                                    >
+                                    <p id="update_image_none" class="text-muted small mb-0">No image uploaded yet.</p>
+                                </div>
+                                <input
+                                    type="file"
+                                    name="image"
+                                    id="update_image"
+                                    class="form-control @error('image') is-invalid @enderror"
+                                    accept="image/png,image/jpeg,image/webp"
+                                >
+                                <div class="form-text">Uploading a new image replaces the current one. JPG, PNG or WEBP, up to 2MB.</div>
+                                @error('image')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -412,6 +543,18 @@
 
                     <div class="modal-body">
                         <div class="row mb-3">
+                            <div class="col-md-12 text-center">
+                                <img
+                                    id="view_image_preview"
+                                    src=""
+                                    alt="Item image"
+                                    class="img-thumbnail d-none"
+                                    style="max-height: 150px;"
+                                >
+                                <p id="view_image_none" class="text-muted small mb-0">No image uploaded.</p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
                             <div class="col-md-6">
                                 <label><strong>ID:</strong></label>
                                 <p id="view_item_id" class="text-muted"></p>
@@ -419,6 +562,16 @@
                             <div class="col-md-6">
                                 <label><strong>Item Name:</strong></label>
                                 <p id="view_item_name" class="text-muted"></p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label><strong>Serial Number:</strong></label>
+                                <p id="view_serial_number" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label><strong>Tax / VAT Classification:</strong></label>
+                                <p id="view_tax" class="text-muted"></p>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -480,6 +633,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th>Image</th>
                         <th>Item Name</th>
                         <th>Category</th>
                         <th>Supplier Name</th>
@@ -490,6 +644,13 @@
                     @foreach ($items as $item)
                         <tr>
                             <td>{{ $item->id }}</td>
+                            <td>
+                                @if($item->image)
+                                    <img src="{{ asset('storage/' . $item->image) }}" alt="{{ $item->item_name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+                                @else
+                                    <i class="bx bx-image text-muted" style="font-size: 1.5rem;"></i>
+                                @endif
+                            </td>
                             <td>{{ $item->item_name }}</td>
                             <td>{{ $item->category->category_name }}</td>
                             <td>{{ $item->supplier->supplier_name }}</td>
@@ -501,6 +662,9 @@
                                     data-bs-target="#viewItemModal"
                                     data-id="{{ $item->id }}"
                                     data-name="{{ $item->item_name }}"
+                                    data-serial="{{ $item->serial_number }}"
+                                    data-tax="{{ $item->tax ? $item->tax->name . ' (' . $item->tax->rate . '%)' : 'No Tax' }}"
+                                    data-image="{{ $item->image ? asset('storage/' . $item->image) : '' }}"
                                     data-category="{{ $item->category->category_name }}"
                                     data-supplier="{{ $item->supplier->supplier_name }}"
                                     data-description="{{ $item->description }}"
@@ -518,6 +682,9 @@
                                     data-bs-target="#updateItemModal"
                                     data-id="{{ $item->id }}"
                                     data-name="{{ $item->item_name }}"
+                                    data-serial="{{ $item->serial_number }}"
+                                    data-tax-id="{{ $item->tax_id }}"
+                                    data-image="{{ $item->image ? asset('storage/' . $item->image) : '' }}"
                                     data-category="{{ $item->category_id }}"
                                     data-supplier="{{ $item->supplier_id }}"
                                     data-description="{{ $item->description }}"
@@ -559,22 +726,38 @@
         button.addEventListener('click', function() {
             const itemId = this.getAttribute('data-id');
             const itemName = this.getAttribute('data-name');
+            const serial = this.getAttribute('data-serial');
+            const tax = this.getAttribute('data-tax');
+            const image = this.getAttribute('data-image');
             const category = this.getAttribute('data-category');
             const supplier = this.getAttribute('data-supplier');
             const description = this.getAttribute('data-description');
             const quantity = this.getAttribute('data-quantity');
             const price = this.getAttribute('data-price');
             const threshold = this.getAttribute('data-threshold');
-            
+
             // Populate the view modal
             document.getElementById('view_item_id').textContent = itemId;
             document.getElementById('view_item_name').textContent = itemName;
+            document.getElementById('view_serial_number').textContent = serial || 'N/A';
+            document.getElementById('view_tax').textContent = tax || 'No Tax';
             document.getElementById('view_category').textContent = category;
             document.getElementById('view_supplier').textContent = supplier;
             document.getElementById('view_description').textContent = description || 'N/A';
             document.getElementById('view_quantity').textContent = quantity;
-            document.getElementById('view_price').textContent = '$' + parseFloat(price).toFixed(2);
+            document.getElementById('view_price').textContent = '₱' + parseFloat(price).toFixed(2);
             document.getElementById('view_threshold').textContent = threshold;
+
+            const viewImagePreview = document.getElementById('view_image_preview');
+            const viewImageNone = document.getElementById('view_image_none');
+            if (image) {
+                viewImagePreview.src = image;
+                viewImagePreview.classList.remove('d-none');
+                viewImageNone.classList.add('d-none');
+            } else {
+                viewImagePreview.classList.add('d-none');
+                viewImageNone.classList.remove('d-none');
+            }
         });
     });
 
@@ -583,22 +766,39 @@
         button.addEventListener('click', function() {
             const itemId = this.getAttribute('data-id');
             const itemName = this.getAttribute('data-name');
+            const serial = this.getAttribute('data-serial');
+            const taxId = this.getAttribute('data-tax-id');
+            const image = this.getAttribute('data-image');
             const categoryId = this.getAttribute('data-category');
             const supplierId = this.getAttribute('data-supplier');
             const description = this.getAttribute('data-description');
             const quantity = this.getAttribute('data-quantity');
             const price = this.getAttribute('data-price');
             const threshold = this.getAttribute('data-threshold');
-            
+
             // Populate the modal form
             document.getElementById('update_item_name').value = itemName;
+            document.getElementById('update_serial_number').value = serial || '';
+            document.getElementById('update_tax_id').value = taxId || '';
             document.getElementById('update_category_id').value = categoryId;
             document.getElementById('update_supplier_id').value = supplierId;
             document.getElementById('update_description').value = description;
             document.getElementById('update_quantity').value = quantity;
             document.getElementById('update_unit_price').value = price;
             document.getElementById('update_low_stock_threshold').value = threshold;
-            
+            document.getElementById('update_image').value = '';
+
+            const updateImagePreview = document.getElementById('update_image_preview');
+            const updateImageNone = document.getElementById('update_image_none');
+            if (image) {
+                updateImagePreview.src = image;
+                updateImagePreview.classList.remove('d-none');
+                updateImageNone.classList.add('d-none');
+            } else {
+                updateImagePreview.classList.add('d-none');
+                updateImageNone.classList.remove('d-none');
+            }
+
             // Set the form action to the update route
             const form = document.getElementById('updateItemForm');
             form.action = `{{ route('items.index') }}/${itemId}`;
@@ -609,6 +809,9 @@
     const itemModal = document.getElementById('itemModal');
     itemModal.addEventListener('hide.bs.modal', function() {
         document.getElementById('item_name').value = '';
+        document.getElementById('serial_number').value = '';
+        document.getElementById('tax_id').value = '';
+        document.getElementById('image').value = '';
         document.getElementById('category_id').value = '';
         document.getElementById('supplier_id').value = '';
         document.getElementById('description').value = '';

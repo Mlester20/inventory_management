@@ -26,6 +26,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'profile_picture',
     ];
 
     /**
@@ -60,5 +61,16 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token)
     {
         Mail::to($this->email)->send(new ResetPasswordMail($token, $this));
+    }
+
+    /**
+     * Full URL to the user's profile picture, falling back to the app's
+     * default placeholder avatar when none has been uploaded.
+     */
+    public function getProfilePictureUrlAttribute(): string
+    {
+        return $this->profile_picture
+            ? asset('storage/' . $this->profile_picture)
+            : asset('assets/img/avatars/8.jpg');
     }
 }

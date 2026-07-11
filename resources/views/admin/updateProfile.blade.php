@@ -13,9 +13,15 @@
 
     <div class="row">
         <div class="col-xxl-4 col-md-6">
-            <!-- Profile Card -->   
+            <!-- Profile Card -->
             <div class="card mb-4">
                 <div class="card-body text-center">
+                    <img
+                        src="{{ $user->profile_picture_url }}"
+                        alt="{{ $user->name }}"
+                        class="rounded-circle mb-3"
+                        style="width: 100px; height: 100px; object-fit: cover;"
+                    >
                     <div class="mb-3">
                         <p class="mb-2">
                             <strong>{{ $user->name }}</strong>
@@ -24,6 +30,29 @@
                         <span class="badge bg-label-info">{{ ucfirst($user->role) }}</span>
                     </div>
                     <p class="small text-muted mb-0">Account created at {{ $user->created_at->format('M d, Y') }}</p>
+                </div>
+            </div>
+
+            <!-- Password Requirements -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Password Requirements</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bx bxs-check-circle text-success"></i> At least 8 characters long
+                        </li>
+                        <li class="mb-2">
+                            <i class="bx bxs-check-circle text-success"></i> Can include uppercase and lowercase letters
+                        </li>
+                        <li class="mb-2">
+                            <i class="bx bxs-check-circle text-success"></i> Can include numbers and special characters
+                        </li>
+                        <li>
+                            <i class="bx bxs-check-circle text-success"></i> Password confirmation must match exactly
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -35,9 +64,33 @@
                     <h5 class="mb-0">Account Information</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ route('admin.profile.update') }}" method="POST">
+                    <form action="{{ route('admin.profile.update') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
+
+                        <!-- Profile Picture Field -->
+                        <div class="mb-4">
+                            <label for="profile_picture" class="form-label">Profile Picture</label>
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <img
+                                    src="{{ $user->profile_picture_url }}"
+                                    alt="Current profile picture"
+                                    class="rounded-circle"
+                                    style="width: 60px; height: 60px; object-fit: cover;"
+                                >
+                                <input
+                                    type="file"
+                                    name="profile_picture"
+                                    id="profile_picture"
+                                    class="form-control @error('profile_picture') is-invalid @enderror"
+                                    accept="image/png,image/jpeg,image/webp"
+                                >
+                            </div>
+                            <div class="form-text">Uploading a new picture replaces the current one. JPG, PNG or WEBP, up to 2MB.</div>
+                            @error('profile_picture')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
 
                         <!-- Name Field -->
                         <div class="mb-3">
@@ -165,29 +218,6 @@
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-
-            <!-- Password Requirements -->
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">Password Requirements</h6>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li class="mb-2">
-                            <i class="bx bxs-check-circle text-success"></i> At least 8 characters long
-                        </li>
-                        <li class="mb-2">
-                            <i class="bx bxs-check-circle text-success"></i> Can include uppercase and lowercase letters
-                        </li>
-                        <li class="mb-2">
-                            <i class="bx bxs-check-circle text-success"></i> Can include numbers and special characters
-                        </li>
-                        <li>
-                            <i class="bx bxs-check-circle text-success"></i> Password confirmation must match exactly
-                        </li>
-                    </ul>
                 </div>
             </div>
         </div>

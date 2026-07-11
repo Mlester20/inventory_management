@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class UserProfileController extends Controller
@@ -32,6 +33,7 @@ class UserProfileController extends Controller
             'email' => 'required|email|unique:users,email,' . $user->id,
             'current_password' => 'required|current_password',
             'new_password' => 'nullable|string|min:8|confirmed',
+            'profile_picture' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ], [
             'current_password.required' => 'Current password is required for security confirmation.',
             'current_password.current_password' => 'The current password is incorrect.',
@@ -48,6 +50,14 @@ class UserProfileController extends Controller
             // Update password if provided
             if (!empty($validated['new_password'])) {
                 $user->password = Hash::make($validated['new_password']);
+            }
+
+            // Replace the profile picture only if a new one was uploaded
+            if ($request->hasFile('profile_picture')) {
+                if ($user->profile_picture) {
+                    Storage::disk('public')->delete($user->profile_picture);
+                }
+                $user->profile_picture = $request->file('profile_picture')->store('profile_pictures', 'public');
             }
 
             $user->save();

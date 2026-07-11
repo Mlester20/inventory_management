@@ -117,6 +117,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th>Avatar</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
@@ -127,6 +128,9 @@
                     @foreach ($users as $user)
                         <tr>
                             <td>{{ $user->id }}</td>
+                            <td>
+                                <img src="{{ $user->profile_picture_url }}" alt="{{ $user->name }}" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
+                            </td>
                             <td>{{ $user->name }}</td>
                             <td>{{ $user->email }}</td>
                             <td>{{ $user->role }}</td>

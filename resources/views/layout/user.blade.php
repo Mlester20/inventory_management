@@ -260,7 +260,7 @@
                 <li class="nav-item navbar-dropdown dropdown-user dropdown">
                   <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
                     <div class="avatar avatar-online">
-                      <img src="../assets/img/avatars/8.jpg" alt class="w-px-40 h-auto rounded-circle" />
+                      <img src="{{ Auth::user()->profile_picture_url }}" alt class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;" />
                     </div>
                   </a>
                   <ul class="dropdown-menu dropdown-menu-end">
@@ -269,7 +269,7 @@
                         <div class="d-flex">
                           <div class="flex-shrink-0 me-3">
                             <div class="avatar avatar-online">
-                              <img src="../assets/img/avatars/8.jpg" alt="alt" class="w-px-40 h-auto rounded-circle" />
+                              <img src="{{ Auth::user()->profile_picture_url }}" alt="alt" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;" />
                              
                             </div>
                           </div>

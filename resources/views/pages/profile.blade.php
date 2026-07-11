@@ -39,6 +39,12 @@
         <div class="col-xxl-4 col-md-6 mb-4">
             <div class="card h-100">
                 <div class="card-body text-center">
+                    <img
+                        src="{{ $user->profile_picture_url }}"
+                        alt="{{ $user->name }}"
+                        class="rounded-circle mb-3"
+                        style="width: 100px; height: 100px; object-fit: cover;"
+                    >
                     <div class="mb-3">
                         <h5 class="mb-1">{{ $user->name }}</h5>
                         <p class="text-muted small mb-2">{{ $user->email }}</p>

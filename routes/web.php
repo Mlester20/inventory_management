@@ -14,6 +14,8 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\TaxesController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\Api\ItemController as ApiItemController;
 use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
 use App\Http\Controllers\ReturnItemController;
@@ -92,7 +94,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/purchases', PurchaseController::class);    
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::resource('admin/return-items', ReturnItemController::class);
-    
+    Route::resource('admin/taxes', TaxesController::class);
+    Route::resource('admin/invoices', InvoiceController::class);
     // Return Items Actions
     Route::post('admin/return-items/{returnItem}/approve', [ReturnItemController::class, 'approve'])->name('return-items.approve');
     Route::post('admin/return-items/{returnItem}/reject', [ReturnItemController::class, 'reject'])->name('return-items.reject');

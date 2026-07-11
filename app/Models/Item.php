@@ -11,13 +11,21 @@ class Item extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['item_name', 'category_id', 'supplier_id', 'description', 'quantity', 'unit_price', 'low_stock_threshold'];
+    protected $fillable = ['item_name', 'serial_number', 'category_id', 'supplier_id', 'description', 'quantity', 'unit_price', 'low_stock_threshold', 'image', 'tax_id'];
 
     protected $casts = [
         'quantity' => 'integer',
         'low_stock_threshold' => 'integer',
         'unit_price' => 'decimal:2',
     ];
+
+    /**
+     * Get the tax associated with this item.
+     */
+    public function tax(): BelongsTo
+    {
+        return $this->belongsTo(Taxes::class, 'tax_id');
+    }
 
     /**
      * Get the supplier associated with this item.
