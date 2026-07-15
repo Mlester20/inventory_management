@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="{{ asset('assets/css/demo.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/auth-custom.css') }}" />
     <script src="{{ asset('assets/vendor/js/helpers.js') }}"></script>
     <script src="{{ asset('assets/js/config.js') }}"></script>
 </head>
@@ -37,13 +38,18 @@
     <div class="container-xxl">
       <div class="authentication-wrapper authentication-basic container-p-y">
         <div class="authentication-inner">
-          <div class="card">
-            <div class="card-body">
-              <div class="app-brand justify-content-center">
-      
+          <div class="auth-glow auth-glow-1"></div>
+          <div class="auth-glow auth-glow-2"></div>
+          <div class="card auth-card">
+            <div class="auth-card-accent"></div>
+            <div class="card-body px-4 py-5 px-sm-5">
+              <div class="auth-brand-row">
+                <span class="auth-logo-chip">
+                  <img src="{{ asset('assets/img/favicon/icon.png') }}" alt="SAIMS" />
+                </span>
+                <h4>Welcome to <span class="brand-accent">SAIMS</span></h4>
               </div>
-              <h4 class="mb-2 text-center">Welcome to SAIMS</h4>
-              <hr>
+              <hr class="auth-divider">
               <form class="mb-3" action="{{ route('login') }}" method="POST">
                 @csrf
                 <div class="mb-3">
@@ -55,6 +61,7 @@
                     name="email"
                     placeholder="Enter your email"
                     autofocus
+                    spellcheck="false"
                   />
                 </div>
                 <div class="mb-3 form-password-toggle">
@@ -78,7 +85,7 @@
                   </div>
                 </div>
                 <div class="mb-3">
-                  <button class="btn btn-primary d-grid w-100" type="submit">Sign in</button>
+                  <button class="btn btn-auth-primary d-grid w-100" type="submit">Sign in</button>
                 </div>
               </form>
             </div>

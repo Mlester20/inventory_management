@@ -78,7 +78,7 @@ Route::middleware(['auth'])->group(function() {
 
 });
 
-// Admin Routes - Protected with admin middleware
+// Admin Routes - Protected with admin middleware 
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('admin/cogs', [CogsController::class, 'index'])->name('admin.cogs.index');
