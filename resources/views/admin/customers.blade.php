@@ -47,6 +47,21 @@
                                 >
                             </div>
                             <div class="mb-3">
+                                <label for="customer_type" class="form-label">
+                                    Customer Type
+                                </label>
+                                <select
+                                    name="customer_type"
+                                    id="customer_type"
+                                    class="form-select"
+                                    required
+                                >
+                                    @foreach (\App\Models\Customer::CUSTOMER_TYPES as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3">
                                 <label for="contact_person" class="form-label">
                                     Contact Person
                                 </label>
@@ -140,6 +155,10 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-6">
+                                <label><strong>Customer Type:</strong></label>
+                                <p id="view_customer_type" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-6">
                                 <label><strong>Contact Person:</strong></label>
                                 <p id="view_contact_person" class="text-muted"></p>
                             </div>
@@ -207,6 +226,21 @@
                                     placeholder="Enter customer name"
                                     required
                                 >
+                            </div>
+                            <div class="mb-3">
+                                <label for="update_customer_type" class="form-label">
+                                    Customer Type
+                                </label>
+                                <select
+                                    name="customer_type"
+                                    id="update_customer_type"
+                                    class="form-select"
+                                    required
+                                >
+                                    @foreach (\App\Models\Customer::CUSTOMER_TYPES as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                             <div class="mb-3">
                                 <label for="update_contact_person" class="form-label">
@@ -285,6 +319,7 @@
                     <tr>
                         <th>#</th>
                         <th>Customer Name</th>
+                        <th>Type</th>
                         <th>Contact Person</th>
                         <th>Email</th>
                         <th>Actions</th>
@@ -295,6 +330,7 @@
                         <tr>
                             <td>{{ $customer->id }}</td>
                             <td>{{ $customer->customer_name }}</td>
+                            <td>{{ \App\Models\Customer::CUSTOMER_TYPES[$customer->customer_type] ?? $customer->customer_type }}</td>
                             <td>{{ $customer->contact_person }}</td>
                             <td>{{ $customer->email }}</td>
                             <td>
@@ -305,6 +341,7 @@
                                     data-bs-target="#viewCustomerModal"
                                     data-id="{{ $customer->id }}"
                                     data-name="{{ $customer->customer_name }}"
+                                    data-type="{{ \App\Models\Customer::CUSTOMER_TYPES[$customer->customer_type] ?? $customer->customer_type }}"
                                     data-contact="{{ $customer->contact_person }}"
                                     data-phone="{{ $customer->phone }}"
                                     data-email="{{ $customer->email }}"
@@ -320,6 +357,7 @@
                                     data-bs-target="#updateCustomerModal"
                                     data-id="{{ $customer->id }}"
                                     data-name="{{ $customer->customer_name }}"
+                                    data-type-value="{{ $customer->customer_type }}"
                                     data-contact="{{ $customer->contact_person }}"
                                     data-phone="{{ $customer->phone }}"
                                     data-email="{{ $customer->email }}"
@@ -360,6 +398,7 @@
         button.addEventListener('click', function() {
             const customerId = this.getAttribute('data-id');
             const customerName = this.getAttribute('data-name');
+            const customerType = this.getAttribute('data-type');
             const contactPerson = this.getAttribute('data-contact');
             const phone = this.getAttribute('data-phone');
             const email = this.getAttribute('data-email');
@@ -368,6 +407,7 @@
             // Populate the view modal
             document.getElementById('view_customer_id').textContent = customerId;
             document.getElementById('view_customer_name').textContent = customerName;
+            document.getElementById('view_customer_type').textContent = customerType || 'N/A';
             document.getElementById('view_contact_person').textContent = contactPerson || 'N/A';
             document.getElementById('view_phone').textContent = phone || 'N/A';
             document.getElementById('view_email').textContent = email || 'N/A';
@@ -380,6 +420,7 @@
         button.addEventListener('click', function() {
             const customerId = this.getAttribute('data-id');
             const customerName = this.getAttribute('data-name');
+            const customerType = this.getAttribute('data-type-value');
             const contactPerson = this.getAttribute('data-contact');
             const phone = this.getAttribute('data-phone');
             const email = this.getAttribute('data-email');
@@ -387,6 +428,7 @@
 
             // Populate the modal form
             document.getElementById('update_customer_name').value = customerName;
+            document.getElementById('update_customer_type').value = customerType || 'walk_in';
             document.getElementById('update_contact_person').value = contactPerson || '';
             document.getElementById('update_email').value = email || '';
             document.getElementById('update_phone').value = phone || '';
@@ -402,6 +444,7 @@
     const customerModal = document.getElementById('customerModal');
     customerModal.addEventListener('hide.bs.modal', function() {
         document.getElementById('customer_name').value = '';
+        document.getElementById('customer_type').value = 'walk_in';
         document.getElementById('contact_person').value = '';
         document.getElementById('email').value = '';
         document.getElementById('phone').value = '';

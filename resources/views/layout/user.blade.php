@@ -131,6 +131,56 @@
               </a>
             </li>
 
+            <!-- Transactions -->
+            <li class="menu-header small text-uppercase">
+              <span class="menu-header-text">Transactions</span>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-receipt"></i>
+                <div data-i18n="Invoices">Invoices</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('invoices.index') }}" class="menu-link">
+                    <div data-i18n="Error">Sales Invoices</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('invoices.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Invoice</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-cart"></i>
+                <div data-i18n="Purchase Order">Purchase Order</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('sales-orders.index') }}" class="menu-link">
+                    <div data-i18n="Error">Sales Orders</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('sales-orders.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Sales Order</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('delivery-receipts.index') }}" class="menu-link">
+                    <div data-i18n="Error">Delivery Receipts</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('delivery-receipts.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Delivery Receipt</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
 
             <li class="menu-header small text-uppercase">
               <span class="menu-header-text">Reports</span>

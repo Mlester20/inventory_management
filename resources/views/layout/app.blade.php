@@ -132,8 +132,9 @@
             </li>
 
 
+            <!-- Items & Inventory -->
             <li class="menu-header small text-uppercase">
-              <span class="menu-header-text">Inventory</span>
+              <span class="menu-header-text">Items &amp; Inventory</span>
             </li>
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -218,6 +219,11 @@
                 </li>
               </ul>
             </li>
+
+            <!-- Taxes & Invoice -->
+            <li class="menu-header small text-uppercase">
+              <span class="menu-header-text">Taxes &amp; Invoice</span>
+            </li>
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-calculator"></i>
@@ -250,6 +256,39 @@
               </ul>
             </li>
 
+            <!-- Purchase Orders -->
+            <li class="menu-header small text-uppercase">
+              <span class="menu-header-text">Purchase Orders</span>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-cart"></i>
+                <div data-i18n="Purchase Order">Purchase Order</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('sales-orders.index') }}" class="menu-link {{ request()->routeIs('sales-orders.*') ? 'active' : '' }}">
+                    <div data-i18n="Error">Sales Orders</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('sales-orders.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Sales Order</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('delivery-receipts.index') }}" class="menu-link {{ request()->routeIs('delivery-receipts.*') ? 'active' : '' }}">
+                    <div data-i18n="Error">Delivery Receipts</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('delivery-receipts.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Delivery Receipt</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+
             <!-- Reports -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Reports</span></li>
             <li class="menu-item">
@@ -263,6 +302,60 @@
                 <i class="menu-icon tf-icons bx bx-calendar-x"></i>
                 <div data-i18n="Expiration Report">Expiration Report</div>
               </a>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-box"></i>
+                <div data-i18n="Inventory Report">Inventory Report</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('admin.reports.inventory-summary') }}" class="menu-link {{ request()->routeIs('admin.reports.inventory-summary') ? 'active' : '' }}">
+                    <div data-i18n="Error">Inventory Summary</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('admin.reports.product-history') }}" class="menu-link {{ request()->routeIs('admin.reports.product-history') ? 'active' : '' }}">
+                    <div data-i18n="Error">Product History</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-receipt"></i>
+                <div data-i18n="Sales Report">Sales Report</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('admin.reports.sales-summary') }}" class="menu-link {{ request()->routeIs('admin.reports.sales-summary') ? 'active' : '' }}">
+                    <div data-i18n="Error">Sales Summary</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('admin.reports.sales-per-customer') }}" class="menu-link {{ request()->routeIs('admin.reports.sales-per-customer') ? 'active' : '' }}">
+                    <div data-i18n="Error">Sales Per Customer</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-cart-alt"></i>
+                <div data-i18n="Purchase Report">Purchase Report</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('admin.reports.purchase-summary') }}" class="menu-link {{ request()->routeIs('admin.reports.purchase-summary') ? 'active' : '' }}">
+                    <div data-i18n="Error">Purchase Summary</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('admin.reports.purchases-per-supplier') }}" class="menu-link {{ request()->routeIs('admin.reports.purchases-per-supplier') ? 'active' : '' }}">
+                    <div data-i18n="Error">Purchases Per Supplier</div>
+                  </a>
+                </li>
+              </ul>
             </li>
 
             <!-- Users -->

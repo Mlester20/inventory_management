@@ -25,18 +25,28 @@ class CustomerController extends Controller
         //validate the request
         $request->validate([
             'customer_name' => 'required|unique:customers,customer_name',
+            'customer_type' => 'required|in:' . implode(',', array_keys(Customer::CUSTOMER_TYPES)),
             'contact_person' => 'nullable',
             'email' => 'nullable|email|unique:customers,email',
             'phone' => 'nullable|unique:customers,phone',
             'address' => 'nullable',
         ]);
-        Customer::create([
+        $customer = Customer::create([
             'customer_name' => $request->customer_name,
+            'customer_type' => $request->customer_type,
             'contact_person' => $request->contact_person,
             'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'customer' => $customer,
+            ], 201);
+        }
+
         Alert::success('Success', 'Customer created successfully');
         return redirect()->route('customers.index');
     }
@@ -49,6 +59,7 @@ class CustomerController extends Controller
         //validate the request
         $request->validate([
             'customer_name' => 'required|unique:customers,customer_name,' . $customer->id,
+            'customer_type' => 'required|in:' . implode(',', array_keys(Customer::CUSTOMER_TYPES)),
             'contact_person' => 'nullable',
             'email' => 'nullable|email|unique:customers,email,' . $customer->id,
             'phone' => 'nullable|unique:customers,phone,' . $customer->id,
@@ -57,6 +68,7 @@ class CustomerController extends Controller
         //update the customer
         $customer->update([
             'customer_name' => $request->customer_name,
+            'customer_type' => $request->customer_type,
             'contact_person' => $request->contact_person,
             'email' => $request->email,
             'phone' => $request->phone,

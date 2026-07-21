@@ -1006,7 +1006,7 @@
                                     data-batch-no="{{ $item->batch_no }}"
                                     data-expiration-date="{{ $item->expiration_date?->format('Y-m-d') }}"
                                 >
-                                    View
+                                    <i class="bx bx-show"></i>
                                 </button>
 
                                 <button
@@ -1038,7 +1038,7 @@
                                     data-batch-no="{{ $item->batch_no }}"
                                     data-expiration-date="{{ $item->expiration_date?->format('Y-m-d') }}"
                                 >
-                                    Edit
+                                    <i class="bx bx-edit"></i>
                                 </button>
 
                                 <form
@@ -1054,7 +1054,7 @@
                                         class="btn btn-sm btn-danger"
                                         onclick="return confirm('Are you sure you want to delete this item?')"
                                     >
-                                        Delete
+                                        <i class="bx bx-trash"></i>
                                     </button>
                                 </form>
                             </td>

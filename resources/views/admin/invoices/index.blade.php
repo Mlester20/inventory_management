@@ -53,21 +53,23 @@
                                 <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-sm btn-info">
                                     View / Print
                                 </a>
-                                <form
-                                    action="{{ route('invoices.destroy', $invoice) }}"
-                                    method="POST"
-                                    class="d-inline"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-                                    <button
-                                        type="submit"
-                                        class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Are you sure you want to delete this invoice?')"
+                                @if(Auth::user()->role === 'admin')
+                                    <form
+                                        action="{{ route('invoices.destroy', $invoice) }}"
+                                        method="POST"
+                                        class="d-inline"
                                     >
-                                        Delete
-                                    </button>
-                                </form>
+                                        @csrf
+                                        @method('DELETE')
+                                        <button
+                                            type="submit"
+                                            class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Are you sure you want to delete this invoice?')"
+                                        >
+                                            Delete
+                                        </button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                     @empty
