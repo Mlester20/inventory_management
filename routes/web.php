@@ -24,10 +24,13 @@ use App\Http\Controllers\TaxesController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\DeliveryReceiptController;
+use App\Http\Controllers\Admin\PurchaseOrderController;
+use App\Http\Controllers\Admin\GoodsReceiptController;
 use App\Http\Controllers\Api\ItemController as ApiItemController;
 use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
 use App\Http\Controllers\Api\GenericNameController as ApiGenericNameController;
 use App\Http\Controllers\Api\SalesOrderController as ApiSalesOrderController;
+use App\Http\Controllers\Api\PurchaseOrderController as ApiPurchaseOrderController;
 use App\Http\Controllers\ReturnItemController;
 use App\Http\Controllers\ReturnItemController as ApiReturnItemController;
 use App\Http\Controllers\UserProfileController;
@@ -123,6 +126,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::resource('admin/return-items', ReturnItemController::class);
     Route::resource('admin/taxes', TaxesController::class);
+    Route::resource('admin/purchase-orders', PurchaseOrderController::class);
+    Route::resource('admin/goods-receipts', GoodsReceiptController::class)->except(['destroy']);
 
     // Invoices, Sales Orders, and Delivery Receipts are usable by both admin
     // and regular users (see the 'auth'-only group below) — deleting them
@@ -169,6 +174,9 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
 
     // Sales Orders API (Purchase-Order-mode Delivery Receipt remaining lines)
     Route::get('sales-orders/{salesOrder}/remaining-items', [ApiSalesOrderController::class, 'remainingItems'])->name('sales-orders.remaining-items');
+
+    // Purchase Orders API (Goods-Receipt-against-Purchase-Order pending lines)
+    Route::get('purchase-orders/{purchaseOrder}/pending-items', [ApiPurchaseOrderController::class, 'pendingItems'])->name('purchase-orders.pending-items');
 });
 
 // Search API - Protected with auth middleware

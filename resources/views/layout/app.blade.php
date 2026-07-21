@@ -124,7 +124,7 @@
 
           <ul class="menu-inner py-1">
             <!-- Dashboard -->
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
               <a href="{{ route('admin.dashboard') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-home-circle"></i>
                 <div data-i18n="Analytics">Dashboard</div>
@@ -143,7 +143,7 @@
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('generic-names.index') }}" class="menu-link">
+                  <a href="{{ route('generic-names.index') }}" class="menu-link {{ request()->routeIs('generic-names.*') ? 'active' : '' }}">
                     <div data-i18n="Generic Names">Generic Names</div>
                   </a>
                 </li>
@@ -156,7 +156,7 @@
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('suppliers.index') }}" class="menu-link">
+                  <a href="{{ route('suppliers.index') }}" class="menu-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
                     <div data-i18n="Account">Suppliers</div>
                   </a>
                 </li>
@@ -169,7 +169,7 @@
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('customers.index') }}" class="menu-link">
+                  <a href="{{ route('customers.index') }}" class="menu-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
                     <div data-i18n="Customers">Customers</div>
                   </a>
                 </li>
@@ -182,12 +182,12 @@
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('items.index') }}" class="menu-link">
+                  <a href="{{ route('items.index') }}" class="menu-link {{ request()->routeIs('items.*') ? 'active' : '' }}">
                     <div data-i18n="Error">Items</div>
                   </a>
                 </li>
                 <li class="menu-item">
-                  <a href="{{ route('stock.restock-page') }}" class="menu-link">
+                  <a href="{{ route('stock.restock-page') }}" class="menu-link {{ request()->routeIs('stock.restock-page') ? 'active' : '' }}">
                     <div data-i18n="Error">Restock</div>
                   </a>
                 </li>
@@ -200,7 +200,7 @@
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('purchases.index') }}" class="menu-link">
+                  <a href="{{ route('purchases.index') }}" class="menu-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
                     <div data-i18n="Error">Purchases</div>
                   </a>
                 </li>
@@ -213,7 +213,7 @@
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('return-items.index') }}" class="menu-link">
+                  <a href="{{ route('return-items.index') }}" class="menu-link {{ request()->routeIs('return-items.*') ? 'active' : '' }}">
                     <div data-i18n="Error">Return Items</div>
                   </a>
                 </li>
@@ -231,7 +231,7 @@
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('taxes.index') }}" class="menu-link">
+                  <a href="{{ route('taxes.index') }}" class="menu-link {{ request()->routeIs('taxes.*') ? 'active' : '' }}">
                     <div data-i18n="Error">Manage Taxes</div>
                   </a>
                 </li>
@@ -244,7 +244,7 @@
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('invoices.index') }}" class="menu-link">
+                  <a href="{{ route('invoices.index') }}" class="menu-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
                     <div data-i18n="Error">Sales Invoices</div>
                   </a>
                 </li>
@@ -256,14 +256,14 @@
               </ul>
             </li>
 
-            <!-- Purchase Orders -->
+            <!-- Sales -->
             <li class="menu-header small text-uppercase">
-              <span class="menu-header-text">Purchase Orders</span>
+              <span class="menu-header-text">Sales</span>
             </li>
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-cart"></i>
-                <div data-i18n="Purchase Order">Purchase Order</div>
+                <div data-i18n="Sales Order">Sales Order</div>
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
@@ -284,6 +284,39 @@
                 <li class="menu-item">
                   <a href="{{ route('delivery-receipts.create') }}" class="menu-link">
                     <div data-i18n="Error">New Delivery Receipt</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+
+            <!-- Purchase -->
+            <li class="menu-header small text-uppercase">
+              <span class="menu-header-text">Purchase</span>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-cart-alt"></i>
+                <div data-i18n="Purchase Order">Purchase Order</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('purchase-orders.index') }}" class="menu-link {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
+                    <div data-i18n="Error">Purchase Orders</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('purchase-orders.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Purchase Order</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('goods-receipts.index') }}" class="menu-link {{ request()->routeIs('goods-receipts.*') ? 'active' : '' }}">
+                    <div data-i18n="Error">Goods Receipts</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('goods-receipts.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Goods Receipt</div>
                   </a>
                 </li>
               </ul>
@@ -368,7 +401,7 @@
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('users.index') }}" class="menu-link">
+                  <a href="{{ route('users.index') }}" class="menu-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
                     <div data-i18n="Accordion">Users</div>
                   </a>
                 </li>
