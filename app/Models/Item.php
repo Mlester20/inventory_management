@@ -11,12 +11,13 @@ class Item extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['item_name', 'serial_number', 'category_id', 'supplier_id', 'description', 'quantity', 'unit_price', 'low_stock_threshold', 'image', 'tax_id'];
+    protected $fillable = ['item_name', 'serial_number', 'category_id', 'supplier_id', 'description', 'quantity', 'unit_price', 'low_stock_threshold', 'image', 'tax_id', 'batch_no', 'expiration_date'];
 
     protected $casts = [
         'quantity' => 'integer',
         'low_stock_threshold' => 'integer',
         'unit_price' => 'decimal:2',
+        'expiration_date' => 'date',
     ];
 
     /**
