@@ -138,14 +138,13 @@
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-receipt"></i>
-                <div data-i18n="Account Settings">Categories</div>
+                <div data-i18n="Generic Names">Generic Names</div>
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('categories.index') }}" class="menu-link">
-                    <div data-i18n="Account">Categories</div>
+                  <a href="{{ route('generic-names.index') }}" class="menu-link">
+                    <div data-i18n="Generic Names">Generic Names</div>
                   </a>
-                </li>
                 </li>
               </ul>
             </li>
@@ -158,6 +157,19 @@
                 <li class="menu-item">
                   <a href="{{ route('suppliers.index') }}" class="menu-link">
                     <div data-i18n="Account">Suppliers</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-group"></i>
+                <div data-i18n="Customers">Customers</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('customers.index') }}" class="menu-link">
+                    <div data-i18n="Customers">Customers</div>
                   </a>
                 </li>
               </ul>

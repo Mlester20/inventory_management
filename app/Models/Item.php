@@ -11,14 +11,62 @@ class Item extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['item_name', 'serial_number', 'category_id', 'supplier_id', 'description', 'quantity', 'unit_price', 'low_stock_threshold', 'image', 'tax_id', 'batch_no', 'expiration_date'];
+    protected $fillable = [
+        'item_name', 'serial_number', 'generic_name_id', 'brand_name', 'category_id', 'supplier_id',
+        'description', 'quantity', 'unit_price', 'unit_cost',
+        'wholesale_percent', 'wholesale_price',
+        'price_1_percent', 'price_1',
+        'price_2_percent', 'price_2',
+        'price_3_percent', 'price_3',
+        'location', 'low_stock_threshold', 'image', 'tax_id', 'batch_no', 'expiration_date',
+    ];
 
     protected $casts = [
         'quantity' => 'integer',
         'low_stock_threshold' => 'integer',
         'unit_price' => 'decimal:2',
+        'unit_cost' => 'decimal:2',
+        'wholesale_percent' => 'decimal:2',
+        'wholesale_price' => 'decimal:2',
+        'price_1_percent' => 'decimal:2',
+        'price_1' => 'decimal:2',
+        'price_2_percent' => 'decimal:2',
+        'price_2' => 'decimal:2',
+        'price_3_percent' => 'decimal:2',
+        'price_3' => 'decimal:2',
         'expiration_date' => 'date',
     ];
+
+    /**
+     * Keep category_id and item_name in sync with the selected Generic Name,
+     * so every screen that already reads those columns directly (COGS, the
+     * Expiration Report, dashboard, POS, search) keeps working unchanged.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Item $item) {
+            if (! $item->generic_name_id) {
+                return;
+            }
+
+            $genericName = $item->genericName()->first();
+
+            if ($genericName) {
+                $item->category_id = $genericName->category_id;
+                $item->item_name = $item->brand_name
+                    ? "{$genericName->generic_name} ({$item->brand_name})"
+                    : $genericName->generic_name;
+            }
+        });
+    }
+
+    /**
+     * Get the generic name this product belongs to.
+     */
+    public function genericName(): BelongsTo
+    {
+        return $this->belongsTo(GenericName::class);
+    }
 
     /**
      * Get the tax associated with this item.

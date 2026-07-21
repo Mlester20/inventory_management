@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\GenericName;
 use Illuminate\Http\Request;
 // sweet alert
 use RealRashid\SweetAlert\Facades\Alert;
@@ -11,11 +12,15 @@ class CategoryController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * The "Categories" page now primarily manages Generic Names, so this
+     * renders the same shared view as GenericNameController::index().
      */
     public function index()
     {
-        $categories = Category::all();
-        return view('admin.categories', compact('categories'));
+        $categories = Category::orderBy('category_name')->get();
+        $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
+        return view('admin.categories', compact('categories', 'genericNames'));
     }
 
     /**
@@ -33,9 +38,9 @@ class CategoryController extends Controller
             'category_name' => $request->category_name,
         ]);
 
-        //redirect to the categories page
+        //redirect to the generic names page
         Alert::success('Success', 'Category created successfully');
-        return redirect()->route('categories.index');
+        return redirect()->route('generic-names.index');
     }
 
     /**
@@ -53,9 +58,9 @@ class CategoryController extends Controller
             'category_name' => $request->category_name,
         ]);
 
-        //redirect to the categories page
+        //redirect to the generic names page
         Alert::success('Success', 'Category updated successfully');
-        return redirect()->route('categories.index');
+        return redirect()->route('generic-names.index');
     }
 
     /**
@@ -64,8 +69,8 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         //
-        $category->delete();        
+        $category->delete();
         Alert::success('Success', 'Category deleted successfully');
-        return redirect()->route('categories.index');
+        return redirect()->route('generic-names.index');
     }
 }

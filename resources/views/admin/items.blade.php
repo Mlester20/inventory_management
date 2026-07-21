@@ -1,6 +1,6 @@
 @extends('layout.app')
 
-@section('title', 'Categories')
+@section('title', 'Products')
 
 @section('content')
     <div class="mt-3">
@@ -28,7 +28,7 @@
 
         <!-- Add Item Modal -->
         <div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog" role="document">
+            <div class="modal-dialog modal-lg" role="document">
 
                 <form action="{{ route('items.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
@@ -46,19 +46,59 @@
 
                         <div class="modal-body">
                             <div class="mb-3">
-                                <label for="item_name" class="form-label">
-                                    Item Name
+                                <label for="generic_name_id" class="form-label">
+                                    Generic Name
+                                </label>
+                                <select
+                                    name="generic_name_id"
+                                    id="generic_name_id"
+                                    class="form-select @error('generic_name_id') is-invalid @enderror"
+                                    required
+                                >
+                                    <option value="">-- Select Generic Name --</option>
+                                    @foreach ($genericNames as $genericName)
+                                        <option
+                                            value="{{ $genericName->id }}"
+                                            data-category="{{ $genericName->category->category_name }}"
+                                            data-unit="{{ $genericName->unit }}"
+                                            {{ old('generic_name_id') == $genericName->id ? 'selected' : '' }}
+                                        >
+                                            {{ $genericName->generic_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('generic_name_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Category</label>
+                                    <input type="text" id="generic_name_category_display" class="form-control" readonly>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Unit</label>
+                                    <input type="text" id="generic_name_unit_display" class="form-control" readonly>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="brand_name" class="form-label">
+                                    Brand Name
                                 </label>
                                 <input
                                     type="text"
-                                    name="item_name"
-                                    id="item_name"
-                                    class="form-control @error('item_name') is-invalid @enderror"
-                                    placeholder="Enter item name"
-                                    value="{{ old('item_name') }}"
+                                    name="brand_name"
+                                    id="brand_name"
+                                    class="form-control @error('brand_name') is-invalid @enderror"
+                                    placeholder="Enter brand name"
+                                    value="{{ old('brand_name') }}"
                                     required
                                 >
-                                @error('item_name')
+                                @error('brand_name')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -78,30 +118,6 @@
                                     value="{{ old('serial_number') }}"
                                 >
                                 @error('serial_number')
-                                    <div class="invalid-feedback d-block">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="category_id" class="form-label">
-                                    Category
-                                </label>
-                                <select
-                                    name="category_id"
-                                    id="category_id"
-                                    class="form-select @error('category_id') is-invalid @enderror"
-                                    required
-                                >
-                                    <option value="">-- Select Category --</option>
-                                    @foreach ($categories as $category)
-                                        <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
-                                            {{ $category->category_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('category_id')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -214,20 +230,20 @@
                                 </div>
 
                                 <div class="col-md-6 mb-3">
-                                    <label for="unit_price" class="form-label">
-                                        Unit Price
+                                    <label for="unit_cost" class="form-label">
+                                        Unit Cost
                                     </label>
                                     <input
                                         type="number"
-                                        name="unit_price"
-                                        id="unit_price"
-                                        class="form-control @error('unit_price') is-invalid @enderror"
-                                        placeholder="Enter unit price"
+                                        name="unit_cost"
+                                        id="unit_cost"
+                                        class="form-control @error('unit_cost') is-invalid @enderror"
+                                        placeholder="Enter unit cost"
                                         step="0.01"
-                                        value="{{ old('unit_price') }}"
+                                        value="{{ old('unit_cost') }}"
                                         required
                                     >
-                                    @error('unit_price')
+                                    @error('unit_cost')
                                         <div class="invalid-feedback d-block">
                                             {{ $message }}
                                         </div>
@@ -249,6 +265,89 @@
                                     required
                                 >
                                 @error('low_stock_threshold')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <hr>
+                            <h6 class="mb-3">Unit Price</h6>
+
+                            <div class="mb-3">
+                                <label for="unit_price" class="form-label">
+                                    Retail Price
+                                </label>
+                                <input
+                                    type="number"
+                                    name="unit_price"
+                                    id="unit_price"
+                                    class="form-control @error('unit_price') is-invalid @enderror"
+                                    placeholder="Enter retail price"
+                                    step="0.01"
+                                    value="{{ old('unit_price') }}"
+                                    required
+                                >
+                                @error('unit_price')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            @foreach ([
+                                ['label' => 'Wholesale Price', 'percent' => 'wholesale_percent', 'value' => 'wholesale_price'],
+                                ['label' => 'Price 1', 'percent' => 'price_1_percent', 'value' => 'price_1'],
+                                ['label' => 'Price 2', 'percent' => 'price_2_percent', 'value' => 'price_2'],
+                                ['label' => 'Price 3', 'percent' => 'price_3_percent', 'value' => 'price_3'],
+                            ] as $tier)
+                                <div class="row">
+                                    <div class="col-12">
+                                        <label class="form-label">{{ $tier['label'] }}</label>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="input-group">
+                                            <input
+                                                type="number"
+                                                name="{{ $tier['percent'] }}"
+                                                id="{{ $tier['percent'] }}"
+                                                class="form-control @error($tier['percent']) is-invalid @enderror"
+                                                placeholder="%"
+                                                step="0.01"
+                                                value="{{ old($tier['percent']) }}"
+                                            >
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8 mb-3">
+                                        <input
+                                            type="number"
+                                            name="{{ $tier['value'] }}"
+                                            id="{{ $tier['value'] }}"
+                                            class="form-control @error($tier['value']) is-invalid @enderror"
+                                            placeholder="Computed price (editable)"
+                                            step="0.01"
+                                            value="{{ old($tier['value']) }}"
+                                        >
+                                    </div>
+                                </div>
+                            @endforeach
+
+                            <hr>
+
+                            <div class="mb-3">
+                                <label for="location" class="form-label">
+                                    Location
+                                </label>
+                                <input
+                                    type="text"
+                                    name="location"
+                                    id="location"
+                                    class="form-control @error('location') is-invalid @enderror"
+                                    placeholder="Enter stock location (optional)"
+                                    value="{{ old('location') }}"
+                                >
+                                @error('location')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -315,7 +414,7 @@
 
         <!-- Update Item Modal -->
         <div class="modal fade" id="updateItemModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog" role="document">
+            <div class="modal-dialog modal-lg" role="document">
 
                 <form id="updateItemForm" method="POST" enctype="multipart/form-data">
                     @csrf
@@ -334,18 +433,57 @@
 
                         <div class="modal-body">
                             <div class="mb-3">
-                                <label for="update_item_name" class="form-label">
-                                    Item Name
+                                <label for="update_generic_name_id" class="form-label">
+                                    Generic Name
+                                </label>
+                                <select
+                                    name="generic_name_id"
+                                    id="update_generic_name_id"
+                                    class="form-select @error('generic_name_id') is-invalid @enderror"
+                                    required
+                                >
+                                    <option value="">-- Select Generic Name --</option>
+                                    @foreach ($genericNames as $genericName)
+                                        <option
+                                            value="{{ $genericName->id }}"
+                                            data-category="{{ $genericName->category->category_name }}"
+                                            data-unit="{{ $genericName->unit }}"
+                                        >
+                                            {{ $genericName->generic_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('generic_name_id')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Category</label>
+                                    <input type="text" id="update_generic_name_category_display" class="form-control" readonly>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Unit</label>
+                                    <input type="text" id="update_generic_name_unit_display" class="form-control" readonly>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="update_brand_name" class="form-label">
+                                    Brand Name
                                 </label>
                                 <input
                                     type="text"
-                                    name="item_name"
-                                    id="update_item_name"
-                                    class="form-control @error('item_name') is-invalid @enderror"
-                                    placeholder="Enter item name"
+                                    name="brand_name"
+                                    id="update_brand_name"
+                                    class="form-control @error('brand_name') is-invalid @enderror"
+                                    placeholder="Enter brand name"
                                     required
                                 >
-                                @error('item_name')
+                                @error('brand_name')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -364,30 +502,6 @@
                                     placeholder="Enter serial number (optional)"
                                 >
                                 @error('serial_number')
-                                    <div class="invalid-feedback d-block">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="update_category_id" class="form-label">
-                                    Category
-                                </label>
-                                <select
-                                    name="category_id"
-                                    id="update_category_id"
-                                    class="form-select @error('category_id') is-invalid @enderror"
-                                    required
-                                >
-                                    <option value="">-- Select Category --</option>
-                                    @foreach ($categories as $category)
-                                        <option value="{{ $category->id }}">
-                                            {{ $category->category_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('category_id')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -509,19 +623,19 @@
                                 </div>
 
                                 <div class="col-md-6 mb-3">
-                                    <label for="update_unit_price" class="form-label">
-                                        Unit Price
+                                    <label for="update_unit_cost" class="form-label">
+                                        Unit Cost
                                     </label>
                                     <input
                                         type="number"
-                                        name="unit_price"
-                                        id="update_unit_price"
-                                        class="form-control @error('unit_price') is-invalid @enderror"
-                                        placeholder="Enter unit price"
+                                        name="unit_cost"
+                                        id="update_unit_cost"
+                                        class="form-control @error('unit_cost') is-invalid @enderror"
+                                        placeholder="Enter unit cost"
                                         step="0.01"
                                         required
                                     >
-                                    @error('unit_price')
+                                    @error('unit_cost')
                                         <div class="invalid-feedback d-block">
                                             {{ $message }}
                                         </div>
@@ -542,6 +656,85 @@
                                     required
                                 >
                                 @error('low_stock_threshold')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            <hr>
+                            <h6 class="mb-3">Unit Price</h6>
+
+                            <div class="mb-3">
+                                <label for="update_unit_price" class="form-label">
+                                    Retail Price
+                                </label>
+                                <input
+                                    type="number"
+                                    name="unit_price"
+                                    id="update_unit_price"
+                                    class="form-control @error('unit_price') is-invalid @enderror"
+                                    placeholder="Enter retail price"
+                                    step="0.01"
+                                    required
+                                >
+                                @error('unit_price')
+                                    <div class="invalid-feedback d-block">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+                            </div>
+
+                            @foreach ([
+                                ['label' => 'Wholesale Price', 'percent' => 'wholesale_percent', 'value' => 'wholesale_price'],
+                                ['label' => 'Price 1', 'percent' => 'price_1_percent', 'value' => 'price_1'],
+                                ['label' => 'Price 2', 'percent' => 'price_2_percent', 'value' => 'price_2'],
+                                ['label' => 'Price 3', 'percent' => 'price_3_percent', 'value' => 'price_3'],
+                            ] as $tier)
+                                <div class="row">
+                                    <div class="col-12">
+                                        <label class="form-label">{{ $tier['label'] }}</label>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="input-group">
+                                            <input
+                                                type="number"
+                                                name="{{ $tier['percent'] }}"
+                                                id="update_{{ $tier['percent'] }}"
+                                                class="form-control @error($tier['percent']) is-invalid @enderror"
+                                                placeholder="%"
+                                                step="0.01"
+                                            >
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8 mb-3">
+                                        <input
+                                            type="number"
+                                            name="{{ $tier['value'] }}"
+                                            id="update_{{ $tier['value'] }}"
+                                            class="form-control @error($tier['value']) is-invalid @enderror"
+                                            placeholder="Computed price (editable)"
+                                            step="0.01"
+                                        >
+                                    </div>
+                                </div>
+                            @endforeach
+
+                            <hr>
+
+                            <div class="mb-3">
+                                <label for="update_location" class="form-label">
+                                    Location
+                                </label>
+                                <input
+                                    type="text"
+                                    name="location"
+                                    id="update_location"
+                                    class="form-control @error('location') is-invalid @enderror"
+                                    placeholder="Enter stock location (optional)"
+                                >
+                                @error('location')
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
@@ -606,7 +799,7 @@
 
         <!-- View Item Modal -->
         <div class="modal fade" id="viewItemModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog" role="document">
+            <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Item Details</h5>
@@ -642,6 +835,16 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-6">
+                                <label><strong>Generic Name:</strong></label>
+                                <p id="view_generic_name" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label><strong>Brand Name:</strong></label>
+                                <p id="view_brand_name" class="text-muted"></p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
                                 <label><strong>Serial Number:</strong></label>
                                 <p id="view_serial_number" class="text-muted"></p>
                             </div>
@@ -651,11 +854,15 @@
                             </div>
                         </div>
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label><strong>Category:</strong></label>
                                 <p id="view_category" class="text-muted"></p>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <label><strong>Unit:</strong></label>
+                                <p id="view_unit" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-4">
                                 <label><strong>Supplier:</strong></label>
                                 <p id="view_supplier" class="text-muted"></p>
                             </div>
@@ -667,25 +874,51 @@
                             </div>
                         </div>
                         <div class="row mb-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label><strong>Quantity:</strong></label>
                                 <p id="view_quantity" class="text-muted"></p>
                             </div>
-                            <div class="col-md-4">
-                                <label><strong>Unit Price:</strong></label>
-                                <p id="view_price" class="text-muted"></p>
+                            <div class="col-md-3">
+                                <label><strong>Unit Cost:</strong></label>
+                                <p id="view_unit_cost" class="text-muted"></p>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label><strong>Low Stock Threshold:</strong></label>
                                 <p id="view_threshold" class="text-muted"></p>
                             </div>
+                            <div class="col-md-3">
+                                <label><strong>Location:</strong></label>
+                                <p id="view_location" class="text-muted"></p>
+                            </div>
                         </div>
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-3">
+                                <label><strong>Retail Price:</strong></label>
+                                <p id="view_price" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-3">
+                                <label><strong>Wholesale:</strong></label>
+                                <p id="view_wholesale" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-3">
+                                <label><strong>Price 1:</strong></label>
+                                <p id="view_price_1" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-3">
+                                <label><strong>Price 2:</strong></label>
+                                <p id="view_price_2" class="text-muted"></p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label><strong>Price 3:</strong></label>
+                                <p id="view_price_3" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-3">
                                 <label><strong>Batch No.:</strong></label>
                                 <p id="view_batch_no" class="text-muted"></p>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-3">
                                 <label><strong>Expiration Date:</strong></label>
                                 <p id="view_expiration_date" class="text-muted"></p>
                             </div>
@@ -738,7 +971,7 @@
                                 @endif
                             </td>
                             <td>{{ $item->item_name }}</td>
-                            <td>{{ $item->category->category_name }}</td>
+                            <td>{{ $item->genericName->category->category_name ?? 'N/A' }}</td>
                             <td>{{ $item->supplier->supplier_name }}</td>
                             <td>
                                 <button
@@ -748,14 +981,27 @@
                                     data-bs-target="#viewItemModal"
                                     data-id="{{ $item->id }}"
                                     data-name="{{ $item->item_name }}"
+                                    data-generic-name="{{ $item->genericName->generic_name ?? 'N/A' }}"
+                                    data-brand-name="{{ $item->brand_name }}"
                                     data-serial="{{ $item->serial_number }}"
                                     data-tax="{{ $item->tax ? $item->tax->name . ' (' . $item->tax->rate . '%)' : 'No Tax' }}"
                                     data-image="{{ $item->image ? asset('storage/' . $item->image) : '' }}"
-                                    data-category="{{ $item->category->category_name }}"
+                                    data-category="{{ $item->genericName->category->category_name ?? 'N/A' }}"
+                                    data-unit="{{ $item->genericName->unit ?? 'N/A' }}"
                                     data-supplier="{{ $item->supplier->supplier_name }}"
                                     data-description="{{ $item->description }}"
                                     data-quantity="{{ $item->quantity }}"
+                                    data-unit-cost="{{ $item->unit_cost }}"
                                     data-price="{{ $item->unit_price }}"
+                                    data-wholesale-percent="{{ $item->wholesale_percent }}"
+                                    data-wholesale-price="{{ $item->wholesale_price }}"
+                                    data-price-1-percent="{{ $item->price_1_percent }}"
+                                    data-price-1="{{ $item->price_1 }}"
+                                    data-price-2-percent="{{ $item->price_2_percent }}"
+                                    data-price-2="{{ $item->price_2 }}"
+                                    data-price-3-percent="{{ $item->price_3_percent }}"
+                                    data-price-3="{{ $item->price_3 }}"
+                                    data-location="{{ $item->location }}"
                                     data-threshold="{{ $item->low_stock_threshold }}"
                                     data-batch-no="{{ $item->batch_no }}"
                                     data-expiration-date="{{ $item->expiration_date?->format('Y-m-d') }}"
@@ -769,15 +1015,25 @@
                                     data-bs-toggle="modal"
                                     data-bs-target="#updateItemModal"
                                     data-id="{{ $item->id }}"
-                                    data-name="{{ $item->item_name }}"
+                                    data-generic-name-id="{{ $item->generic_name_id }}"
+                                    data-brand-name="{{ $item->brand_name }}"
                                     data-serial="{{ $item->serial_number }}"
                                     data-tax-id="{{ $item->tax_id }}"
                                     data-image="{{ $item->image ? asset('storage/' . $item->image) : '' }}"
-                                    data-category="{{ $item->category_id }}"
                                     data-supplier="{{ $item->supplier_id }}"
                                     data-description="{{ $item->description }}"
                                     data-quantity="{{ $item->quantity }}"
+                                    data-unit-cost="{{ $item->unit_cost }}"
                                     data-price="{{ $item->unit_price }}"
+                                    data-wholesale-percent="{{ $item->wholesale_percent }}"
+                                    data-wholesale-price="{{ $item->wholesale_price }}"
+                                    data-price-1-percent="{{ $item->price_1_percent }}"
+                                    data-price-1="{{ $item->price_1 }}"
+                                    data-price-2-percent="{{ $item->price_2_percent }}"
+                                    data-price-2="{{ $item->price_2 }}"
+                                    data-price-3-percent="{{ $item->price_3_percent }}"
+                                    data-price-3="{{ $item->price_3 }}"
+                                    data-location="{{ $item->location }}"
                                     data-threshold="{{ $item->low_stock_threshold }}"
                                     data-batch-no="{{ $item->batch_no }}"
                                     data-expiration-date="{{ $item->expiration_date?->format('Y-m-d') }}"
@@ -811,39 +1067,92 @@
 
 @section('scripts')
 <script>
+    // Auto-populate the read-only Category/Unit display when a Generic Name is selected
+    function setupGenericNameAutoFill(selectId, categoryDisplayId, unitDisplayId) {
+        const select = document.getElementById(selectId);
+        const categoryDisplay = document.getElementById(categoryDisplayId);
+        const unitDisplay = document.getElementById(unitDisplayId);
+        if (!select) return;
+
+        select.addEventListener('change', function() {
+            const selected = select.options[select.selectedIndex];
+            categoryDisplay.value = selected ? (selected.getAttribute('data-category') || '') : '';
+            unitDisplay.value = selected ? (selected.getAttribute('data-unit') || '') : '';
+        });
+    }
+    setupGenericNameAutoFill('generic_name_id', 'generic_name_category_display', 'generic_name_unit_display');
+    setupGenericNameAutoFill('update_generic_name_id', 'update_generic_name_category_display', 'update_generic_name_unit_display');
+
+    // Live-calculate each price tier as: retail x (1 - percent / 100), still hand-editable afterward
+    function setupPriceTierCalc(retailId, tiers) {
+        const retailInput = document.getElementById(retailId);
+        if (!retailInput) return;
+
+        function recalc(percentInput, valueInput) {
+            const percent = parseFloat(percentInput.value);
+            const retail = parseFloat(retailInput.value);
+            if (!isNaN(percent) && !isNaN(retail)) {
+                valueInput.value = (retail * (1 - percent / 100)).toFixed(2);
+            }
+        }
+
+        tiers.forEach(([percentId, valueId]) => {
+            const percentInput = document.getElementById(percentId);
+            const valueInput = document.getElementById(valueId);
+            if (!percentInput || !valueInput) return;
+            percentInput.addEventListener('input', () => recalc(percentInput, valueInput));
+            retailInput.addEventListener('input', () => recalc(percentInput, valueInput));
+        });
+    }
+    setupPriceTierCalc('unit_price', [
+        ['wholesale_percent', 'wholesale_price'],
+        ['price_1_percent', 'price_1'],
+        ['price_2_percent', 'price_2'],
+        ['price_3_percent', 'price_3'],
+    ]);
+    setupPriceTierCalc('update_unit_price', [
+        ['update_wholesale_percent', 'update_wholesale_price'],
+        ['update_price_1_percent', 'update_price_1'],
+        ['update_price_2_percent', 'update_price_2'],
+        ['update_price_3_percent', 'update_price_3'],
+    ]);
+
     // Handle view button click to populate the view modal
     document.querySelectorAll('.view-btn').forEach(button => {
         button.addEventListener('click', function() {
-            const itemId = this.getAttribute('data-id');
-            const itemName = this.getAttribute('data-name');
-            const serial = this.getAttribute('data-serial');
-            const tax = this.getAttribute('data-tax');
-            const image = this.getAttribute('data-image');
-            const category = this.getAttribute('data-category');
-            const supplier = this.getAttribute('data-supplier');
-            const description = this.getAttribute('data-description');
-            const quantity = this.getAttribute('data-quantity');
-            const price = this.getAttribute('data-price');
-            const threshold = this.getAttribute('data-threshold');
-            const batchNo = this.getAttribute('data-batch-no');
-            const expirationDate = this.getAttribute('data-expiration-date');
+            const get = (attr) => this.getAttribute(attr);
 
-            // Populate the view modal
-            document.getElementById('view_item_id').textContent = itemId;
-            document.getElementById('view_item_name').textContent = itemName;
-            document.getElementById('view_serial_number').textContent = serial || 'N/A';
-            document.getElementById('view_tax').textContent = tax || 'No Tax';
-            document.getElementById('view_category').textContent = category;
-            document.getElementById('view_supplier').textContent = supplier;
-            document.getElementById('view_description').textContent = description || 'N/A';
-            document.getElementById('view_quantity').textContent = quantity;
-            document.getElementById('view_price').textContent = '₱' + parseFloat(price).toFixed(2);
-            document.getElementById('view_threshold').textContent = threshold;
-            document.getElementById('view_batch_no').textContent = batchNo || 'N/A';
-            document.getElementById('view_expiration_date').textContent = expirationDate || 'N/A';
+            document.getElementById('view_item_id').textContent = get('data-id');
+            document.getElementById('view_item_name').textContent = get('data-name');
+            document.getElementById('view_generic_name').textContent = get('data-generic-name') || 'N/A';
+            document.getElementById('view_brand_name').textContent = get('data-brand-name') || 'N/A';
+            document.getElementById('view_serial_number').textContent = get('data-serial') || 'N/A';
+            document.getElementById('view_tax').textContent = get('data-tax') || 'No Tax';
+            document.getElementById('view_category').textContent = get('data-category');
+            document.getElementById('view_unit').textContent = get('data-unit');
+            document.getElementById('view_supplier').textContent = get('data-supplier');
+            document.getElementById('view_description').textContent = get('data-description') || 'N/A';
+            document.getElementById('view_quantity').textContent = get('data-quantity');
+            document.getElementById('view_unit_cost').textContent = '₱' + parseFloat(get('data-unit-cost') || 0).toFixed(2);
+            document.getElementById('view_threshold').textContent = get('data-threshold');
+            document.getElementById('view_location').textContent = get('data-location') || 'N/A';
+            document.getElementById('view_price').textContent = '₱' + parseFloat(get('data-price') || 0).toFixed(2);
+
+            const formatTier = (percent, price) => {
+                if (!price) return 'N/A';
+                return '₱' + parseFloat(price).toFixed(2) + (percent ? ' (' + parseFloat(percent).toFixed(2) + '%)' : '');
+            };
+            document.getElementById('view_wholesale').textContent = formatTier(get('data-wholesale-percent'), get('data-wholesale-price'));
+            document.getElementById('view_price_1').textContent = formatTier(get('data-price-1-percent'), get('data-price-1'));
+            document.getElementById('view_price_2').textContent = formatTier(get('data-price-2-percent'), get('data-price-2'));
+            document.getElementById('view_price_3').textContent = formatTier(get('data-price-3-percent'), get('data-price-3'));
+
+            document.getElementById('view_batch_no').textContent = get('data-batch-no') || 'N/A';
+            document.getElementById('view_expiration_date').textContent = get('data-expiration-date') || 'N/A';
 
             const viewImagePreview = document.getElementById('view_image_preview');
             const viewImageNone = document.getElementById('view_image_none');
+            const image = get('data-image');
             if (image) {
                 viewImagePreview.src = image;
                 viewImagePreview.classList.remove('d-none');
@@ -858,36 +1167,38 @@
     // Handle edit button click to populate the update modal
     document.querySelectorAll('.edit-btn').forEach(button => {
         button.addEventListener('click', function() {
-            const itemId = this.getAttribute('data-id');
-            const itemName = this.getAttribute('data-name');
-            const serial = this.getAttribute('data-serial');
-            const taxId = this.getAttribute('data-tax-id');
-            const image = this.getAttribute('data-image');
-            const categoryId = this.getAttribute('data-category');
-            const supplierId = this.getAttribute('data-supplier');
-            const description = this.getAttribute('data-description');
-            const quantity = this.getAttribute('data-quantity');
-            const price = this.getAttribute('data-price');
-            const threshold = this.getAttribute('data-threshold');
-            const batchNo = this.getAttribute('data-batch-no');
-            const expirationDate = this.getAttribute('data-expiration-date');
+            const get = (attr) => this.getAttribute(attr);
 
-            // Populate the modal form
-            document.getElementById('update_item_name').value = itemName;
-            document.getElementById('update_serial_number').value = serial || '';
-            document.getElementById('update_tax_id').value = taxId || '';
-            document.getElementById('update_category_id').value = categoryId;
-            document.getElementById('update_supplier_id').value = supplierId;
-            document.getElementById('update_description').value = description;
-            document.getElementById('update_quantity').value = quantity;
-            document.getElementById('update_unit_price').value = price;
-            document.getElementById('update_low_stock_threshold').value = threshold;
+            const genericNameSelect = document.getElementById('update_generic_name_id');
+            genericNameSelect.value = get('data-generic-name-id') || '';
+            genericNameSelect.dispatchEvent(new Event('change'));
+
+            document.getElementById('update_brand_name').value = get('data-brand-name') || '';
+            document.getElementById('update_serial_number').value = get('data-serial') || '';
+            document.getElementById('update_tax_id').value = get('data-tax-id') || '';
+            document.getElementById('update_supplier_id').value = get('data-supplier');
+            document.getElementById('update_description').value = get('data-description');
+            document.getElementById('update_quantity').value = get('data-quantity');
+            document.getElementById('update_unit_cost').value = get('data-unit-cost') || '';
+            document.getElementById('update_low_stock_threshold').value = get('data-threshold');
             document.getElementById('update_image').value = '';
-            document.getElementById('update_batch_no').value = batchNo || '';
-            document.getElementById('update_expiration_date').value = expirationDate || '';
+            document.getElementById('update_batch_no').value = get('data-batch-no') || '';
+            document.getElementById('update_expiration_date').value = get('data-expiration-date') || '';
+            document.getElementById('update_location').value = get('data-location') || '';
+
+            document.getElementById('update_unit_price').value = get('data-price') || '';
+            document.getElementById('update_wholesale_percent').value = get('data-wholesale-percent') || '';
+            document.getElementById('update_wholesale_price').value = get('data-wholesale-price') || '';
+            document.getElementById('update_price_1_percent').value = get('data-price-1-percent') || '';
+            document.getElementById('update_price_1').value = get('data-price-1') || '';
+            document.getElementById('update_price_2_percent').value = get('data-price-2-percent') || '';
+            document.getElementById('update_price_2').value = get('data-price-2') || '';
+            document.getElementById('update_price_3_percent').value = get('data-price-3-percent') || '';
+            document.getElementById('update_price_3').value = get('data-price-3') || '';
 
             const updateImagePreview = document.getElementById('update_image_preview');
             const updateImageNone = document.getElementById('update_image_none');
+            const image = get('data-image');
             if (image) {
                 updateImagePreview.src = image;
                 updateImagePreview.classList.remove('d-none');
@@ -899,22 +1210,34 @@
 
             // Set the form action to the update route
             const form = document.getElementById('updateItemForm');
-            form.action = `{{ route('items.index') }}/${itemId}`;
+            form.action = `{{ route('items.index') }}/${get('data-id')}`;
         });
     });
 
     // Clear the add item form when the modal is hidden
     const itemModal = document.getElementById('itemModal');
     itemModal.addEventListener('hide.bs.modal', function() {
-        document.getElementById('item_name').value = '';
+        document.getElementById('generic_name_id').value = '';
+        document.getElementById('generic_name_category_display').value = '';
+        document.getElementById('generic_name_unit_display').value = '';
+        document.getElementById('brand_name').value = '';
         document.getElementById('serial_number').value = '';
         document.getElementById('tax_id').value = '';
         document.getElementById('image').value = '';
-        document.getElementById('category_id').value = '';
         document.getElementById('supplier_id').value = '';
         document.getElementById('description').value = '';
         document.getElementById('quantity').value = '';
+        document.getElementById('unit_cost').value = '';
         document.getElementById('unit_price').value = '';
+        document.getElementById('wholesale_percent').value = '';
+        document.getElementById('wholesale_price').value = '';
+        document.getElementById('price_1_percent').value = '';
+        document.getElementById('price_1').value = '';
+        document.getElementById('price_2_percent').value = '';
+        document.getElementById('price_2').value = '';
+        document.getElementById('price_3_percent').value = '';
+        document.getElementById('price_3').value = '';
+        document.getElementById('location').value = '';
         document.getElementById('low_stock_threshold').value = '';
         document.getElementById('batch_no').value = '';
         document.getElementById('expiration_date').value = '';

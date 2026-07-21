@@ -3,7 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\GenericNameController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -90,7 +92,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::put('admin/profile', [ProfileController::class, 'update'])->name('admin.profile.update');
 
     Route::resource('admin/categories', CategoryController::class);
+    Route::resource('admin/generic-names', GenericNameController::class);
     Route::resource('admin/suppliers', SupplierController::class);
+    Route::resource('admin/customers', CustomerController::class);
     Route::resource('admin/items', ItemController::class);
     Route::resource('admin/users', UserController::class);
     Route::resource('admin/purchases', PurchaseController::class);    

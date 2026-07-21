@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
-use App\Models\Category;
+use App\Models\GenericName;
 use App\Models\Supplier;
 use App\Models\Taxes;
 use Illuminate\Http\Request;
@@ -17,7 +17,7 @@ class ItemController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Item::with('tax');
+        $query = Item::with('tax', 'genericName.category');
 
         // Filter for low stock items if requested
         if ($request->query('filter') === 'low-stock') {
@@ -25,7 +25,7 @@ class ItemController extends Controller
         }
 
         $items = $query->get();
-        $categories = Category::all();
+        $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
         $suppliers = Supplier::all();
         $showLowStockOnly = $request->query('filter') === 'low-stock';
 
@@ -37,7 +37,7 @@ class ItemController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.items', compact('items', 'categories', 'suppliers', 'taxes', 'showLowStockOnly'));
+        return view('admin.items', compact('items', 'genericNames', 'suppliers', 'taxes', 'showLowStockOnly'));
     }
 
     /**
@@ -47,14 +47,24 @@ class ItemController extends Controller
     {
         //validate the request
         $request->validate([
-            'item_name' => 'required|unique:items,item_name',
+            'generic_name_id' => 'required|exists:generic_names,id',
+            'brand_name' => 'required|string|max:255',
             'serial_number' => 'nullable|string|max:255',
-            'category_id' => 'required',
             'supplier_id' => 'required',
             'tax_id' => 'nullable|exists:taxes,id',
             'description' => 'nullable',
             'quantity' => 'required|integer',
             'unit_price' => 'required|numeric',
+            'unit_cost' => 'required|numeric|min:0',
+            'wholesale_percent' => 'nullable|numeric|min:0',
+            'wholesale_price' => 'nullable|numeric|min:0',
+            'price_1_percent' => 'nullable|numeric|min:0',
+            'price_1' => 'nullable|numeric|min:0',
+            'price_2_percent' => 'nullable|numeric|min:0',
+            'price_2' => 'nullable|numeric|min:0',
+            'price_3_percent' => 'nullable|numeric|min:0',
+            'price_3' => 'nullable|numeric|min:0',
+            'location' => 'nullable|string|max:255',
             'low_stock_threshold' => 'required|integer',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'batch_no' => 'nullable|string|max:100',
@@ -66,14 +76,24 @@ class ItemController extends Controller
             : null;
 
         Item::create([
-            'item_name' => $request->item_name,
+            'generic_name_id' => $request->generic_name_id,
+            'brand_name' => $request->brand_name,
             'serial_number' => $request->serial_number,
-            'category_id' => $request->category_id,
             'supplier_id' => $request->supplier_id,
             'tax_id' => $request->tax_id,
             'description' => $request->description,
             'quantity' => $request->quantity,
             'unit_price' => $request->unit_price,
+            'unit_cost' => $request->unit_cost,
+            'wholesale_percent' => $request->wholesale_percent,
+            'wholesale_price' => $request->wholesale_price,
+            'price_1_percent' => $request->price_1_percent,
+            'price_1' => $request->price_1,
+            'price_2_percent' => $request->price_2_percent,
+            'price_2' => $request->price_2,
+            'price_3_percent' => $request->price_3_percent,
+            'price_3' => $request->price_3,
+            'location' => $request->location,
             'low_stock_threshold' => $request->low_stock_threshold,
             'image' => $imagePath,
             'batch_no' => $request->batch_no,
@@ -92,14 +112,24 @@ class ItemController extends Controller
     {
         //validate the request
         $request->validate([
-            'item_name' => 'required|unique:items,item_name,' . $item->id,
+            'generic_name_id' => 'required|exists:generic_names,id',
+            'brand_name' => 'required|string|max:255',
             'serial_number' => 'nullable|string|max:255',
-            'category_id' => 'required',
             'supplier_id' => 'required',
             'tax_id' => 'nullable|exists:taxes,id',
             'description' => 'nullable',
             'quantity' => 'required|integer',
             'unit_price' => 'required|numeric',
+            'unit_cost' => 'required|numeric|min:0',
+            'wholesale_percent' => 'nullable|numeric|min:0',
+            'wholesale_price' => 'nullable|numeric|min:0',
+            'price_1_percent' => 'nullable|numeric|min:0',
+            'price_1' => 'nullable|numeric|min:0',
+            'price_2_percent' => 'nullable|numeric|min:0',
+            'price_2' => 'nullable|numeric|min:0',
+            'price_3_percent' => 'nullable|numeric|min:0',
+            'price_3' => 'nullable|numeric|min:0',
+            'location' => 'nullable|string|max:255',
             'low_stock_threshold' => 'required|integer',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'batch_no' => 'nullable|string|max:100',
@@ -115,14 +145,24 @@ class ItemController extends Controller
         }
 
         $item->update([
-            'item_name' => $request->item_name,
+            'generic_name_id' => $request->generic_name_id,
+            'brand_name' => $request->brand_name,
             'serial_number' => $request->serial_number,
-            'category_id' => $request->category_id,
             'supplier_id' => $request->supplier_id,
             'tax_id' => $request->tax_id,
             'description' => $request->description,
             'quantity' => $request->quantity,
             'unit_price' => $request->unit_price,
+            'unit_cost' => $request->unit_cost,
+            'wholesale_percent' => $request->wholesale_percent,
+            'wholesale_price' => $request->wholesale_price,
+            'price_1_percent' => $request->price_1_percent,
+            'price_1' => $request->price_1,
+            'price_2_percent' => $request->price_2_percent,
+            'price_2' => $request->price_2,
+            'price_3_percent' => $request->price_3_percent,
+            'price_3' => $request->price_3,
+            'location' => $request->location,
             'low_stock_threshold' => $request->low_stock_threshold,
             'image' => $imagePath,
             'batch_no' => $request->batch_no,

@@ -25,10 +25,11 @@ class StockManagementTest extends TestCase
 
         // Create test data
         $category = \App\Models\Category::factory()->create();
+        $genericName = \App\Models\GenericName::factory()->create(['category_id' => $category->id]);
         $supplier = \App\Models\Supplier::factory()->create();
-        
+
         $this->item = Item::factory()->create([
-            'category_id' => $category->id,
+            'generic_name_id' => $genericName->id,
             'supplier_id' => $supplier->id,
             'quantity' => 50,
             'low_stock_threshold' => 20,

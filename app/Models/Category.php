@@ -15,4 +15,9 @@ class Category extends Model
     {
         return $this->hasMany(Item::class);
     }
+
+    public function genericNames()
+    {
+        return $this->hasMany(GenericName::class);
+    }
 }
