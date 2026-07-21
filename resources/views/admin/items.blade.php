@@ -254,6 +254,45 @@
                                     </div>
                                 @enderror
                             </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="batch_no" class="form-label">
+                                        Batch No.
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="batch_no"
+                                        id="batch_no"
+                                        class="form-control @error('batch_no') is-invalid @enderror"
+                                        placeholder="Enter batch number (optional)"
+                                        value="{{ old('batch_no') }}"
+                                    >
+                                    @error('batch_no')
+                                        <div class="invalid-feedback d-block">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="expiration_date" class="form-label">
+                                        Expiration Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        name="expiration_date"
+                                        id="expiration_date"
+                                        class="form-control @error('expiration_date') is-invalid @enderror"
+                                        value="{{ old('expiration_date') }}"
+                                    >
+                                    @error('expiration_date')
+                                        <div class="invalid-feedback d-block">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
                         <div class="modal-footer">
@@ -508,6 +547,43 @@
                                     </div>
                                 @enderror
                             </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_batch_no" class="form-label">
+                                        Batch No.
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="batch_no"
+                                        id="update_batch_no"
+                                        class="form-control @error('batch_no') is-invalid @enderror"
+                                        placeholder="Enter batch number (optional)"
+                                    >
+                                    @error('batch_no')
+                                        <div class="invalid-feedback d-block">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_expiration_date" class="form-label">
+                                        Expiration Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        name="expiration_date"
+                                        id="update_expiration_date"
+                                        class="form-control @error('expiration_date') is-invalid @enderror"
+                                    >
+                                    @error('expiration_date')
+                                        <div class="invalid-feedback d-block">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
                         <div class="modal-footer">
@@ -604,6 +680,16 @@
                                 <p id="view_threshold" class="text-muted"></p>
                             </div>
                         </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label><strong>Batch No.:</strong></label>
+                                <p id="view_batch_no" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label><strong>Expiration Date:</strong></label>
+                                <p id="view_expiration_date" class="text-muted"></p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="modal-footer">
@@ -671,6 +757,8 @@
                                     data-quantity="{{ $item->quantity }}"
                                     data-price="{{ $item->unit_price }}"
                                     data-threshold="{{ $item->low_stock_threshold }}"
+                                    data-batch-no="{{ $item->batch_no }}"
+                                    data-expiration-date="{{ $item->expiration_date?->format('Y-m-d') }}"
                                 >
                                     View
                                 </button>
@@ -691,6 +779,8 @@
                                     data-quantity="{{ $item->quantity }}"
                                     data-price="{{ $item->unit_price }}"
                                     data-threshold="{{ $item->low_stock_threshold }}"
+                                    data-batch-no="{{ $item->batch_no }}"
+                                    data-expiration-date="{{ $item->expiration_date?->format('Y-m-d') }}"
                                 >
                                     Edit
                                 </button>
@@ -735,6 +825,8 @@
             const quantity = this.getAttribute('data-quantity');
             const price = this.getAttribute('data-price');
             const threshold = this.getAttribute('data-threshold');
+            const batchNo = this.getAttribute('data-batch-no');
+            const expirationDate = this.getAttribute('data-expiration-date');
 
             // Populate the view modal
             document.getElementById('view_item_id').textContent = itemId;
@@ -747,6 +839,8 @@
             document.getElementById('view_quantity').textContent = quantity;
             document.getElementById('view_price').textContent = '₱' + parseFloat(price).toFixed(2);
             document.getElementById('view_threshold').textContent = threshold;
+            document.getElementById('view_batch_no').textContent = batchNo || 'N/A';
+            document.getElementById('view_expiration_date').textContent = expirationDate || 'N/A';
 
             const viewImagePreview = document.getElementById('view_image_preview');
             const viewImageNone = document.getElementById('view_image_none');
@@ -775,6 +869,8 @@
             const quantity = this.getAttribute('data-quantity');
             const price = this.getAttribute('data-price');
             const threshold = this.getAttribute('data-threshold');
+            const batchNo = this.getAttribute('data-batch-no');
+            const expirationDate = this.getAttribute('data-expiration-date');
 
             // Populate the modal form
             document.getElementById('update_item_name').value = itemName;
@@ -787,6 +883,8 @@
             document.getElementById('update_unit_price').value = price;
             document.getElementById('update_low_stock_threshold').value = threshold;
             document.getElementById('update_image').value = '';
+            document.getElementById('update_batch_no').value = batchNo || '';
+            document.getElementById('update_expiration_date').value = expirationDate || '';
 
             const updateImagePreview = document.getElementById('update_image_preview');
             const updateImageNone = document.getElementById('update_image_none');
@@ -818,6 +916,8 @@
         document.getElementById('quantity').value = '';
         document.getElementById('unit_price').value = '';
         document.getElementById('low_stock_threshold').value = '';
+        document.getElementById('batch_no').value = '';
+        document.getElementById('expiration_date').value = '';
     });
 </script>
 @endsection

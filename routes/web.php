@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\CogsController;
+use App\Http\Controllers\Admin\ProductExpirationReportController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
@@ -82,6 +83,7 @@ Route::middleware(['auth'])->group(function() {
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('admin/cogs', [CogsController::class, 'index'])->name('admin.cogs.index');
+    Route::get('admin/reports/expiration', [ProductExpirationReportController::class, 'index'])->name('admin.reports.expiration');
 
     // Admin Profile Routes
     Route::get('admin/profile/edit', [ProfileController::class, 'edit'])->name('admin.profile.edit');

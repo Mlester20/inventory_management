@@ -246,6 +246,12 @@
                 <div data-i18n="COGS Report">COGS Report</div>
               </a>
             </li>
+            <li class="menu-item">
+              <a href="{{ route('admin.reports.expiration') }}" class="menu-link {{ request()->routeIs('admin.reports.expiration') ? 'active' : '' }}">
+                <i class="menu-icon tf-icons bx bx-calendar-x"></i>
+                <div data-i18n="Expiration Report">Expiration Report</div>
+              </a>
+            </li>
 
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>

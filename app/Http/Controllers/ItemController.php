@@ -57,6 +57,8 @@ class ItemController extends Controller
             'unit_price' => 'required|numeric',
             'low_stock_threshold' => 'required|integer',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'batch_no' => 'nullable|string|max:100',
+            'expiration_date' => 'nullable|date',
         ]);
 
         $imagePath = $request->hasFile('image')
@@ -74,6 +76,8 @@ class ItemController extends Controller
             'unit_price' => $request->unit_price,
             'low_stock_threshold' => $request->low_stock_threshold,
             'image' => $imagePath,
+            'batch_no' => $request->batch_no,
+            'expiration_date' => $request->expiration_date,
         ]);
         Alert::success('Success', 'Item created successfully');
         return redirect()->route('items.index');
@@ -98,6 +102,8 @@ class ItemController extends Controller
             'unit_price' => 'required|numeric',
             'low_stock_threshold' => 'required|integer',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'batch_no' => 'nullable|string|max:100',
+            'expiration_date' => 'nullable|date',
         ]);
 
         $imagePath = $item->image;
@@ -119,6 +125,8 @@ class ItemController extends Controller
             'unit_price' => $request->unit_price,
             'low_stock_threshold' => $request->low_stock_threshold,
             'image' => $imagePath,
+            'batch_no' => $request->batch_no,
+            'expiration_date' => $request->expiration_date,
         ]);
         Alert::success('Success', 'Item updated successfully');
         return redirect()->route('items.index');
