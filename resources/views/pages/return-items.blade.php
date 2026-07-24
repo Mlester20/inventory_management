@@ -156,10 +156,10 @@
 
             purchasedItems.forEach(purchase => {
                 const option = document.createElement('option');
-                option.value = purchase.item_id;
-                option.textContent = `${purchase.item?.item_name || 'Unknown'} - ₱${parseFloat(purchase.unit_price).toFixed(2)}`;
+                option.value = purchase.product_batch_id;
+                option.textContent = `${purchase.product_batch?.product?.item_name || 'Unknown'} - ₱${parseFloat(purchase.unit_price).toFixed(2)}`;
                 option.dataset.maxQty = purchase.quantity_sold;
-                option.dataset.itemName = purchase.item?.item_name || 'Unknown';
+                option.dataset.itemName = purchase.product_batch?.product?.item_name || 'Unknown';
                 itemSelect.appendChild(option);
             });
 
@@ -167,7 +167,7 @@
             const rows = purchasedItems.map(purchase => `
                 <tr>
                     <td>
-                        <small>${purchase.item?.item_name || 'N/A'}</small>
+                        <small>${purchase.product_batch?.product?.item_name || 'N/A'}</small>
                     </td>
                     <td>${purchase.quantity_sold}</td>
                     <td>₱${parseFloat(purchase.unit_price).toFixed(2)}</td>
@@ -228,7 +228,7 @@
                 return `
                     <tr>
                         <td>${returnItem.id}</td>
-                        <td>${returnItem.item?.item_name || 'N/A'}</td>
+                        <td>${returnItem.product_batch?.product?.item_name || 'N/A'}</td>
                         <td>${returnItem.quantity}</td>
                         <td><small>${returnItem.reason}</small></td>
                         <td>${new Date(returnItem.created_at).toLocaleDateString()}</td>
@@ -251,7 +251,7 @@
         e.preventDefault();
 
         const formData = {
-            item_id: document.getElementById('item_id').value,
+            product_batch_id: document.getElementById('item_id').value,
             quantity: parseInt(document.getElementById('quantity').value),
             return_date: document.getElementById('return_date').value,
             reason: document.getElementById('reason').value,

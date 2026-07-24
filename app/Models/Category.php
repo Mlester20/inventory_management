@@ -11,9 +11,9 @@ class Category extends Model
 
     protected $fillable = ['category_name'];
 
-    public function items()
+    public function products()
     {
-        return $this->hasMany(Item::class);
+        return $this->hasMany(Product::class);
     }
 
     public function genericNames()

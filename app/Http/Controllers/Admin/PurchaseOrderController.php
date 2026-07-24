@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Item;
+use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\User;
@@ -45,10 +45,10 @@ class PurchaseOrderController extends Controller
     public function create()
     {
         $suppliers = Supplier::orderBy('supplier_name')->get();
-        $items = Item::orderBy('item_name')->get();
+        $items = Product::orderBy('item_name')->get();
         $users = User::orderBy('name')->get();
 
-        $itemsForJs = $items->map(fn (Item $item) => [
+        $itemsForJs = $items->map(fn (Product $item) => [
             'id' => $item->id,
             'name' => $item->item_name,
             'unit_cost' => (float) $item->unit_cost,
@@ -68,7 +68,7 @@ class PurchaseOrderController extends Controller
             'order_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
             'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
         ]);
@@ -84,7 +84,7 @@ class PurchaseOrderController extends Controller
      */
     public function show(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load('supplier', 'preparedBy', 'items.item', 'goodsReceipts');
+        $purchaseOrder->load('supplier', 'preparedBy', 'items.product', 'goodsReceipts');
 
         return view('admin.purchase-orders.show', compact('purchaseOrder'));
     }

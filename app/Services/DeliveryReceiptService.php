@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\DeliveryReceipt;
 use App\Models\GenericName;
-use App\Models\Item;
+use App\Models\ProductBatch;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
 use Illuminate\Database\Eloquent\Collection;
@@ -16,14 +16,15 @@ class DeliveryReceiptService
     public function __construct(protected StockService $stockService) {}
 
     /**
-     * In-stock items (quantity > 0) under a given Generic Name.
-     * Powers the "Available Product?" check.
+     * In-stock batches (qty > 0), across every brand/product, under a given
+     * Generic Name. Powers the "Available Product?" batch picker.
      */
     public function getAvailableItemsForGenericName(GenericName $genericName): Collection
     {
-        return $genericName->items()
-            ->where('quantity', '>', 0)
-            ->with('supplier')
+        return ProductBatch::query()
+            ->where('qty', '>', 0)
+            ->whereHas('product', fn ($q) => $q->where('generic_name_id', $genericName->id))
+            ->with(['product.supplier'])
             ->get();
     }
 
@@ -41,10 +42,10 @@ class DeliveryReceiptService
 
     /**
      * Create a Delivery Receipt with its line items, deducting stock for
-     * each delivered item and updating any linked Sales Order line balances.
+     * each delivered batch and updating any linked Sales Order line balances.
      *
      * @param array $data ['customer_id', 'sales_order_id', 'transaction_type', 'receipt_date', 'prepared_by',
-     *                     'items' => [['item_id','qty','sales_order_item_id'], ...]]
+     *                     'items' => [['product_batch_id','qty','sales_order_item_id'], ...]]
      */
     public function createDeliveryReceipt(array $data, ?int $userId = null): DeliveryReceipt
     {
@@ -63,12 +64,12 @@ class DeliveryReceiptService
             $affectedSalesOrders = [];
 
             foreach ($data['items'] as $line) {
-                $item = Item::findOrFail($line['item_id']);
+                $batch = ProductBatch::with('product')->findOrFail($line['product_batch_id']);
                 $qty = (int) $line['qty'];
 
-                if ($item->quantity < $qty) {
+                if ($batch->qty < $qty) {
                     throw ValidationException::withMessages([
-                        'items' => "Insufficient stock for {$item->item_name}. Available: {$item->quantity}",
+                        'items' => "Insufficient stock for {$batch->product->item_name}. Available: {$batch->qty}",
                     ]);
                 }
 
@@ -78,19 +79,19 @@ class DeliveryReceiptService
 
                     if ($qty > $salesOrderItem->remaining_qty) {
                         throw ValidationException::withMessages([
-                            'items' => "Delivered qty for {$item->item_name} exceeds the remaining balance on the Sales Order ({$salesOrderItem->remaining_qty}).",
+                            'items' => "Delivered qty for {$batch->product->item_name} exceeds the remaining balance on the Sales Order ({$salesOrderItem->remaining_qty}).",
                         ]);
                     }
                 }
 
-                $this->stockService->deduct($item, $qty, "Delivery Receipt {$drNo}", $userId);
+                $this->stockService->deduct($batch, $qty, "Delivery Receipt {$drNo}", $userId, $deliveryReceipt);
 
                 $deliveryReceipt->items()->create([
                     'sales_order_item_id' => $salesOrderItem?->id,
-                    'item_id' => $item->id,
+                    'product_batch_id' => $batch->id,
                     'qty' => $qty,
-                    'batch_no' => $item->batch_no,
-                    'expiration_date' => $item->expiration_date,
+                    'batch_no' => $batch->batch_no,
+                    'expiration_date' => $batch->expiration_date,
                 ]);
 
                 if ($salesOrderItem) {

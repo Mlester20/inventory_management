@@ -68,7 +68,7 @@
                 <tbody>
                     @foreach ($goodsReceipt->items as $line)
                         <tr>
-                            <td>{{ $line->item->item_name }}</td>
+                            <td>{{ $line->productBatch->product->item_name }}</td>
                             <td class="text-end">{{ $line->qty }}</td>
                             <td class="text-end">{{ number_format($line->unit_cost, 2) }}</td>
                             <td>{{ $line->batch_no ?? '—' }}</td>

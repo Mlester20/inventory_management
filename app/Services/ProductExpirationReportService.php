@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Item;
+use App\Models\ProductBatch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -10,78 +10,80 @@ use Illuminate\Support\Carbon;
 class ProductExpirationReportService
 {
     /**
-     * Base query for in-stock items that have an expiration date set.
+     * Base query for in-stock batches that have an expiration date set.
+     * One row per batch (not per product) since each batch can expire
+     * independently of its siblings.
      */
     protected function baseQuery(?int $categoryId = null, ?int $supplierId = null): Builder
     {
-        $query = Item::with(['category', 'supplier'])
+        $query = ProductBatch::with(['product.category', 'product.supplier'])
             ->whereNotNull('expiration_date')
-            ->where('quantity', '>', 0);
+            ->where('qty', '>', 0);
 
         if ($categoryId) {
-            $query->where('category_id', $categoryId);
+            $query->whereHas('product', fn ($q) => $q->where('category_id', $categoryId));
         }
 
         if ($supplierId) {
-            $query->where('supplier_id', $supplierId);
+            $query->whereHas('product', fn ($q) => $q->where('supplier_id', $supplierId));
         }
 
         return $query;
     }
 
     /**
-     * Items expiring within the given number of days (including already expired).
+     * Batches expiring within the given number of days (including already expired).
      */
     public function getExpiringItems(int $daysThreshold = 30, ?int $categoryId = null, ?int $supplierId = null): Collection
     {
-        $items = $this->baseQuery($categoryId, $supplierId)
+        $batches = $this->baseQuery($categoryId, $supplierId)
             ->whereDate('expiration_date', '<=', Carbon::today()->addDays($daysThreshold))
             ->orderBy('expiration_date')
             ->get();
 
-        return $this->withExpirationMeta($items);
+        return $this->withExpirationMeta($batches);
     }
 
     /**
-     * Items already past their expiration date.
+     * Batches already past their expiration date.
      */
     public function getExpiredItems(?int $categoryId = null, ?int $supplierId = null): Collection
     {
-        $items = $this->baseQuery($categoryId, $supplierId)
+        $batches = $this->baseQuery($categoryId, $supplierId)
             ->whereDate('expiration_date', '<', Carbon::today())
             ->orderBy('expiration_date')
             ->get();
 
-        return $this->withExpirationMeta($items);
+        return $this->withExpirationMeta($batches);
     }
 
     /**
-     * Attach computed `status` and `days_remaining` attributes to each item.
+     * Attach computed `status` and `days_remaining` attributes to each batch.
      */
-    protected function withExpirationMeta(Collection $items): Collection
+    protected function withExpirationMeta(Collection $batches): Collection
     {
         $today = Carbon::today();
 
-        return $items->each(function (Item $item) use ($today) {
-            $item->days_remaining = $today->diffInDays($item->expiration_date, false);
-            $item->status = $this->statusFor($item->expiration_date, $today);
+        return $batches->each(function (ProductBatch $batch) use ($today) {
+            $batch->days_remaining = $today->diffInDays($batch->expiration_date, false);
+            $batch->status = $this->statusFor($batch->expiration_date, $today);
         });
     }
 
     /**
-     * Counts of in-stock, dated items grouped by expiration status.
+     * Counts of in-stock, dated batches grouped by expiration status.
      *
      * @return array{expired: int, critical: int, warning: int, ok: int}
      */
     public function getExpirationSummary(?int $categoryId = null, ?int $supplierId = null): array
     {
         $today = Carbon::today();
-        $items = $this->baseQuery($categoryId, $supplierId)->get(['id', 'expiration_date']);
+        $batches = $this->baseQuery($categoryId, $supplierId)->get(['id', 'expiration_date', 'product_id']);
 
         $summary = ['expired' => 0, 'critical' => 0, 'warning' => 0, 'ok' => 0];
 
-        foreach ($items as $item) {
-            $summary[$this->statusFor($item->expiration_date, $today)]++;
+        foreach ($batches as $batch) {
+            $summary[$this->statusFor($batch->expiration_date, $today)]++;
         }
 
         return $summary;

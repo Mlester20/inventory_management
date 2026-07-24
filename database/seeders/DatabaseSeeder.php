@@ -30,7 +30,7 @@ class DatabaseSeeder extends Seeder
             CustomerSeeder::class,
             TaxesSeeder::class,
             GenericNameSeeder::class,
-            ItemSeeder::class,
+            ProductSeeder::class,
         ]);
     }
 }

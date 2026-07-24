@@ -3,7 +3,8 @@
 namespace App\Services;
 
 use App\Models\GoodsReceipt;
-use App\Models\Item;
+use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use Illuminate\Database\Eloquent\Collection;
@@ -20,19 +21,20 @@ class GoodsReceiptService
     public function getPendingPurchaseOrderItems(PurchaseOrder $purchaseOrder): Collection
     {
         return $purchaseOrder->items()
-            ->with('item')
+            ->with('product.batches')
             ->get()
             ->filter(fn (PurchaseOrderItem $item) => $item->remaining_qty > 0)
             ->values();
     }
 
     /**
-     * Create a Goods Receipt with its line items, restocking each item
-     * (via StockService), overwriting its cost/batch/expiry with the
-     * received values, and updating any linked Purchase Order line balances.
+     * Create a Goods Receipt with its line items, restocking each line's
+     * batch (via StockService) and updating any linked Purchase Order line
+     * balances. A line with a batch_no matching an existing batch under the
+     * product tops that batch up; otherwise a new batch is created.
      *
      * @param array $data ['supplier_id', 'purchase_order_id', 'receipt_date', 'prepared_by',
-     *                     'items' => [['item_id','qty','unit_cost','batch_no','expiration_date','purchase_order_item_id'], ...]]
+     *                     'items' => [['product_id','qty','unit_cost','batch_no','expiration_date','purchase_order_item_id'], ...]]
      */
     public function createGoodsReceipt(array $data, ?int $userId = null): GoodsReceipt
     {
@@ -50,7 +52,7 @@ class GoodsReceiptService
             $affectedPurchaseOrders = [];
 
             foreach ($data['items'] as $line) {
-                $item = Item::findOrFail($line['item_id']);
+                $product = Product::findOrFail($line['product_id']);
                 $qty = (int) $line['qty'];
 
                 $purchaseOrderItem = null;
@@ -59,26 +61,24 @@ class GoodsReceiptService
 
                     if ($qty > $purchaseOrderItem->remaining_qty) {
                         throw ValidationException::withMessages([
-                            'items' => "Received qty for {$item->item_name} exceeds the remaining balance on the Purchase Order ({$purchaseOrderItem->remaining_qty}).",
+                            'items' => "Received qty for {$product->item_name} exceeds the remaining balance on the Purchase Order ({$purchaseOrderItem->remaining_qty}).",
                         ]);
                     }
                 }
 
-                $this->stockService->restock($item, $qty, "Goods Receipt {$grNo}", $userId);
+                $batch = $this->resolveBatch($product, $line);
 
-                $item->update([
-                    'unit_cost' => $line['unit_cost'],
-                    'batch_no' => $line['batch_no'] ?? null,
-                    'expiration_date' => $line['expiration_date'] ?? null,
-                ]);
+                $this->stockService->restock($batch, $qty, "Goods Receipt {$grNo}", $userId, $goodsReceipt);
+
+                $product->update(['unit_cost' => $line['unit_cost']]);
 
                 $goodsReceipt->items()->create([
                     'purchase_order_item_id' => $purchaseOrderItem?->id,
-                    'item_id' => $item->id,
+                    'product_batch_id' => $batch->id,
                     'qty' => $qty,
                     'unit_cost' => $line['unit_cost'],
-                    'batch_no' => $line['batch_no'] ?? null,
-                    'expiration_date' => $line['expiration_date'] ?? null,
+                    'batch_no' => $batch->batch_no,
+                    'expiration_date' => $batch->expiration_date,
                 ]);
 
                 if ($purchaseOrderItem) {
@@ -93,6 +93,29 @@ class GoodsReceiptService
 
             return $goodsReceipt;
         });
+    }
+
+    /**
+     * Resolve which batch a received line tops up: an existing batch under
+     * the product matching the typed batch_no, or a brand new one.
+     */
+    protected function resolveBatch(Product $product, array $line): ProductBatch
+    {
+        $batchNo = $line['batch_no'] ?? null;
+
+        if ($batchNo) {
+            $existing = $product->batches()->where('batch_no', $batchNo)->first();
+            if ($existing) {
+                return $existing;
+            }
+        }
+
+        return $product->batches()->create([
+            'batch_no' => $batchNo,
+            'expiration_date' => $line['expiration_date'] ?? null,
+            'qty' => 0,
+            'reserved_qty' => 0,
+        ]);
     }
 
     /**

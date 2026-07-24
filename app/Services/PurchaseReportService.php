@@ -9,9 +9,10 @@ use Illuminate\Support\Collection;
 class PurchaseReportService
 {
     /**
-     * Base query joining purchase (POS checkout) lines to their item, with
-     * the date-range filter applied. Rebuilt fresh on every call so the
-     * totals/breakdowns below don't share mutated query state.
+     * Base query joining purchase (POS checkout) lines through their batch
+     * to their product, with the date-range filter applied. Rebuilt fresh
+     * on every call so the totals/breakdowns below don't share mutated
+     * query state.
      *
      * Despite the table's name, `purchases` records POS checkout/sale
      * transactions (see PurchaseController/CogsService) — not money paid to
@@ -20,11 +21,10 @@ class PurchaseReportService
      */
     protected function baseQuery(?string $startDate, ?string $endDate): Builder
     {
-        $query = Purchase::query()
-            ->join('items', 'items.id', '=', 'purchases.item_id')
+        return Purchase::query()
+            ->join('product_batches', 'product_batches.id', '=', 'purchases.product_batch_id')
+            ->join('products', 'products.id', '=', 'product_batches.product_id')
             ->dateRange($startDate, $endDate);
-
-        return $query;
     }
 
     /**
@@ -39,7 +39,7 @@ class PurchaseReportService
             $query = $this->baseQuery($startDate, $endDate);
 
             if ($categoryId) {
-                $query->where('items.category_id', $categoryId);
+                $query->where('products.category_id', $categoryId);
             }
 
             return $query;
@@ -50,13 +50,13 @@ class PurchaseReportService
             ->first();
 
         $byItem = $filtered()
-            ->selectRaw('items.id, items.item_name, SUM(purchases.quantity_sold) as qty, SUM(purchases.total_price) as amount')
-            ->groupBy('items.id', 'items.item_name')
+            ->selectRaw('products.id, products.item_name, SUM(purchases.quantity_sold) as qty, SUM(purchases.total_price) as amount')
+            ->groupBy('products.id', 'products.item_name')
             ->orderByDesc('amount')
             ->get();
 
         $byCategory = $filtered()
-            ->join('categories', 'categories.id', '=', 'items.category_id')
+            ->join('categories', 'categories.id', '=', 'products.category_id')
             ->selectRaw('categories.id, categories.category_name, SUM(purchases.quantity_sold) as qty, SUM(purchases.total_price) as amount')
             ->groupBy('categories.id', 'categories.category_name')
             ->orderByDesc('amount')
@@ -73,13 +73,13 @@ class PurchaseReportService
 
     /**
      * Purchase (POS checkout) transactions grouped by supplier, inferred
-     * via items.supplier_id since `purchases` has no direct supplier_id
+     * via products.supplier_id since `purchases` has no direct supplier_id
      * column of its own.
      */
     public function getPurchasesPerSupplier(?string $startDate = null, ?string $endDate = null): Collection
     {
         return $this->baseQuery($startDate, $endDate)
-            ->join('suppliers', 'suppliers.id', '=', 'items.supplier_id')
+            ->join('suppliers', 'suppliers.id', '=', 'products.supplier_id')
             ->selectRaw('
                 suppliers.id,
                 suppliers.supplier_name,

@@ -11,27 +11,27 @@ class GenericNameController extends Controller
     public function __construct(protected DeliveryReceiptService $deliveryReceiptService) {}
 
     /**
-     * Get in-stock items under a Generic Name, for the Delivery Receipt
+     * Get in-stock batches under a Generic Name, for the Delivery Receipt
      * "Available Product?" check.
      */
     public function availableItems(GenericName $genericName)
     {
-        $items = $this->deliveryReceiptService->getAvailableItemsForGenericName($genericName)
-            ->map(function ($item) {
+        $batches = $this->deliveryReceiptService->getAvailableItemsForGenericName($genericName)
+            ->map(function ($batch) {
                 return [
-                    'id' => $item->id,
-                    'item_name' => $item->item_name,
-                    'brand_name' => $item->brand_name,
-                    'quantity' => $item->quantity,
-                    'batch_no' => $item->batch_no,
-                    'expiration_date' => $item->expiration_date?->format('Y-m-d'),
-                    'supplier' => $item->supplier ? [
-                        'id' => $item->supplier->id,
-                        'supplier_name' => $item->supplier->supplier_name,
+                    'id' => $batch->id,
+                    'item_name' => $batch->product->item_name,
+                    'brand_name' => $batch->product->brand_name,
+                    'quantity' => $batch->qty,
+                    'batch_no' => $batch->batch_no,
+                    'expiration_date' => $batch->expiration_date?->format('Y-m-d'),
+                    'supplier' => $batch->product->supplier ? [
+                        'id' => $batch->product->supplier->id,
+                        'supplier_name' => $batch->product->supplier->supplier_name,
                     ] : null,
                 ];
             });
 
-        return response()->json($items);
+        return response()->json($batches);
     }
 }

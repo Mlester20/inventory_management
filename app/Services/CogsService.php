@@ -32,14 +32,15 @@ class CogsService
 
         // Calculate return deductions from approved returns
         $returnDeductionsQuery = ReturnItem::query()
-            ->join('items', 'items.id', '=', 'return_items.item_id')
+            ->join('product_batches', 'product_batches.id', '=', 'return_items.product_batch_id')
+            ->join('products', 'products.id', '=', 'product_batches.product_id')
             ->where('return_items.status', 'approved');
-        
+
         if ($startDate && $endDate) {
             $returnDeductionsQuery->whereBetween('return_items.return_date', [$startDate, $endDate]);
         }
-        
-        $returnDeductions = (float) ($returnDeductionsQuery->selectRaw('SUM(return_items.quantity * items.unit_price) as total')
+
+        $returnDeductions = (float) ($returnDeductionsQuery->selectRaw('SUM(return_items.quantity * products.unit_price) as total')
             ->first()?->total ?? 0);
 
         $netCogs = $grossCogs - $returnDeductions;
@@ -60,26 +61,27 @@ class CogsService
     public function perItem(?string $startDate = null, ?string $endDate = null): Collection
     {
         $query = DB::table('purchases')
-            ->join('items', 'items.id', '=', 'purchases.item_id')
+            ->join('product_batches', 'product_batches.id', '=', 'purchases.product_batch_id')
+            ->join('products', 'products.id', '=', 'product_batches.product_id')
             ->leftJoin('return_items', function ($join) {
-                $join->on('return_items.item_id', '=', 'purchases.item_id')
+                $join->on('return_items.product_batch_id', '=', 'purchases.product_batch_id')
                     ->where('return_items.status', '=', 'approved');
             })
             ->select(
-                'items.id',
-                'items.item_name',
+                'products.id',
+                'products.item_name',
                 DB::raw('SUM(purchases.quantity_sold) as qty_sold'),
                 DB::raw('SUM(purchases.quantity_sold * purchases.unit_price) as gross_cogs'),
                 DB::raw('COALESCE(SUM(return_items.quantity), 0) as return_qty'),
-                DB::raw('COALESCE(SUM(return_items.quantity * items.unit_price), 0) as return_value'),
-                DB::raw('SUM(purchases.quantity_sold * purchases.unit_price) - COALESCE(SUM(return_items.quantity * items.unit_price), 0) as net_cogs')
+                DB::raw('COALESCE(SUM(return_items.quantity * products.unit_price), 0) as return_value'),
+                DB::raw('SUM(purchases.quantity_sold * purchases.unit_price) - COALESCE(SUM(return_items.quantity * products.unit_price), 0) as net_cogs')
             );
 
         if ($startDate && $endDate) {
             $query->whereBetween('purchases.purchase_date', [$startDate, $endDate]);
         }
 
-        return $query->groupBy('items.id', 'items.item_name')
+        return $query->groupBy('products.id', 'products.item_name')
             ->orderByDesc('net_cogs')
             ->get();
     }
@@ -103,8 +105,9 @@ class CogsService
 
         // Get approved returns by month
         $returnsByMonth = DB::table('return_items')
-            ->join('items', 'items.id', '=', 'return_items.item_id')
-            ->selectRaw('MONTH(return_items.return_date) as month, SUM(return_items.quantity * items.unit_price) as return_total')
+            ->join('product_batches', 'product_batches.id', '=', 'return_items.product_batch_id')
+            ->join('products', 'products.id', '=', 'product_batches.product_id')
+            ->selectRaw('MONTH(return_items.return_date) as month, SUM(return_items.quantity * products.unit_price) as return_total')
             ->where('return_items.status', 'approved')
             ->whereRaw('YEAR(return_items.return_date) = ?', [$year])
             ->groupByRaw('MONTH(return_items.return_date)')

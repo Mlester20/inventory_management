@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Item;
+use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\StockMovement;
 use App\Models\Category;
@@ -16,19 +16,22 @@ class DashboardController extends Controller
     public function index()
     {
         // --- Stock Summary ---
-        $totalItems = Item::count();
-        $totalStock = Item::sum('quantity');
+        $totalItems = Product::count();
+        $totalStock = (int) \DB::table('product_batches')->sum('qty');
 
-        // Low stock: items where quantity <= low_stock_threshold
-        $lowStockItems = Item::whereColumn('quantity', '<=', 'low_stock_threshold')
-            ->with('category', 'supplier')
-            ->get();
+        // Products with computed on-hand quantity, for low-stock/table use.
+        $productsWithQty = Product::with('category', 'supplier')
+            ->withSum('batches', 'qty')
+            ->orderByRaw('COALESCE((select sum(qty) from product_batches where product_batches.product_id = products.id), 0) asc')
+            ->get()
+            ->each(fn (Product $product) => $product->on_hand_qty = (int) ($product->batches_sum_qty ?? 0));
+
+        // Low stock: products where on-hand qty <= low_stock_threshold
+        $lowStockItems = $productsWithQty->filter(fn (Product $product) => $product->on_hand_qty <= $product->low_stock_threshold)->values();
         $lowStockCount = $lowStockItems->count();
 
-        // All items with current stock vs threshold for the stock table
-        $stockItems = Item::with('category', 'supplier')
-            ->orderBy('quantity', 'asc')
-            ->get();
+        // All products with current stock vs threshold for the stock table
+        $stockItems = $productsWithQty;
 
         // --- Purchase Summary ---
         $totalPurchases = Purchase::count();
@@ -41,8 +44,8 @@ class DashboardController extends Controller
             ->orderBy('month')
             ->pluck('revenue', 'month');
 
-        // Recent purchases with item info
-        $recentPurchases = Purchase::with('item.category')
+        // Recent purchases with product info
+        $recentPurchases = Purchase::with('productBatch.product.category')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();

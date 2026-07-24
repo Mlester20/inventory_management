@@ -161,7 +161,7 @@
             <div class="row g-2">
                 <div class="col-md-4">
                     <label class="form-label small mb-1">Item</label>
-                    <select name="items[${index}][item_id]" class="form-select item-select" required>
+                    <select name="items[${index}][product_id]" class="form-select item-select" required>
                         ${itemOptions()}
                     </select>
                 </div>
@@ -259,7 +259,7 @@
                         <input type="date" name="items[${index}][expiration_date]" class="form-control">
                     </div>
                 </div>
-                <input type="hidden" name="items[${index}][item_id]" value="${line.item_id}">
+                <input type="hidden" name="items[${index}][product_id]" value="${line.product_id}">
                 <input type="hidden" name="items[${index}][purchase_order_item_id]" value="${line.purchase_order_item_id}">
             `;
             body.appendChild(card);

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
-use App\Models\Item;
+use App\Models\Product;
 use App\Models\Taxes;
 use App\Models\User;
 use App\Services\StockService;
@@ -41,23 +41,23 @@ class InvoiceController extends Controller
      */
     public function create()
     {
-        $items = Item::with('tax')->orderBy('item_name')->get();
+        $products = Product::with('tax')->withSum('batches', 'qty')->orderBy('item_name')->get();
         $salesNo = $this->generateSalesNo();
         $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
         $users = User::orderBy('name')->get();
 
-        $itemsForJs = $items->map(function ($item) {
+        $itemsForJs = $products->map(function ($product) {
             return [
-                'id' => $item->id,
-                'name' => $item->item_name,
-                'price' => (float) $item->unit_price,
-                'quantity' => $item->quantity,
+                'id' => $product->id,
+                'name' => $product->item_name,
+                'price' => (float) $product->unit_price,
+                'quantity' => (int) ($product->batches_sum_qty ?? 0),
                 'unit' => 'pc',
-                'taxable' => $item->tax_id !== null,
+                'taxable' => $product->tax_id !== null,
             ];
         })->values();
 
-        return view('admin.invoices.create', compact('items', 'salesNo', 'activeVatRate', 'itemsForJs', 'users'));
+        return view('admin.invoices.create', compact('products', 'salesNo', 'activeVatRate', 'itemsForJs', 'users'));
     }
 
     /**
@@ -73,7 +73,7 @@ class InvoiceController extends Controller
             'approved_by' => 'nullable|string|max:255',
             'less_wt' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.item_id' => 'required|exists:products,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.dis' => 'nullable|numeric|min:0',
@@ -100,23 +100,24 @@ class InvoiceController extends Controller
                 $saleLines = [];
 
                 foreach ($validated['items'] as $line) {
-                    $item = Item::findOrFail($line['item_id']);
+                    $product = Product::findOrFail($line['item_id']);
+                    $qty = (int) $line['qty'];
 
-                    if ($item->quantity < $line['qty']) {
+                    $available = (int) $product->batches()->sum('qty');
+                    if ($available < $qty) {
                         throw ValidationException::withMessages([
-                            'items' => "Insufficient stock for {$item->item_name}. Available: {$item->quantity}",
+                            'items' => "Insufficient stock for {$product->item_name}. Available: {$available}",
                         ]);
                     }
 
-                    $qty = (int) $line['qty'];
                     $price = (float) $line['price'];
                     $dis = (float) ($line['dis'] ?? 0);
                     $lineAmount = ($qty * $price) - $dis;
 
-                    // Default classification comes from whether the item has a tax
+                    // Default classification comes from whether the product has a tax
                     // assigned; the form may override per line (e.g. SC/PWD or
-                    // zero-rated sales) regardless of the item's default tax.
-                    $classification = $line['tax_override'] ?? ($item->tax_id ? 'vatable' : 'vatex');
+                    // zero-rated sales) regardless of the product's default tax.
+                    $classification = $line['tax_override'] ?? ($product->tax_id ? 'vatable' : 'vatex');
 
                     $lineVat = 0;
                     if ($classification === 'vatable') {
@@ -130,20 +131,14 @@ class InvoiceController extends Controller
                     }
 
                     $saleLines[] = [
-                        'item' => $item,
+                        'product' => $product,
                         'qty' => $qty,
-                        'data' => [
-                            'item_id' => $item->id,
-                            'desc' => $line['desc'] ?? $item->item_name,
-                            'qty' => $qty,
-                            'unit' => $line['unit'] ?? null,
-                            'batch_no' => $line['batch_no'] ?? null,
-                            'exp' => $line['exp'] ?? null,
-                            'price' => $price,
-                            'vat' => $lineVat,
-                            'dis' => $dis,
-                            'amount' => $lineAmount,
-                        ],
+                        'desc' => $line['desc'] ?? $product->item_name,
+                        'unit' => $line['unit'] ?? null,
+                        'price' => $price,
+                        'vat' => $lineVat,
+                        'dis' => $dis,
+                        'amount' => $lineAmount,
                     ];
                 }
 
@@ -190,8 +185,26 @@ class InvoiceController extends Controller
                 ]);
 
                 foreach ($saleLines as $line) {
-                    $invoice->sales()->create($line['data']);
-                    $stockService->deduct($line['item'], $line['qty'], 'Invoice ' . $salesNo, $userId);
+                    $movements = $stockService->deductFefo($line['product'], $line['qty'], 'Invoice ' . $salesNo, $userId, $invoice);
+
+                    foreach ($movements as $movement) {
+                        $movementQty = abs($movement->quantity);
+                        $ratio = $movementQty / $line['qty'];
+                        $batch = $movement->productBatch;
+
+                        $invoice->sales()->create([
+                            'product_batch_id' => $batch->id,
+                            'desc' => $line['desc'],
+                            'qty' => $movementQty,
+                            'unit' => $line['unit'],
+                            'batch_no' => $batch->batch_no,
+                            'exp' => $batch->expiration_date,
+                            'price' => $line['price'],
+                            'vat' => round($line['vat'] * $ratio, 2),
+                            'dis' => round($line['dis'] * $ratio, 2),
+                            'amount' => round($line['amount'] * $ratio, 2),
+                        ]);
+                    }
                 }
 
                 return $invoice;
@@ -209,7 +222,7 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        $invoice->load('sales.item.tax', 'preparedBy');
+        $invoice->load('sales.productBatch.product.tax', 'preparedBy');
 
         return view('admin.invoices.show', compact('invoice'));
     }

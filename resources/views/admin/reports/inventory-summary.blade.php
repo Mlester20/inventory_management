@@ -122,7 +122,7 @@
                                 <td><span class="fw-medium">{{ $item->item_name }}</span></td>
                                 <td>{{ $item->category->category_name ?? 'N/A' }}</td>
                                 <td>{{ $item->supplier->supplier_name ?? 'N/A' }}</td>
-                                <td class="text-end">{{ $item->quantity }}</td>
+                                <td class="text-end">{{ $item->on_hand_qty }}</td>
                                 <td class="text-end">{{ number_format($item->unit_price, 2) }}</td>
                                 <td class="text-end">{{ number_format($item->total_value, 2) }}</td>
                                 <td>

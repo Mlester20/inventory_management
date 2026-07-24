@@ -9,7 +9,7 @@ class Sale extends Model
 {
     protected $fillable = [
         'invoice_id',
-        'item_id',
+        'product_batch_id',
         'desc',
         'qty',
         'unit',
@@ -35,8 +35,8 @@ class Sale extends Model
         return $this->belongsTo(Invoice::class);
     }
 
-    public function item(): BelongsTo
+    public function productBatch(): BelongsTo
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(ProductBatch::class);
     }
 }

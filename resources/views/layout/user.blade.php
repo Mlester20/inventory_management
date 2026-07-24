@@ -212,24 +212,6 @@
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-box"></i>
-                <div data-i18n="Misc">Items</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('items.index') }}" class="menu-link">
-                    <div data-i18n="Error">Items</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="{{ route('stock.restock-page') }}" class="menu-link">
-                    <div data-i18n="Error">Restock</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>
             <!-- User interface -->

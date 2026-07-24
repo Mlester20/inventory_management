@@ -254,7 +254,7 @@
             <div class="row g-2">
                 <div class="col-md-8">
                     <label class="form-label small mb-1">Item (Brand / Batch)</label>
-                    <select class="form-select item-select" name="items[${index}][item_id]">${optionsHtml}</select>
+                    <select class="form-select item-select" name="items[${index}][product_batch_id]">${optionsHtml}</select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small mb-1">Qty</label>

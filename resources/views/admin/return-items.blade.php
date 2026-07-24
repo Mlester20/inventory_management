@@ -22,7 +22,7 @@
                 @foreach($returnItems as $returnItem)
                 <tr>
                     <td>{{ $returnItem->id }}</td>
-                    <td>{{ $returnItem->item->item_name }}</td>
+                    <td>{{ $returnItem->productBatch->product->item_name }}</td>
                     <td>{{ $returnItem->quantity }}</td>
                     <td>{{ $returnItem->return_date }}</td>
                     <td>{{ $returnItem->reason }}</td>

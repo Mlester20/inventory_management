@@ -25,13 +25,15 @@ class GenericNameSeeder extends Seeder
             ['generic_name' => 'Omeprazole 20mg', 'category' => 'Antacids & Digestives', 'unit' => 'Capsule'],
         ];
 
-        foreach ($generics as $generic) {
+        foreach ($generics as $index => $generic) {
             $category = Category::where('category_name', $generic['category'])->first();
 
             GenericName::create([
+                'code' => str_pad((string) ($index + 1), 5, '0', STR_PAD_LEFT),
                 'generic_name' => $generic['generic_name'],
                 'category_id' => $category->id,
                 'unit' => $generic['unit'],
+                'vat_type' => 'VAT',
             ]);
         }
     }

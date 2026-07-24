@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Purchase;
-use App\Models\Item;
+use App\Models\Product;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -12,58 +12,57 @@ use Illuminate\Validation\ValidationException;
 class PurchaseController extends Controller
 {
     /**
-     * Create a new purchase transaction with stock deduction
+     * Create a new purchase transaction with stock deduction (FEFO
+     * auto-selects which batch(es) each product's stock comes from, since
+     * POS has no batch-picker UI).
      * Note: user_id tracks the cashier/staff member who processed the sale
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.total_price' => 'required|numeric|min:0',
         ]);
 
         try {
-            $purchases = [];
+            $purchaseCount = 0;
             $transactionId = uniqid('TXN-');
             $totalAmount = 0;
 
-            \DB::transaction(function () use ($validated, &$purchases, $transactionId, &$totalAmount) {
+            \DB::transaction(function () use ($validated, &$purchaseCount, $transactionId, &$totalAmount) {
                 $stockService = new StockService();
                 $userId = auth()->id();
 
                 foreach ($validated['items'] as $cartItem) {
-                    $item = Item::findOrFail($cartItem['item_id']);
+                    $product = Product::findOrFail($cartItem['product_id']);
+                    $qty = (int) $cartItem['quantity'];
 
-                    // Check stock availability
-                    if ($item->quantity < $cartItem['quantity']) {
-                        throw ValidationException::withMessages([
-                            'stock' => "Insufficient stock for {$item->item_name}. Available: {$item->quantity}, Requested: {$cartItem['quantity']}",
-                        ]);
-                    }
-
-                    // Create purchase record
-                    $purchase = Purchase::create([
-                        'item_id' => $item->id,
-                        'user_id' => $userId,
-                        'quantity_sold' => $cartItem['quantity'],
-                        'unit_price' => $cartItem['unit_price'],
-                        'total_price' => $cartItem['total_price'],
-                        'purchase_date' => now(),
-                    ]);
-
-                    // Deduct stock using StockService
-                    $stockService->deduct(
-                        $item,
-                        $cartItem['quantity'],
+                    $movements = $stockService->deductFefo(
+                        $product,
+                        $qty,
                         "POS Purchase (TXN: {$transactionId})",
                         $userId
                     );
 
-                    $purchases[] = $purchase;
-                    $totalAmount += $cartItem['total_price'];
+                    foreach ($movements as $movement) {
+                        $movementQty = abs($movement->quantity);
+                        $lineTotal = round($cartItem['unit_price'] * $movementQty, 2);
+
+                        Purchase::create([
+                            'product_batch_id' => $movement->product_batch_id,
+                            'user_id' => $userId,
+                            'quantity_sold' => $movementQty,
+                            'unit_price' => $cartItem['unit_price'],
+                            'total_price' => $lineTotal,
+                            'purchase_date' => now(),
+                        ]);
+
+                        $purchaseCount++;
+                        $totalAmount += $lineTotal;
+                    }
                 }
             });
 
@@ -71,14 +70,14 @@ class PurchaseController extends Controller
                 'success' => true,
                 'transaction_id' => $transactionId,
                 'message' => 'Purchase completed successfully',
-                'purchase_count' => count($purchases),
+                'purchase_count' => $purchaseCount,
                 'total_amount' => $totalAmount,
             ], 201);
 
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->errors()['stock'][0] ?? 'Validation failed',
+                'message' => $e->errors()['quantity'][0] ?? 'Validation failed',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
@@ -98,8 +97,8 @@ class PurchaseController extends Controller
     public function history()
     {
         $userId = auth()->id();
-        
-        $purchases = Purchase::with('item.category', 'user')
+
+        $purchases = Purchase::with('productBatch.product.category', 'user')
             ->where('user_id', $userId)
             ->orderBy('purchase_date', 'desc')
             ->paginate(15);

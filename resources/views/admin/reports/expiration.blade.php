@@ -158,11 +158,11 @@
                                 $statusColors = ['expired' => 'danger', 'critical' => 'danger', 'warning' => 'warning', 'ok' => 'success'];
                             @endphp
                             <tr>
-                                <td><span class="fw-medium">{{ $item->item_name }}</span></td>
-                                <td>{{ $item->category->category_name ?? 'N/A' }}</td>
-                                <td>{{ $item->supplier->supplier_name ?? 'N/A' }}</td>
+                                <td><span class="fw-medium">{{ $item->product->item_name }}</span></td>
+                                <td>{{ $item->product->category->category_name ?? 'N/A' }}</td>
+                                <td>{{ $item->product->supplier->supplier_name ?? 'N/A' }}</td>
                                 <td>{{ $item->batch_no ?? '-' }}</td>
-                                <td class="text-end">{{ $item->quantity }}</td>
+                                <td class="text-end">{{ $item->qty }}</td>
                                 <td>{{ $item->expiration_date->format('M d, Y') }}</td>
                                 <td>
                                     @if ($item->days_remaining < 0)

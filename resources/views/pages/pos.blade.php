@@ -214,7 +214,7 @@
             return;
         }
 
-        const existing = cart.find(ci => ci.item_id === currentItem.id);
+        const existing = cart.find(ci => ci.product_id === currentItem.id);
         if (existing) {
             const newQty = existing.quantity + quantity;
             if (newQty > currentItem.quantity) {
@@ -226,7 +226,7 @@
         } else {
             cart.push({
                 id: Date.now(),
-                item_id: currentItem.id,
+                product_id: currentItem.id,
                 item_name: currentItem.item_name,
                 unit_price: parseFloat(currentItem.unit_price),
                 quantity: quantity,

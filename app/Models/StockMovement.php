@@ -4,15 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StockMovement extends Model
 {
     protected $fillable = [
-        'item_id',
+        'product_batch_id',
         'user_id',
         'quantity',
         'type',
         'remarks',
+        'source_type',
+        'source_id',
     ];
 
     protected $casts = [
@@ -22,11 +25,11 @@ class StockMovement extends Model
     ];
 
     /**
-     * Get the item associated with this stock movement.
+     * Get the batch associated with this stock movement.
      */
-    public function item(): BelongsTo
+    public function productBatch(): BelongsTo
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(ProductBatch::class);
     }
 
     /**
@@ -35,6 +38,16 @@ class StockMovement extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The transaction that caused this movement (GoodsReceipt, DeliveryReceipt,
+     * or InventoryAdjustment) — powers the Customer/Supplier columns on the
+     * Product History view.
+     */
+    public function source(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     /**

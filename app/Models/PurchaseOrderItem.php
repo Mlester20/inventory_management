@@ -10,7 +10,7 @@ class PurchaseOrderItem extends Model
 {
     protected $fillable = [
         'purchase_order_id',
-        'item_id',
+        'product_id',
         'qty',
         'unit_cost',
         'received_qty',
@@ -27,9 +27,9 @@ class PurchaseOrderItem extends Model
         return $this->belongsTo(PurchaseOrder::class);
     }
 
-    public function item(): BelongsTo
+    public function product(): BelongsTo
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(Product::class);
     }
 
     public function goodsReceiptItems(): HasMany

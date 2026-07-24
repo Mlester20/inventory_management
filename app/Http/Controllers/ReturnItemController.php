@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ReturnItem;
-use App\Models\Item;
+use App\Models\Product;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 
@@ -24,7 +24,7 @@ class ReturnItemController extends Controller
         if (request()->expectsJson()) {
             // Return user's own return items for API requests
             $returnItems = ReturnItem::where('user_id', auth()->id())
-                ->with('item')
+                ->with('productBatch.product')
                 ->latest()
                 ->get();
 
@@ -34,9 +34,9 @@ class ReturnItemController extends Controller
         }
 
         // Admin view - all return items
-        $returnItems = ReturnItem::all();
-        $items = Item::all();
-        return view('admin.return-items', compact('returnItems', 'items'));
+        $returnItems = ReturnItem::with('productBatch.product')->get();
+        $products = Product::with('batches')->orderBy('item_name')->get();
+        return view('admin.return-items', compact('returnItems', 'products'));
     }
 
     /**
@@ -53,7 +53,7 @@ class ReturnItemController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'item_id' => 'required|exists:items,id',
+            'product_batch_id' => 'required|exists:product_batches,id',
             'quantity' => 'required|integer|min:1',
             'return_date' => 'required|date',
             'reason' => 'required|string|max:255',
@@ -121,7 +121,7 @@ class ReturnItemController extends Controller
     }
 
     /**
-     * Approve a return item and restock the item.
+     * Approve a return item and restock the batch.
      */
     public function approve(Request $request, ReturnItem $returnItem)
     {
@@ -133,9 +133,9 @@ class ReturnItemController extends Controller
 
             // Use transaction to ensure atomicity
             \DB::transaction(function () use ($returnItem) {
-                // Restock the item using StockService
+                // Restock the batch using StockService
                 $this->stockService->restock(
-                    $returnItem->item,
+                    $returnItem->productBatch,
                     $returnItem->quantity,
                     "Return item approved - Return ID: {$returnItem->id}, Reason: {$returnItem->reason}",
                     auth()->id()

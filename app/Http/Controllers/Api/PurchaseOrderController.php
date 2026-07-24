@@ -20,8 +20,8 @@ class PurchaseOrderController extends Controller
             ->map(function ($line) {
                 return [
                     'purchase_order_item_id' => $line->id,
-                    'item_id' => $line->item_id,
-                    'item_name' => $line->item->item_name,
+                    'product_id' => $line->product_id,
+                    'item_name' => $line->product->item_name,
                     'qty' => $line->qty,
                     'received_qty' => $line->received_qty,
                     'remaining_qty' => $line->remaining_qty,

@@ -2,7 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Item;
+use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\StockService;
@@ -15,7 +16,8 @@ class StockManagementTest extends TestCase
     use RefreshDatabase;
 
     protected StockService $stockService;
-    protected Item $item;
+    protected Product $product;
+    protected ProductBatch $batch;
     protected User $user;
 
     protected function setUp(): void
@@ -28,11 +30,15 @@ class StockManagementTest extends TestCase
         $genericName = \App\Models\GenericName::factory()->create(['category_id' => $category->id]);
         $supplier = \App\Models\Supplier::factory()->create();
 
-        $this->item = Item::factory()->create([
+        $this->product = Product::factory()->create([
             'generic_name_id' => $genericName->id,
             'supplier_id' => $supplier->id,
-            'quantity' => 50,
             'low_stock_threshold' => 20,
+        ]);
+
+        $this->batch = $this->product->batches()->create([
+            'qty' => 50,
+            'reserved_qty' => 0,
         ]);
 
         $this->user = User::factory()->create(['role' => 'admin']);
@@ -40,21 +46,21 @@ class StockManagementTest extends TestCase
     }
 
     /**
-     * Test that item quantity is updated without creating duplicate
+     * Test that batch quantity is updated without creating duplicate batch
      */
-    public function test_restock_increases_quantity_without_duplicate_item(): void
+    public function test_restock_increases_quantity_without_duplicate_batch(): void
     {
-        $initialItemCount = Item::count();
-        $initialQuantity = $this->item->quantity;
+        $initialBatchCount = ProductBatch::count();
+        $initialQuantity = $this->batch->qty;
 
-        $this->stockService->restock($this->item, 100);
+        $this->stockService->restock($this->batch, 100);
 
-        // Should NOT create new item
-        $this->assertEquals($initialItemCount, Item::count());
+        // Should NOT create new batch
+        $this->assertEquals($initialBatchCount, ProductBatch::count());
 
-        // Should increase existing item quantity
-        $this->item->refresh();
-        $this->assertEquals($initialQuantity + 100, $this->item->quantity);
+        // Should increase existing batch quantity
+        $this->batch->refresh();
+        $this->assertEquals($initialQuantity + 100, $this->batch->qty);
     }
 
     /**
@@ -62,9 +68,9 @@ class StockManagementTest extends TestCase
      */
     public function test_restock_creates_stock_movement_record(): void
     {
-        $this->stockService->restock($this->item, 100, 'Restock test');
+        $this->stockService->restock($this->batch, 100, 'Restock test');
 
-        $movement = StockMovement::where('item_id', $this->item->id)
+        $movement = StockMovement::where('product_batch_id', $this->batch->id)
             ->where('type', 'in')
             ->first();
 
@@ -80,7 +86,7 @@ class StockManagementTest extends TestCase
     public function test_restock_validates_positive_quantity(): void
     {
         $this->expectException(ValidationException::class);
-        $this->stockService->restock($this->item, -50);
+        $this->stockService->restock($this->batch, -50);
     }
 
     /**
@@ -89,7 +95,7 @@ class StockManagementTest extends TestCase
     public function test_restock_validates_non_zero_quantity(): void
     {
         $this->expectException(ValidationException::class);
-        $this->stockService->restock($this->item, 0);
+        $this->stockService->restock($this->batch, 0);
     }
 
     /**
@@ -97,12 +103,12 @@ class StockManagementTest extends TestCase
      */
     public function test_deduct_decreases_quantity(): void
     {
-        $initialQuantity = $this->item->quantity;
+        $initialQuantity = $this->batch->qty;
 
-        $this->stockService->deduct($this->item, 25);
+        $this->stockService->deduct($this->batch, 25);
 
-        $this->item->refresh();
-        $this->assertEquals($initialQuantity - 25, $this->item->quantity);
+        $this->batch->refresh();
+        $this->assertEquals($initialQuantity - 25, $this->batch->qty);
     }
 
     /**
@@ -110,9 +116,9 @@ class StockManagementTest extends TestCase
      */
     public function test_deduct_creates_negative_stock_movement(): void
     {
-        $this->stockService->deduct($this->item, 25, 'Sale order');
+        $this->stockService->deduct($this->batch, 25, 'Sale order');
 
-        $movement = StockMovement::where('item_id', $this->item->id)
+        $movement = StockMovement::where('product_batch_id', $this->batch->id)
             ->where('type', 'out')
             ->first();
 
@@ -126,12 +132,12 @@ class StockManagementTest extends TestCase
      */
     public function test_deduct_prevents_negative_stock(): void
     {
-        $this->item->update(['quantity' => 10]);
+        $this->batch->update(['qty' => 10]);
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('Insufficient stock');
 
-        $this->stockService->deduct($this->item, 25);
+        $this->stockService->deduct($this->batch, 25);
     }
 
     /**
@@ -139,12 +145,12 @@ class StockManagementTest extends TestCase
      */
     public function test_deduct_allows_exact_quantity_available(): void
     {
-        $this->item->update(['quantity' => 25]);
+        $this->batch->update(['qty' => 25]);
 
-        $movement = $this->stockService->deduct($this->item, 25);
+        $movement = $this->stockService->deduct($this->batch, 25);
 
-        $this->item->refresh();
-        $this->assertEquals(0, $this->item->quantity);
+        $this->batch->refresh();
+        $this->assertEquals(0, $this->batch->qty);
         $this->assertNotNull($movement);
     }
 
@@ -153,12 +159,12 @@ class StockManagementTest extends TestCase
      */
     public function test_adjust_increases_stock(): void
     {
-        $this->item->update(['quantity' => 50]);
+        $this->batch->update(['qty' => 50]);
 
-        $movement = $this->stockService->adjust($this->item, 100, 'Stock audit');
+        $movement = $this->stockService->adjust($this->batch, 100, 'Stock audit');
 
-        $this->item->refresh();
-        $this->assertEquals(100, $this->item->quantity);
+        $this->batch->refresh();
+        $this->assertEquals(100, $this->batch->qty);
         $this->assertEquals(50, $movement->quantity); // Positive difference
         $this->assertEquals('in', $movement->type);
     }
@@ -168,12 +174,12 @@ class StockManagementTest extends TestCase
      */
     public function test_adjust_decreases_stock(): void
     {
-        $this->item->update(['quantity' => 100]);
+        $this->batch->update(['qty' => 100]);
 
-        $movement = $this->stockService->adjust($this->item, 50, 'Stock audit');
+        $movement = $this->stockService->adjust($this->batch, 50, 'Stock audit');
 
-        $this->item->refresh();
-        $this->assertEquals(50, $this->item->quantity);
+        $this->batch->refresh();
+        $this->assertEquals(50, $this->batch->qty);
         $this->assertEquals(-50, $movement->quantity); // Negative difference
         $this->assertEquals('out', $movement->type);
     }
@@ -183,9 +189,9 @@ class StockManagementTest extends TestCase
      */
     public function test_adjust_no_change_returns_null(): void
     {
-        $this->item->update(['quantity' => 50]);
+        $this->batch->update(['qty' => 50]);
 
-        $movement = $this->stockService->adjust($this->item, 50);
+        $movement = $this->stockService->adjust($this->batch, 50);
 
         $this->assertNull($movement);
     }
@@ -196,7 +202,7 @@ class StockManagementTest extends TestCase
     public function test_adjust_prevents_negative_quantity(): void
     {
         $this->expectException(ValidationException::class);
-        $this->stockService->adjust($this->item, -10);
+        $this->stockService->adjust($this->batch, -10);
     }
 
     /**
@@ -204,9 +210,10 @@ class StockManagementTest extends TestCase
      */
     public function test_is_low_on_stock_returns_true(): void
     {
-        $this->item->update(['quantity' => 15, 'low_stock_threshold' => 20]);
+        $this->batch->update(['qty' => 15]);
+        $this->product->update(['low_stock_threshold' => 20]);
 
-        $this->assertTrue($this->item->isLowOnStock());
+        $this->assertTrue($this->product->isLowOnStock());
     }
 
     /**
@@ -214,9 +221,10 @@ class StockManagementTest extends TestCase
      */
     public function test_is_low_on_stock_at_threshold(): void
     {
-        $this->item->update(['quantity' => 20, 'low_stock_threshold' => 20]);
+        $this->batch->update(['qty' => 20]);
+        $this->product->update(['low_stock_threshold' => 20]);
 
-        $this->assertTrue($this->item->isLowOnStock());
+        $this->assertTrue($this->product->isLowOnStock());
     }
 
     /**
@@ -224,33 +232,35 @@ class StockManagementTest extends TestCase
      */
     public function test_is_low_on_stock_above_threshold(): void
     {
-        $this->item->update(['quantity' => 25, 'low_stock_threshold' => 20]);
+        $this->batch->update(['qty' => 25]);
+        $this->product->update(['low_stock_threshold' => 20]);
 
-        $this->assertFalse($this->item->isLowOnStock());
+        $this->assertFalse($this->product->isLowOnStock());
     }
 
     /**
-     * Test getting low stock items
+     * Test getting low stock products
      */
     public function test_get_low_stock_items(): void
     {
-        $this->item->update(['quantity' => 15, 'low_stock_threshold' => 20]);
+        $this->batch->update(['qty' => 15]);
+        $this->product->update(['low_stock_threshold' => 20]);
 
         $lowStockItems = $this->stockService->getLowStockItems();
 
-        $this->assertTrue($lowStockItems->contains($this->item));
+        $this->assertTrue($lowStockItems->contains($this->product));
     }
 
     /**
-     * Test getting out of stock items
+     * Test getting out of stock products
      */
     public function test_get_out_of_stock_items(): void
     {
-        $this->item->update(['quantity' => 0]);
+        $this->batch->update(['qty' => 0]);
 
         $outOfStock = $this->stockService->getOutOfStockItems();
 
-        $this->assertTrue($outOfStock->contains($this->item));
+        $this->assertTrue($outOfStock->contains($this->product));
     }
 
     /**
@@ -258,23 +268,23 @@ class StockManagementTest extends TestCase
      */
     public function test_get_movement_history(): void
     {
-        $this->stockService->restock($this->item, 50);
-        $this->stockService->deduct($this->item, 20);
-        $this->stockService->restock($this->item, 30);
+        $this->stockService->restock($this->batch, 50);
+        $this->stockService->deduct($this->batch, 20);
+        $this->stockService->restock($this->batch, 30);
 
-        $history = $this->stockService->getMovementHistory($this->item);
+        $history = $this->stockService->getMovementHistory($this->batch);
 
         $this->assertCount(3, $history);
-        
+
         // Verify all three movements are present
         $quantities = $history->pluck('quantity')->toArray();
         $types = $history->pluck('type')->toArray();
-        
+
         // Should have all three movements
         $this->assertContains(50, $quantities);
         $this->assertContains(-20, $quantities);
         $this->assertContains(30, $quantities);
-        
+
         // Should have correct types
         $this->assertContains('in', $types);
         $this->assertContains('out', $types);
@@ -288,14 +298,14 @@ class StockManagementTest extends TestCase
         // Create 60 movements
         for ($i = 0; $i < 60; $i++) {
             StockMovement::create([
-                'item_id' => $this->item->id,
+                'product_batch_id' => $this->batch->id,
                 'user_id' => $this->user->id,
                 'quantity' => 1,
                 'type' => 'in',
             ]);
         }
 
-        $history = $this->stockService->getMovementHistory($this->item, 50);
+        $history = $this->stockService->getMovementHistory($this->batch, 50);
 
         $this->assertCount(50, $history);
     }
@@ -305,31 +315,31 @@ class StockManagementTest extends TestCase
      */
     public function test_stock_movement_tracks_user(): void
     {
-        $movement = $this->stockService->restock($this->item, 100);
+        $movement = $this->stockService->restock($this->batch, 100);
 
         $this->assertEquals($this->user->id, $movement->user_id);
         $this->assertEquals($this->user->id, $movement->user->id);
     }
 
     /**
-     * Test multiple restocks on same item
+     * Test multiple restocks on same batch
      */
-    public function test_multiple_restocks_update_same_item(): void
+    public function test_multiple_restocks_update_same_batch(): void
     {
-        $initialItemCount = Item::count();
-        $this->item->update(['quantity' => 100]);
+        $initialBatchCount = ProductBatch::count();
+        $this->batch->update(['qty' => 100]);
 
-        $this->stockService->restock($this->item, 50);
-        $this->stockService->restock($this->item, 75);
-        $this->stockService->restock($this->item, 25);
+        $this->stockService->restock($this->batch, 50);
+        $this->stockService->restock($this->batch, 75);
+        $this->stockService->restock($this->batch, 25);
 
-        // Still only 1 item record
-        $this->assertEquals($initialItemCount, Item::count());
+        // Still only 1 batch record
+        $this->assertEquals($initialBatchCount, ProductBatch::count());
 
         // Movements added
-        $this->item->refresh();
-        $this->assertEquals(100 + 50 + 75 + 25, $this->item->quantity);
-        $this->assertCount(3, $this->item->stockMovements);
+        $this->batch->refresh();
+        $this->assertEquals(100 + 50 + 75 + 25, $this->batch->qty);
+        $this->assertCount(3, $this->batch->stockMovements);
     }
 
     /**
@@ -337,40 +347,36 @@ class StockManagementTest extends TestCase
      */
     public function test_transaction_rollback_on_error(): void
     {
-        $this->item->update(['quantity' => 10]);
+        $this->batch->update(['qty' => 10]);
 
         try {
-            $this->stockService->deduct($this->item, 25); // Will fail
+            $this->stockService->deduct($this->batch, 25); // Will fail
         } catch (ValidationException $e) {
             // Expected
         }
 
-        $this->item->refresh();
+        $this->batch->refresh();
         // Quantity should remain unchanged due to rollback
-        $this->assertEquals(10, $this->item->quantity);
+        $this->assertEquals(10, $this->batch->qty);
         // No movement should be created
-        $this->assertCount(0, $this->item->stockMovements);
+        $this->assertCount(0, $this->batch->stockMovements);
     }
 
     /**
-     * Test Item scope for low stock
+     * Test Product scope for low stock
      */
-    public function test_item_low_stock_scope(): void
+    public function test_product_low_stock_scope(): void
     {
-        Item::factory()->create([
-            'quantity' => 5,
-            'low_stock_threshold' => 10,
-        ]);
+        $lowProduct = Product::factory()->create(['low_stock_threshold' => 10]);
+        $lowProduct->batches()->create(['qty' => 5, 'reserved_qty' => 0]);
 
-        Item::factory()->create([
-            'quantity' => 50,
-            'low_stock_threshold' => 10,
-        ]);
+        $highProduct = Product::factory()->create(['low_stock_threshold' => 10]);
+        $highProduct->batches()->create(['qty' => 50, 'reserved_qty' => 0]);
 
-        $lowStock = Item::lowStock()->get();
+        $lowStock = Product::lowStock()->get();
 
         $this->assertGreaterThan(0, $lowStock->count());
-        $this->assertTrue($lowStock->every(fn($item) => $item->quantity <= $item->low_stock_threshold));
+        $this->assertTrue($lowStock->every(fn ($product) => $product->quantity <= $product->low_stock_threshold));
     }
 
     /**
@@ -378,12 +384,12 @@ class StockManagementTest extends TestCase
      */
     public function test_total_restocked_attribute(): void
     {
-        $this->stockService->restock($this->item, 50);
-        $this->stockService->restock($this->item, 75);
+        $this->stockService->restock($this->batch, 50);
+        $this->stockService->restock($this->batch, 75);
 
-        $this->item->refresh();
+        $this->batch->refresh();
 
-        $this->assertEquals(125, $this->item->total_restocked);
+        $this->assertEquals(125, (int) $this->batch->restockMovements()->sum('quantity'));
     }
 
     /**
@@ -391,13 +397,13 @@ class StockManagementTest extends TestCase
      */
     public function test_total_deducted_attribute(): void
     {
-        $this->item->update(['quantity' => 200]);
+        $this->batch->update(['qty' => 200]);
 
-        $this->stockService->deduct($this->item, 50);
-        $this->stockService->deduct($this->item, 30);
+        $this->stockService->deduct($this->batch, 50);
+        $this->stockService->deduct($this->batch, 30);
 
-        $this->item->refresh();
+        $this->batch->refresh();
 
-        $this->assertEquals(80, $this->item->total_deducted);
+        $this->assertEquals(80, (int) abs($this->batch->deductionMovements()->sum('quantity')));
     }
 }

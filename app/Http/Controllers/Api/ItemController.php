@@ -3,25 +3,26 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Item;
+use App\Models\Product;
 use Illuminate\Http\Request;
 
 class ItemController extends Controller
 {
     /**
-     * Get all items with available stock for POS
+     * Get all products with available stock for POS
      */
     public function index()
     {
-        $items = Item::with('category', 'supplier')
-            ->where('quantity', '>', 0)
-            ->orderBy('item_name')
+        $items = Product::with('category', 'supplier')
+            ->withSum('batches', 'qty')
             ->get()
+            ->filter(fn (Product $item) => ($item->batches_sum_qty ?? 0) > 0)
+            ->values()
             ->map(function ($item) {
                 return [
                     'id' => $item->id,
                     'item_name' => $item->item_name,
-                    'quantity' => $item->quantity,
+                    'quantity' => (int) ($item->batches_sum_qty ?? 0),
                     'unit_price' => $item->unit_price,
                     'category' => [
                         'id' => $item->category->id,
@@ -38,9 +39,9 @@ class ItemController extends Controller
     }
 
     /**
-     * Get a specific item
+     * Get a specific product
      */
-    public function show(Item $item)
+    public function show(Product $item)
     {
         return response()->json([
             'id' => $item->id,

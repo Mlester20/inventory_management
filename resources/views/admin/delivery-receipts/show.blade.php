@@ -67,7 +67,7 @@
                 <tbody>
                     @foreach ($deliveryReceipt->items as $line)
                         <tr>
-                            <td>{{ $line->item->item_name }}</td>
+                            <td>{{ $line->productBatch->product->item_name }}</td>
                             <td>{{ $line->batch_no ?? '—' }}</td>
                             <td>{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
                             <td class="text-end">{{ $line->qty }}</td>

@@ -19,14 +19,15 @@ class SalesReportService
     {
         $query = Sale::query()
             ->join('invoices', 'invoices.id', '=', 'sales.invoice_id')
-            ->join('items', 'items.id', '=', 'sales.item_id');
+            ->join('product_batches', 'product_batches.id', '=', 'sales.product_batch_id')
+            ->join('products', 'products.id', '=', 'product_batches.product_id');
 
         if ($startDate && $endDate) {
             $query->whereBetween('invoices.created_at', [$startDate, "{$endDate} 23:59:59"]);
         }
 
         if ($categoryId) {
-            $query->where('items.category_id', $categoryId);
+            $query->where('products.category_id', $categoryId);
         }
 
         return $query;
@@ -49,13 +50,13 @@ class SalesReportService
             ->first();
 
         $byItem = $this->baseSalesQuery($startDate, $endDate, $categoryId)
-            ->selectRaw('items.id, items.item_name, SUM(sales.qty) as qty, SUM(sales.amount) as amount')
-            ->groupBy('items.id', 'items.item_name')
+            ->selectRaw('products.id, products.item_name, SUM(sales.qty) as qty, SUM(sales.amount) as amount')
+            ->groupBy('products.id', 'products.item_name')
             ->orderByDesc('amount')
             ->get();
 
         $byCategory = $this->baseSalesQuery($startDate, $endDate, $categoryId)
-            ->join('categories', 'categories.id', '=', 'items.category_id')
+            ->join('categories', 'categories.id', '=', 'products.category_id')
             ->selectRaw('categories.id, categories.category_name, SUM(sales.qty) as qty, SUM(sales.amount) as amount')
             ->groupBy('categories.id', 'categories.category_name')
             ->orderByDesc('amount')

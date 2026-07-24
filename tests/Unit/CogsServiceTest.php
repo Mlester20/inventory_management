@@ -4,9 +4,9 @@ namespace Tests\Unit;
 
 use Tests\TestCase;
 use App\Services\CogsService;
+use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\ReturnItem;
-use App\Models\Item;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -22,11 +22,16 @@ class CogsServiceTest extends TestCase
         $this->service = new CogsService();
     }
 
+    protected function batchFor(Product $product, int $qty = 100): \App\Models\ProductBatch
+    {
+        return $product->batches()->create(['qty' => $qty, 'reserved_qty' => 0]);
+    }
+
     /** @test */
     public function it_returns_zero_cogs_when_no_purchases_exist()
     {
         $result = $this->service->calculate();
-        
+
         $this->assertEquals(0, $result['gross_cogs']);
         $this->assertEquals(0, $result['return_deductions']);
         $this->assertEquals(0, $result['net_cogs']);
@@ -37,19 +42,20 @@ class CogsServiceTest extends TestCase
     {
         // Create test data
         $user = User::factory()->create();
-        $item = Item::factory()->create();
-        
+        $product = Product::factory()->create();
+        $batch = $this->batchFor($product);
+
         // Create 2 purchases with known quantities and prices
         Purchase::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity_sold' => 10,
             'unit_price' => 100.00,
             'total_price' => 1000.00,
         ]);
-        
+
         Purchase::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity_sold' => 5,
             'unit_price' => 50.00,
@@ -57,7 +63,7 @@ class CogsServiceTest extends TestCase
         ]);
 
         $result = $this->service->calculate();
-        
+
         // Expected: (10 * 100) + (5 * 50) = 1000 + 250 = 1250
         $this->assertEquals(1250.00, $result['gross_cogs']);
         $this->assertEquals(0, $result['return_deductions']);
@@ -69,27 +75,28 @@ class CogsServiceTest extends TestCase
     {
         // Create test data
         $user = User::factory()->create();
-        $item = Item::factory()->create(['unit_price' => 50.00]);
-        
+        $product = Product::factory()->create(['unit_price' => 50.00]);
+        $batch = $this->batchFor($product);
+
         // Create a purchase
         Purchase::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity_sold' => 10,
             'unit_price' => 50.00,
             'total_price' => 500.00,
         ]);
-        
-        // Create an approved return for the same item
+
+        // Create an approved return for the same batch
         ReturnItem::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity' => 2,
             'status' => 'approved',
         ]);
 
         $result = $this->service->calculate();
-        
+
         // Expected: gross = 500, returns = (2 * 50) = 100, net = 400
         $this->assertEquals(500.00, $result['gross_cogs']);
         $this->assertEquals(100.00, $result['return_deductions']);
@@ -101,34 +108,35 @@ class CogsServiceTest extends TestCase
     {
         // Create test data
         $user = User::factory()->create();
-        $item = Item::factory()->create(['unit_price' => 50.00]);
-        
+        $product = Product::factory()->create(['unit_price' => 50.00]);
+        $batch = $this->batchFor($product);
+
         // Create a purchase
         Purchase::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity_sold' => 10,
             'unit_price' => 50.00,
             'total_price' => 500.00,
         ]);
-        
+
         // Create returns with status='pending' and status='rejected'
         ReturnItem::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity' => 2,
             'status' => 'pending',
         ]);
-        
+
         ReturnItem::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity' => 3,
             'status' => 'rejected',
         ]);
 
         $result = $this->service->calculate();
-        
+
         // Expected: gross = 500, returns = 0, net = 500
         $this->assertEquals(500.00, $result['gross_cogs']);
         $this->assertEquals(0, $result['return_deductions']);
@@ -140,27 +148,28 @@ class CogsServiceTest extends TestCase
     {
         // Create test data
         $user = User::factory()->create();
-        $item = Item::factory()->create();
-        
+        $product = Product::factory()->create();
+        $batch = $this->batchFor($product);
+
         // Create purchases on different dates
         Purchase::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity_sold' => 10,
             'unit_price' => 100.00,
             'purchase_date' => '2026-01-15',
         ]);
-        
+
         Purchase::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity_sold' => 5,
             'unit_price' => 50.00,
             'purchase_date' => '2026-02-15',
         ]);
-        
+
         Purchase::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity_sold' => 8,
             'unit_price' => 75.00,
@@ -169,7 +178,7 @@ class CogsServiceTest extends TestCase
 
         // Filter for February only
         $result = $this->service->calculate('2026-02-01', '2026-02-28');
-        
+
         // Expected: only February purchase = (5 * 50) = 250
         $this->assertEquals(250.00, $result['gross_cogs']);
         $this->assertEquals(250.00, $result['net_cogs']);
@@ -180,29 +189,31 @@ class CogsServiceTest extends TestCase
     {
         // Create test data
         $user = User::factory()->create();
-        $item1 = Item::factory()->create();
-        $item2 = Item::factory()->create(['unit_price' => 75.00]);
-        
-        // Create purchases for different items
+        $product1 = Product::factory()->create();
+        $batch1 = $this->batchFor($product1);
+        $product2 = Product::factory()->create(['unit_price' => 75.00]);
+        $batch2 = $this->batchFor($product2);
+
+        // Create purchases for different products
         Purchase::factory()->create([
-            'item_id' => $item1->id,
+            'product_batch_id' => $batch1->id,
             'user_id' => $user->id,
             'quantity_sold' => 10,
             'unit_price' => 100.00,
         ]);
-        
+
         Purchase::factory()->create([
-            'item_id' => $item2->id,
+            'product_batch_id' => $batch2->id,
             'user_id' => $user->id,
             'quantity_sold' => 5,
             'unit_price' => 75.00,
         ]);
 
         $result = $this->service->perItem();
-        
+
         $this->assertCount(2, $result);
-        $this->assertEquals(1000.00, $result->first()['gross_cogs']);
-        $this->assertEquals(375.00, $result->last()['gross_cogs']);
+        $this->assertEquals(1000.00, $result->first()->gross_cogs);
+        $this->assertEquals(375.00, $result->last()->gross_cogs);
     }
 
     /** @test */
@@ -210,19 +221,20 @@ class CogsServiceTest extends TestCase
     {
         // Create test data
         $user = User::factory()->create();
-        $item = Item::factory()->create();
-        
+        $product = Product::factory()->create();
+        $batch = $this->batchFor($product);
+
         // Create purchases for different months
         Purchase::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity_sold' => 10,
             'unit_price' => 100.00,
             'purchase_date' => '2026-01-15',
         ]);
-        
+
         Purchase::factory()->create([
-            'item_id' => $item->id,
+            'product_batch_id' => $batch->id,
             'user_id' => $user->id,
             'quantity_sold' => 5,
             'unit_price' => 50.00,
@@ -230,7 +242,7 @@ class CogsServiceTest extends TestCase
         ]);
 
         $result = $this->service->monthlyTrend(2026);
-        
+
         $this->assertCount(12, $result);
         $this->assertEquals('Jan', $result[0]['label']);
         $this->assertEquals(1000.00, $result[0]['net_cogs']);
@@ -243,41 +255,43 @@ class CogsServiceTest extends TestCase
     {
         // Create test data
         $user = User::factory()->create();
-        $item1 = Item::factory()->create(['unit_price' => 50.00]);
-        $item2 = Item::factory()->create(['unit_price' => 100.00]);
-        
+        $product1 = Product::factory()->create(['unit_price' => 50.00]);
+        $batch1 = $this->batchFor($product1);
+        $product2 = Product::factory()->create(['unit_price' => 100.00]);
+        $batch2 = $this->batchFor($product2);
+
         // Create purchases
         Purchase::factory()->create([
-            'item_id' => $item1->id,
+            'product_batch_id' => $batch1->id,
             'user_id' => $user->id,
             'quantity_sold' => 20,
             'unit_price' => 50.00,
         ]);
-        
+
         Purchase::factory()->create([
-            'item_id' => $item2->id,
+            'product_batch_id' => $batch2->id,
             'user_id' => $user->id,
             'quantity_sold' => 10,
             'unit_price' => 100.00,
         ]);
-        
+
         // Create approved returns
         ReturnItem::factory()->create([
-            'item_id' => $item1->id,
+            'product_batch_id' => $batch1->id,
             'user_id' => $user->id,
             'quantity' => 5,
             'status' => 'approved',
         ]);
-        
+
         ReturnItem::factory()->create([
-            'item_id' => $item2->id,
+            'product_batch_id' => $batch2->id,
             'user_id' => $user->id,
             'quantity' => 2,
             'status' => 'approved',
         ]);
 
         $result = $this->service->calculate();
-        
+
         // Expected:
         // Gross COGS = (20 * 50) + (10 * 100) = 1000 + 1000 = 2000
         // Deductions = (5 * 50) + (2 * 100) = 250 + 200 = 450

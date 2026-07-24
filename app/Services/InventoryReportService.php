@@ -2,18 +2,19 @@
 
 namespace App\Services;
 
-use App\Models\Item;
+use App\Models\Product;
 use App\Models\StockMovement;
 use Illuminate\Database\Eloquent\Collection;
 
 class InventoryReportService
 {
     /**
-     * Current stock per item, with computed total value and low-stock flag.
+     * Current stock per product (summed across its batches), with computed
+     * total value and low-stock flag.
      */
     public function getInventorySummary(?int $categoryId = null, ?int $supplierId = null, bool $lowStockOnly = false): Collection
     {
-        $query = Item::with(['category', 'supplier']);
+        $query = Product::with(['category', 'supplier'])->withSum('batches', 'qty');
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
@@ -23,16 +24,20 @@ class InventoryReportService
             $query->where('supplier_id', $supplierId);
         }
 
+        $products = $query->orderBy('item_name')->get();
+
+        $products->each(function (Product $product) {
+            $qty = (int) ($product->batches_sum_qty ?? 0);
+            $product->on_hand_qty = $qty;
+            $product->total_value = $qty * $product->unit_price;
+            $product->is_low_stock = $qty <= $product->low_stock_threshold;
+        });
+
         if ($lowStockOnly) {
-            $query->whereColumn('quantity', '<=', 'low_stock_threshold');
+            $products = $products->filter(fn (Product $product) => $product->is_low_stock)->values();
         }
 
-        $items = $query->orderBy('item_name')->get();
-
-        return $items->each(function (Item $item) {
-            $item->total_value = $item->quantity * $item->unit_price;
-            $item->is_low_stock = $item->quantity <= $item->low_stock_threshold;
-        });
+        return $products;
     }
 
     /**
@@ -44,21 +49,24 @@ class InventoryReportService
     }
 
     /**
-     * Movement ledger for a single item, most recent first, with a running
-     * balance. The running balance is always computed from the item's full
-     * movement history (so it stays anchored to the item's current
-     * quantity) even when the displayed rows are limited to a date range.
+     * Movement ledger for a single product, rolled up across every one of
+     * its batches, most recent first, with a running balance. The running
+     * balance is always computed from the product's full movement history
+     * (so it stays anchored to the product's current total quantity) even
+     * when the displayed rows are limited to a date range.
      */
-    public function getProductHistory(int $itemId, ?string $startDate = null, ?string $endDate = null): Collection
+    public function getProductHistory(int $productId, ?string $startDate = null, ?string $endDate = null): Collection
     {
-        $item = Item::findOrFail($itemId);
+        $product = Product::findOrFail($productId);
+        $batchIds = $product->batches()->pluck('id');
 
-        $movements = StockMovement::with('user')
-            ->where('item_id', $itemId)
+        $movements = StockMovement::with(['user', 'productBatch', 'source'])
+            ->whereIn('product_batch_id', $batchIds)
             ->orderBy('created_at')
             ->get();
 
-        $runningBalance = $item->quantity - $movements->sum('quantity');
+        $currentTotal = (int) $product->batches()->sum('qty');
+        $runningBalance = $currentTotal - $movements->sum('quantity');
 
         foreach ($movements as $movement) {
             $runningBalance += $movement->quantity;

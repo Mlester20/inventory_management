@@ -64,7 +64,7 @@
                 <tbody>
                     @foreach ($purchaseOrder->items as $item)
                         <tr>
-                            <td>{{ $item->item->item_name }}</td>
+                            <td>{{ $item->product->item_name }}</td>
                             <td class="text-end">{{ $item->qty }}</td>
                             <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
                             <td class="text-end">{{ $item->received_qty }}</td>

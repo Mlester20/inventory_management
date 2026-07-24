@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Item;
+use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\Category;
@@ -28,35 +28,36 @@ class SearchController extends Controller
                 ]);
             }
 
-            // Search for items
-            $items = Item::where('item_name', 'LIKE', "%{$query}%")
+            // Search for products
+            $items = Product::withSum('batches', 'qty')
+                ->where('item_name', 'LIKE', "%{$query}%")
                 ->orWhere('description', 'LIKE', "%{$query}%")
                 ->limit(5)
-                ->get(['id', 'item_name', 'quantity', 'unit_price'])
+                ->get(['id', 'item_name', 'unit_price'])
                 ->map(function($item) {
                     return [
                         'type' => 'item',
                         'id' => $item->id,
                         'title' => $item->item_name,
-                        'subtitle' => 'Stock: ' . $item->quantity . ' | ₱' . number_format($item->unit_price, 2),
+                        'subtitle' => 'Stock: ' . (int) ($item->batches_sum_qty ?? 0) . ' | ₱' . number_format($item->unit_price, 2),
                         'url' => route('admin.items.show', $item->id),
                         'icon' => 'bx-package'
                     ];
                 });
 
             // Search for purchases (Sales)
-            $purchases = Purchase::whereHas('item', function($q) use ($query) {
+            $purchases = Purchase::whereHas('productBatch.product', function($q) use ($query) {
                 $q->where('item_name', 'LIKE', "%{$query}%");
             })
                 ->orWhere('id', 'LIKE', "%{$query}%")
                 ->limit(5)
-                ->with('item')
-                ->get(['id', 'item_id', 'quantity_sold', 'total_price', 'purchase_date'])
+                ->with('productBatch.product')
+                ->get(['id', 'product_batch_id', 'quantity_sold', 'total_price', 'purchase_date'])
                 ->map(function($purchase) {
                     return [
                         'type' => 'purchase',
                         'id' => $purchase->id,
-                        'title' => 'Sale #' . $purchase->id . ' - ' . ($purchase->item->item_name ?? 'N/A'),
+                        'title' => 'Sale #' . $purchase->id . ' - ' . ($purchase->productBatch->product->item_name ?? 'N/A'),
                         'subtitle' => 'Qty: ' . $purchase->quantity_sold . ' | Total: ₱' . number_format($purchase->total_price, 2),
                         'url' => route('admin.purchases.show', $purchase->id),
                         'icon' => 'bx-receipt'
@@ -67,9 +68,9 @@ class SearchController extends Controller
             $suppliers = Supplier::where('supplier_name', 'LIKE', "%{$query}%")
                 ->orWhere('contact_person', 'LIKE', "%{$query}%")
                 ->orWhere('email', 'LIKE', "%{$query}%")
-                ->orWhere('phone', 'LIKE', "%{$query}%")
+                ->orWhere('contact_number', 'LIKE', "%{$query}%")
                 ->limit(5)
-                ->get(['id', 'supplier_name', 'contact_person', 'email', 'phone'])
+                ->get(['id', 'supplier_name', 'contact_person', 'email', 'contact_number'])
                 ->map(function($supplier) {
                     return [
                         'type' => 'supplier',

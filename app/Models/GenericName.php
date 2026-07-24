@@ -11,15 +11,20 @@ class GenericName extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['generic_name', 'category_id', 'unit'];
+    protected $fillable = ['code', 'generic_name', 'category_id', 'unit', 'vat_type'];
+
+    public const VAT_TYPES = [
+        'VAT' => 'VAT',
+        'VAT-EX' => 'VAT-EX',
+    ];
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function items(): HasMany
+    public function products(): HasMany
     {
-        return $this->hasMany(Item::class);
+        return $this->hasMany(Product::class);
     }
 }

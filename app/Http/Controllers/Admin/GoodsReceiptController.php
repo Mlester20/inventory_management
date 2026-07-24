@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\GoodsReceipt;
-use App\Models\Item;
+use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\User;
@@ -48,7 +48,7 @@ class GoodsReceiptController extends Controller
     public function create(Request $request)
     {
         $suppliers = Supplier::orderBy('supplier_name')->get();
-        $items = Item::orderBy('item_name')->get();
+        $items = Product::orderBy('item_name')->get();
         $openPurchaseOrders = PurchaseOrder::with('supplier')
             ->whereIn('status', ['open', 'partially_received'])
             ->latest()
@@ -56,7 +56,7 @@ class GoodsReceiptController extends Controller
         $users = User::orderBy('name')->get();
         $preselectedPurchaseOrderId = $request->query('purchase_order_id');
 
-        $itemsForJs = $items->map(fn (Item $item) => [
+        $itemsForJs = $items->map(fn (Product $item) => [
             'id' => $item->id,
             'name' => $item->item_name,
             'unit_cost' => (float) $item->unit_cost,
@@ -79,7 +79,7 @@ class GoodsReceiptController extends Controller
             'receipt_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
             'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
             'items.*.batch_no' => 'nullable|string|max:100',
@@ -106,7 +106,7 @@ class GoodsReceiptController extends Controller
      */
     public function show(GoodsReceipt $goodsReceipt)
     {
-        $goodsReceipt->load('supplier', 'purchaseOrder', 'preparedBy', 'items.item');
+        $goodsReceipt->load('supplier', 'purchaseOrder', 'preparedBy', 'items.productBatch.product');
 
         return view('admin.goods-receipts.show', compact('goodsReceipt'));
     }

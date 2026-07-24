@@ -106,7 +106,7 @@
                                 <tr>
                                     <td class="text-center">{{ $sale->qty }}</td>
                                     <td class="text-center">{{ $sale->unit ?? '—' }}</td>
-                                    <td>{{ $sale->item->item_name ?? $sale->desc }}</td>
+                                    <td>{{ $sale->productBatch->product->item_name ?? $sale->desc }}</td>
                                     <td class="text-center">{{ $sale->batch_no ?? '—' }}</td>
                                     <td class="text-center">{{ $sale->exp ? $sale->exp->format('Y-m') : '—' }}</td>
                                     <td class="text-end">{{ number_format($sale->price, 2) }}</td>

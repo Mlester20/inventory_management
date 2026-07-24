@@ -2,13 +2,12 @@
 
 namespace Database\Factories;
 
-use App\Models\Item;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Item>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Product>
  */
-class ItemFactory extends Factory
+class ProductFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -18,11 +17,10 @@ class ItemFactory extends Factory
     public function definition(): array
     {
         return [
+            'code' => strtoupper($this->faker->unique()->bothify('P####')),
             'generic_name_id' => \App\Models\GenericName::factory(),
             'brand_name' => $this->faker->word(),
-            'supplier_id' => 1,
             'description' => $this->faker->sentence(),
-            'quantity' => $this->faker->numberBetween(10, 500),
             'unit_price' => $this->faker->randomFloat(2, 5, 100),
             'unit_cost' => $this->faker->randomFloat(2, 1, 50),
             'low_stock_threshold' => $this->faker->numberBetween(5, 20),

@@ -12,7 +12,7 @@
             <strong>{{ $lowStockCount }} item(s) are low on stock!</strong>
             <ul class="mb-0 mt-1">
                 @foreach($lowStockItems as $item)
-                <li>{{ $item->item_name }} — Current: <strong>{{ $item->quantity }}</strong> / Threshold: <strong>{{ $item->low_stock_threshold }}</strong></li>
+                <li>{{ $item->item_name }} — Current: <strong>{{ $item->on_hand_qty }}</strong> / Threshold: <strong>{{ $item->low_stock_threshold }}</strong></li>
                 @endforeach
             </ul>
         </div>
@@ -152,8 +152,8 @@
                             @forelse($recentPurchases as $purchase)
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
-                                <td>{{ $purchase->item->item_name ?? 'N/A' }}</td>
-                                <td>{{ $purchase->item->category->category_name ?? 'N/A' }}</td>
+                                <td>{{ $purchase->productBatch->product->item_name ?? 'N/A' }}</td>
+                                <td>{{ $purchase->productBatch->product->category->category_name ?? 'N/A' }}</td>
                                 <td>{{ $purchase->quantity_sold }}</td>
                                 <td>₱{{ number_format($purchase->unit_price, 2) }}</td>
                                 <td>₱{{ number_format($purchase->total_price, 2) }}</td>

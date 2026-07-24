@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Item;
+use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\StockMovement;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
@@ -11,153 +12,177 @@ use Illuminate\Database\Eloquent\Model;
 class StockService
 {
     /**
-     * Restock an item by increasing its quantity.
+     * Restock a batch by increasing its quantity.
      *
-     * @param Item $item
+     * @param ProductBatch $batch
      * @param int $quantity
      * @param string|null $remarks
      * @param int|null $userId
+     * @param Model|null $source The transaction that caused this movement (GoodsReceipt, InventoryAdjustment, ...)
      * @return StockMovement The created stock movement record
      * @throws ValidationException
      */
-    public function restock(Item $item, int $quantity, ?string $remarks = null, ?int $userId = null): StockMovement
+    public function restock(ProductBatch $batch, int $quantity, ?string $remarks = null, ?int $userId = null, ?Model $source = null): StockMovement
     {
-        // Validate quantity
         $this->validateQuantity($quantity, 'positive');
 
-        // Use authenticated user if userId not provided
         if ($userId === null && Auth::check()) {
             $userId = Auth::id();
         }
 
-        // Use database transaction for atomicity
-        return \DB::transaction(function () use ($item, $quantity, $remarks, $userId) {
-            // Update item quantity
-            $item->increment('quantity', $quantity);
+        return \DB::transaction(function () use ($batch, $quantity, $remarks, $userId, $source) {
+            $batch->increment('qty', $quantity);
 
-            // Create stock movement record
-            $movement = StockMovement::create([
-                'item_id' => $item->id,
+            return StockMovement::create([
+                'product_batch_id' => $batch->id,
                 'user_id' => $userId,
                 'quantity' => $quantity,
                 'type' => 'in',
                 'remarks' => $remarks,
+                'source_type' => $source?->getMorphClass(),
+                'source_id' => $source?->getKey(),
             ]);
-
-            return $movement;
         });
     }
 
     /**
-     * Deduct stock from an item.
+     * Deduct stock from a batch.
      *
-     * @param Item $item
+     * @param ProductBatch $batch
      * @param int $quantity
      * @param string|null $remarks
      * @param int|null $userId
+     * @param Model|null $source
      * @return StockMovement The created stock movement record
      * @throws ValidationException
      */
-    public function deduct(Item $item, int $quantity, ?string $remarks = null, ?int $userId = null): StockMovement
+    public function deduct(ProductBatch $batch, int $quantity, ?string $remarks = null, ?int $userId = null, ?Model $source = null): StockMovement
     {
-        // Validate quantity
         $this->validateQuantity($quantity, 'positive');
 
-        // Check if sufficient stock available
-        if ($item->quantity < $quantity) {
+        if ($batch->qty < $quantity) {
             throw ValidationException::withMessages([
-                'quantity' => "Insufficient stock. Available: {$item->quantity}, Requested: {$quantity}",
+                'quantity' => "Insufficient stock. Available: {$batch->qty}, Requested: {$quantity}",
             ]);
         }
 
-        // Use authenticated user if userId not provided
         if ($userId === null && Auth::check()) {
             $userId = Auth::id();
         }
 
-        // Use database transaction for atomicity
-        return \DB::transaction(function () use ($item, $quantity, $remarks, $userId) {
-            // Update item quantity
-            $item->decrement('quantity', $quantity);
+        return \DB::transaction(function () use ($batch, $quantity, $remarks, $userId, $source) {
+            $batch->decrement('qty', $quantity);
 
-            // Create stock movement record with negative quantity
-            $movement = StockMovement::create([
-                'item_id' => $item->id,
+            return StockMovement::create([
+                'product_batch_id' => $batch->id,
                 'user_id' => $userId,
-                'quantity' => -$quantity, // Negative value for deduction
+                'quantity' => -$quantity,
                 'type' => 'out',
                 'remarks' => $remarks,
+                'source_type' => $source?->getMorphClass(),
+                'source_id' => $source?->getKey(),
             ]);
-
-            return $movement;
         });
     }
 
     /**
-     * Adjust stock to a specific level.
+     * Deduct stock for a Product across its batches, oldest-expiring first
+     * (FEFO), auto-selecting batches when the caller has no batch picker UI
+     * (POS Quick-Sale, Invoice checkout). Splits the deduction across
+     * multiple batches if a single batch can't cover the full quantity.
      *
-     * @param Item $item
+     * @return StockMovement[] One movement per batch touched.
+     * @throws ValidationException
+     */
+    public function deductFefo(Product $product, int $quantity, ?string $remarks = null, ?int $userId = null, ?Model $source = null): array
+    {
+        $this->validateQuantity($quantity, 'positive');
+
+        $batches = $product->batches()->availableFefo()->get();
+        $available = (int) $batches->sum('qty');
+
+        if ($available < $quantity) {
+            throw ValidationException::withMessages([
+                'quantity' => "Insufficient stock. Available: {$available}, Requested: {$quantity}",
+            ]);
+        }
+
+        return \DB::transaction(function () use ($batches, $quantity, $remarks, $userId, $source) {
+            $remaining = $quantity;
+            $movements = [];
+
+            foreach ($batches as $batch) {
+                if ($remaining <= 0) {
+                    break;
+                }
+
+                $take = min($remaining, $batch->qty);
+                $movements[] = $this->deduct($batch, $take, $remarks, $userId, $source);
+                $remaining -= $take;
+            }
+
+            return $movements;
+        });
+    }
+
+    /**
+     * Adjust a batch's stock to a specific level.
+     *
+     * @param ProductBatch $batch
      * @param int $newQuantity
      * @param string|null $remarks
      * @param int|null $userId
+     * @param Model|null $source
      * @return StockMovement|null The created stock movement record (null if no change)
      * @throws ValidationException
      */
-    public function adjust(Item $item, int $newQuantity, ?string $remarks = null, ?int $userId = null): ?StockMovement
+    public function adjust(ProductBatch $batch, int $newQuantity, ?string $remarks = null, ?int $userId = null, ?Model $source = null): ?StockMovement
     {
-        // Validate quantity is not negative
         if ($newQuantity < 0) {
             throw ValidationException::withMessages([
                 'quantity' => 'Stock quantity cannot be negative.',
             ]);
         }
 
-        // Calculate difference
-        $difference = $newQuantity - $item->quantity;
+        $difference = $newQuantity - $batch->qty;
 
-        // If no change needed
         if ($difference === 0) {
             return null;
         }
 
-        // Use authenticated user if userId not provided
         if ($userId === null && Auth::check()) {
             $userId = Auth::id();
         }
 
-        // Determine if this is a restock or deduction
         $type = $difference > 0 ? 'in' : 'out';
         $quantity = abs($difference);
         $displayQuantity = $type === 'in' ? $quantity : -$quantity;
 
-        // Use database transaction for atomicity
-        return \DB::transaction(function () use ($item, $newQuantity, $type, $displayQuantity, $remarks, $userId) {
-            // Update item to new quantity
-            $item->update(['quantity' => $newQuantity]);
+        return \DB::transaction(function () use ($batch, $newQuantity, $type, $displayQuantity, $remarks, $userId, $source) {
+            $batch->update(['qty' => $newQuantity]);
 
-            // Create stock movement record
-            $movement = StockMovement::create([
-                'item_id' => $item->id,
+            return StockMovement::create([
+                'product_batch_id' => $batch->id,
                 'user_id' => $userId,
                 'quantity' => $displayQuantity,
                 'type' => $type,
                 'remarks' => $remarks ?? "Stock adjustment to {$newQuantity}",
+                'source_type' => $source?->getMorphClass(),
+                'source_id' => $source?->getKey(),
             ]);
-
-            return $movement;
         });
     }
 
     /**
-     * Get stock movement history for an item.
+     * Get stock movement history for a batch.
      *
-     * @param Item $item
+     * @param ProductBatch $batch
      * @param int $limit
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getMovementHistory(Item $item, int $limit = 50)
+    public function getMovementHistory(ProductBatch $batch, int $limit = 50)
     {
-        return $item->stockMovements()
+        return $batch->stockMovements()
             ->with('user')
             ->latest('created_at')
             ->limit($limit)
@@ -165,25 +190,25 @@ class StockService
     }
 
     /**
-     * Get low stock items.
+     * Get low stock products.
      *
      * @return \Illuminate\Database\Eloquent\Collection
      */
     public function getLowStockItems()
     {
-        return Item::lowStock()
+        return Product::lowStock()
             ->with(['category', 'supplier'])
             ->get();
     }
 
     /**
-     * Get out of stock items.
+     * Get out of stock products.
      *
      * @return \Illuminate\Database\Eloquent\Collection
      */
     public function getOutOfStockItems()
     {
-        return Item::outOfStock()
+        return Product::outOfStock()
             ->with(['category', 'supplier'])
             ->get();
     }

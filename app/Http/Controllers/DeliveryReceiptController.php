@@ -72,7 +72,7 @@ class DeliveryReceiptController extends Controller
             'receipt_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
             'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.product_batch_id' => 'required|exists:product_batches,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.sales_order_item_id' => 'nullable|exists:sales_order_items,id',
         ]);
@@ -98,7 +98,7 @@ class DeliveryReceiptController extends Controller
      */
     public function show(DeliveryReceipt $deliveryReceipt)
     {
-        $deliveryReceipt->load('customer', 'salesOrder', 'preparedBy', 'items.item');
+        $deliveryReceipt->load('customer', 'salesOrder', 'preparedBy', 'items.productBatch.product');
 
         return view('admin.delivery-receipts.show', compact('deliveryReceipt'));
     }

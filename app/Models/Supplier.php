@@ -24,9 +24,9 @@ class Supplier extends Model
         'NON-VAT' => 'NON-VAT',
     ];
 
-    public function items()
+    public function products()
     {
-        return $this->hasMany(Item::class);
+        return $this->hasMany(Product::class);
     }
 
     public function purchaseOrders(): HasMany

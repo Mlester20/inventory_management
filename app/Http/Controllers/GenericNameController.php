@@ -10,14 +10,15 @@ use RealRashid\SweetAlert\Facades\Alert;
 class GenericNameController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource (legacy Categories admin page —
+     * Category CRUD only; Generic Item CRUD now lives on the Inventory
+     * Items module's "General Item" tab).
      */
     public function index()
     {
-        $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
         $categories = Category::orderBy('category_name')->get();
 
-        return view('admin.categories', compact('genericNames', 'categories'));
+        return view('admin.categories', compact('categories'));
     }
 
     /**
@@ -26,19 +27,23 @@ class GenericNameController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'code' => 'required|string|max:50|unique:generic_names,code',
             'generic_name' => 'required|unique:generic_names,generic_name',
             'category_id' => 'required|exists:categories,id',
             'unit' => 'required|string|max:50',
+            'vat_type' => 'required|in:' . implode(',', array_keys(GenericName::VAT_TYPES)),
         ]);
 
         GenericName::create([
+            'code' => $request->code,
             'generic_name' => $request->generic_name,
             'category_id' => $request->category_id,
             'unit' => $request->unit,
+            'vat_type' => $request->vat_type,
         ]);
 
-        Alert::success('Success', 'Generic name created successfully');
-        return redirect()->route('generic-names.index');
+        Alert::success('Success', 'Generic item created successfully');
+        return redirect()->route('inventory-items.index', ['tab' => 'general']);
     }
 
     /**
@@ -47,19 +52,23 @@ class GenericNameController extends Controller
     public function update(Request $request, GenericName $genericName)
     {
         $request->validate([
+            'code' => 'required|string|max:50|unique:generic_names,code,' . $genericName->id,
             'generic_name' => 'required|unique:generic_names,generic_name,' . $genericName->id,
             'category_id' => 'required|exists:categories,id',
             'unit' => 'required|string|max:50',
+            'vat_type' => 'required|in:' . implode(',', array_keys(GenericName::VAT_TYPES)),
         ]);
 
         $genericName->update([
+            'code' => $request->code,
             'generic_name' => $request->generic_name,
             'category_id' => $request->category_id,
             'unit' => $request->unit,
+            'vat_type' => $request->vat_type,
         ]);
 
-        Alert::success('Success', 'Generic name updated successfully');
-        return redirect()->route('generic-names.index');
+        Alert::success('Success', 'Generic item updated successfully');
+        return redirect()->route('inventory-items.index', ['tab' => 'general']);
     }
 
     /**
@@ -68,7 +77,7 @@ class GenericNameController extends Controller
     public function destroy(GenericName $genericName)
     {
         $genericName->delete();
-        Alert::success('Success', 'Generic name deleted successfully');
-        return redirect()->route('generic-names.index');
+        Alert::success('Success', 'Generic item deleted successfully');
+        return redirect()->route('inventory-items.index', ['tab' => 'general']);
     }
 }

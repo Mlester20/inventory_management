@@ -3,12 +3,12 @@
 namespace Database\Seeders;
 
 use App\Models\GenericName;
-use App\Models\Item;
+use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\Taxes;
 use Illuminate\Database\Seeder;
 
-class ItemSeeder extends Seeder
+class ProductSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -18,7 +18,7 @@ class ItemSeeder extends Seeder
         $vatTaxId = Taxes::where('name', 'VAT')->value('id');
         $suppliers = Supplier::pluck('id', 'supplier_name');
 
-        $items = [
+        $products = [
             [
                 'generic_name' => 'Paracetamol 500mg', 'brand_name' => 'Biogesic',
                 'supplier' => 'MedSupply Philippines Inc.', 'quantity' => 200,
@@ -75,22 +75,27 @@ class ItemSeeder extends Seeder
             ],
         ];
 
-        foreach ($items as $item) {
-            $genericNameId = GenericName::where('generic_name', $item['generic_name'])->value('id');
+        foreach ($products as $index => $product) {
+            $genericNameId = GenericName::where('generic_name', $product['generic_name'])->value('id');
 
-            Item::create([
+            $productModel = Product::create([
+                'code' => str_pad((string) ($index + 1), 5, '0', STR_PAD_LEFT),
                 'generic_name_id' => $genericNameId,
-                'brand_name' => $item['brand_name'],
-                'supplier_id' => $suppliers[$item['supplier']],
+                'brand_name' => $product['brand_name'],
+                'supplier_id' => $suppliers[$product['supplier']],
                 'tax_id' => $vatTaxId,
-                'quantity' => $item['quantity'],
-                'unit_cost' => $item['unit_cost'],
-                'unit_price' => $item['unit_price'],
-                'wholesale_percent' => $item['wholesale_percent'],
-                'wholesale_price' => $item['wholesale_price'],
-                'low_stock_threshold' => $item['low_stock_threshold'],
+                'unit_cost' => $product['unit_cost'],
+                'unit_price' => $product['unit_price'],
+                'wholesale_percent' => $product['wholesale_percent'],
+                'wholesale_price' => $product['wholesale_price'],
+                'low_stock_threshold' => $product['low_stock_threshold'],
+            ]);
+
+            $productModel->batches()->create([
                 'batch_no' => 'B' . str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT),
-                'expiration_date' => now()->addDays($item['expiration_days'])->toDateString(),
+                'expiration_date' => now()->addDays($product['expiration_days'])->toDateString(),
+                'qty' => $product['quantity'],
+                'reserved_qty' => 0,
             ]);
         }
     }

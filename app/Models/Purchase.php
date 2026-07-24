@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Purchase extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'item_id',
+        'product_batch_id',
         'user_id',
         'quantity_sold',
         'unit_price',
@@ -23,11 +26,11 @@ class Purchase extends Model
     ];
 
     /**
-     * Get the item associated with this purchase.
+     * Get the product batch associated with this purchase.
      */
-    public function item(): BelongsTo
+    public function productBatch(): BelongsTo
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(ProductBatch::class);
     }
 
     /**

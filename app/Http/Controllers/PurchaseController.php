@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Purchase;
-use App\Models\Item;
+use App\Models\Product;
+use App\Services\StockService;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -15,8 +16,8 @@ class PurchaseController extends Controller
     public function index()
     {
         $purchases = Purchase::all();
-        $items = Item::all();
-        return view('admin.purchases', compact('purchases', 'items'));
+        $products = Product::all();
+        return view('admin.purchases', compact('purchases', 'products'));
     }
 
     /**
@@ -26,49 +27,45 @@ class PurchaseController extends Controller
     {
         $validated = $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.total_price' => 'required|numeric|min:0',
         ]);
 
         try {
-            $purchases = [];
+            $purchaseCount = 0;
             $transactionId = uniqid('TXN-');
 
-            \DB::transaction(function () use ($validated, &$purchases, $transactionId) {
-                $stockService = new \App\Services\StockService();
+            \DB::transaction(function () use ($validated, &$purchaseCount, $transactionId) {
+                $stockService = new StockService();
                 $userId = auth()->id();
 
                 foreach ($validated['items'] as $cartItem) {
-                    $item = Item::findOrFail($cartItem['item_id']);
+                    $product = Product::findOrFail($cartItem['product_id']);
+                    $qty = (int) $cartItem['quantity'];
 
-                    // Check stock availability
-                    if ($item->quantity < $cartItem['quantity']) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
-                            'stock' => "Insufficient stock for {$item->item_name}. Available: {$item->quantity}",
-                        ]);
-                    }
-
-                    // Create purchase record
-                    $purchase = Purchase::create([
-                        'item_id' => $item->id,
-                        'user_id' => $userId,
-                        'quantity_sold' => $cartItem['quantity'],
-                        'unit_price' => $cartItem['unit_price'],
-                        'total_price' => $cartItem['total_price'],
-                        'purchase_date' => now(),
-                    ]);
-
-                    // Deduct stock using StockService
-                    $stockService->deduct(
-                        $item,
-                        $cartItem['quantity'],
+                    $movements = $stockService->deductFefo(
+                        $product,
+                        $qty,
                         "Purchase by user (TXN: {$transactionId})",
                         $userId
                     );
 
-                    $purchases[] = $purchase;
+                    foreach ($movements as $movement) {
+                        $movementQty = abs($movement->quantity);
+
+                        Purchase::create([
+                            'product_batch_id' => $movement->product_batch_id,
+                            'user_id' => $userId,
+                            'quantity_sold' => $movementQty,
+                            'unit_price' => $cartItem['unit_price'],
+                            'total_price' => round($cartItem['unit_price'] * $movementQty, 2),
+                            'purchase_date' => now(),
+                        ]);
+
+                        $purchaseCount++;
+                    }
                 }
             });
 
@@ -76,12 +73,12 @@ class PurchaseController extends Controller
                 'success' => true,
                 'transaction_id' => $transactionId,
                 'message' => 'Purchase completed successfully',
-                'purchases' => $purchases->count(),
+                'purchases' => $purchaseCount,
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->errors()['stock'] ?? 'Validation failed',
+                'message' => $e->errors()['quantity'][0] ?? 'Validation failed',
             ], 422);
         } catch (\Exception $e) {
             \Log::error('Purchase Error: ' . $e->getMessage());

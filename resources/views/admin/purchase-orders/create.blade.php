@@ -154,7 +154,7 @@
             <div class="row g-2">
                 <div class="col-md-6">
                     <label class="form-label small mb-1">Item</label>
-                    <select name="items[${index}][item_id]" class="form-select item-select" required>
+                    <select name="items[${index}][product_id]" class="form-select item-select" required>
                         ${itemOptions()}
                     </select>
                 </div>

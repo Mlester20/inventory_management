@@ -31,7 +31,7 @@
                                     <span class="badge bg-label-secondary">System</span>
                                 @endif
                             </td>
-                            <td>{{ $purchase->item->item_name }}</td>
+                            <td>{{ $purchase->productBatch->product->item_name }}</td>
                             <td>{{ $purchase->quantity_sold }}</td>
                             <td>₱{{ number_format($purchase->unit_price, 2) }}</td>
                             <td>₱{{ number_format($purchase->total_price, 2) }}</td>

@@ -10,7 +10,7 @@ class GoodsReceiptItem extends Model
     protected $fillable = [
         'goods_receipt_id',
         'purchase_order_item_id',
-        'item_id',
+        'product_batch_id',
         'qty',
         'unit_cost',
         'batch_no',
@@ -33,8 +33,8 @@ class GoodsReceiptItem extends Model
         return $this->belongsTo(PurchaseOrderItem::class);
     }
 
-    public function item(): BelongsTo
+    public function productBatch(): BelongsTo
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(ProductBatch::class);
     }
 }

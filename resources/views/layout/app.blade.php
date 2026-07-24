@@ -138,13 +138,18 @@
             </li>
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-receipt"></i>
-                <div data-i18n="Generic Names">Generic Names</div>
+                <i class="menu-icon tf-icons bx bx-box"></i>
+                <div data-i18n="Products &amp; Inventory">Products &amp; Inventory</div>
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">
-                  <a href="{{ route('generic-names.index') }}" class="menu-link {{ request()->routeIs('generic-names.*') ? 'active' : '' }}">
-                    <div data-i18n="Generic Names">Generic Names</div>
+                  <a href="{{ route('inventory-items.index') }}" class="menu-link {{ request()->routeIs('inventory-items.*') || request()->routeIs('generic-names.*') || request()->routeIs('products.*') ? 'active' : '' }}">
+                    <div data-i18n="Inventory Items">Inventory Items</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('inventory-adjustments.index') }}" class="menu-link {{ request()->routeIs('inventory-adjustments.*') ? 'active' : '' }}">
+                    <div data-i18n="Inventory Adjustments">Inventory Adjustments</div>
                   </a>
                 </li>
               </ul>
@@ -171,24 +176,6 @@
                 <li class="menu-item">
                   <a href="{{ route('customers.index') }}" class="menu-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
                     <div data-i18n="Customers">Customers</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
-            <li class="menu-item">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-box"></i>
-                <div data-i18n="Misc">Items</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('items.index') }}" class="menu-link {{ request()->routeIs('items.*') ? 'active' : '' }}">
-                    <div data-i18n="Error">Items</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="{{ route('stock.restock-page') }}" class="menu-link {{ request()->routeIs('stock.restock-page') ? 'active' : '' }}">
-                    <div data-i18n="Error">Restock</div>
                   </a>
                 </li>
               </ul>

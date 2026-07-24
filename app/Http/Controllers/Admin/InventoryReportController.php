@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
-use App\Models\Item;
+use App\Models\Product;
 use App\Models\Supplier;
 use App\Services\InventoryReportService;
 use Illuminate\Http\Request;
@@ -45,30 +45,18 @@ class InventoryReportController extends Controller
 
     /**
      * Display the product history (movement ledger) report.
-     * Accepts optional query params: item_id, start_date, end_date
+     * Accepts optional query params: item_id (product id), start_date, end_date
+     *
+     * This report has been superseded by the "Product History" tab on the
+     * Products & Inventory module (see InventoryItemsController), which
+     * rolls movements up across every batch of a product. This route stays
+     * only as a redirect so old links/bookmarks keep working.
      */
     public function productHistory(Request $request)
     {
-        $validated = $request->validate([
-            'item_id' => 'nullable|exists:items,id',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-        ]);
-
-        $itemId = $validated['item_id'] ?? null;
-        $startDate = $validated['start_date'] ?? null;
-        $endDate = $validated['end_date'] ?? null;
-
-        $movements = $itemId
-            ? $this->inventoryReportService->getProductHistory($itemId, $startDate, $endDate)
-            : collect();
-
-        return view('admin.reports.product-history', [
-            'movements' => $movements,
-            'items' => Item::orderBy('item_name')->get(),
-            'itemId' => $itemId,
-            'startDate' => $startDate,
-            'endDate' => $endDate,
+        return redirect()->route('inventory-items.index', [
+            'tab' => 'history',
+            'product_id' => $request->query('item_id'),
         ]);
     }
 }

@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReturnItem extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'item_id',
+        'product_batch_id',
         'user_id',
         'quantity',
         'return_date',
@@ -17,9 +20,9 @@ class ReturnItem extends Model
         'status'
     ];
 
-    public function item(): BelongsTo
+    public function productBatch(): BelongsTo
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(ProductBatch::class);
     }
 
     public function user(): BelongsTo
@@ -36,11 +39,12 @@ class ReturnItem extends Model
     }
 
     /**
-     * Scope to get total value of approved returns joined with items unit_price.
+     * Scope to get total value of approved returns joined with products unit_price.
      */
     public function scopeTotalReturnValue($query)
     {
-        return $query->join('items', 'items.id', '=', 'return_items.item_id')
-            ->selectRaw('SUM(return_items.quantity * items.unit_price) as return_value');
+        return $query->join('product_batches', 'product_batches.id', '=', 'return_items.product_batch_id')
+            ->join('products', 'products.id', '=', 'product_batches.product_id')
+            ->selectRaw('SUM(return_items.quantity * products.unit_price) as return_value');
     }
 }

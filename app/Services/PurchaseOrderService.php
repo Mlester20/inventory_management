@@ -10,7 +10,7 @@ class PurchaseOrderService
     /**
      * Create a Purchase Order with its line items.
      *
-     * @param array $data ['supplier_id', 'order_date', 'prepared_by', 'items' => [['item_id','qty','unit_cost'], ...]]
+     * @param array $data ['supplier_id', 'order_date', 'prepared_by', 'items' => [['product_id','qty','unit_cost'], ...]]
      */
     public function createPurchaseOrder(array $data): PurchaseOrder
     {
@@ -25,7 +25,7 @@ class PurchaseOrderService
 
             foreach ($data['items'] as $line) {
                 $purchaseOrder->items()->create([
-                    'item_id' => $line['item_id'],
+                    'product_id' => $line['product_id'],
                     'qty' => $line['qty'],
                     'unit_cost' => $line['unit_cost'],
                 ]);

@@ -6,8 +6,9 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\GenericNameController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\ItemController;
-use App\Http\Controllers\StockController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\InventoryItemsController;
+use App\Http\Controllers\InventoryAdjustmentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Admin\ProfileController;
@@ -117,10 +118,20 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::put('admin/profile', [ProfileController::class, 'update'])->name('admin.profile.update');
 
     Route::resource('admin/categories', CategoryController::class);
-    Route::resource('admin/generic-names', GenericNameController::class);
+    Route::resource('admin/generic-names', GenericNameController::class)->only(['store', 'update', 'destroy']);
     Route::resource('admin/suppliers', SupplierController::class);
     Route::resource('admin/customers', CustomerController::class);
-    Route::resource('admin/items', ItemController::class);
+
+    // Products & Inventory module — a single tabbed screen (General Item /
+    // Products / Lot-Serial & Expiry / Product History); see
+    // InventoryItemsController for the tab-driven index.
+    Route::get('admin/inventory-items', [InventoryItemsController::class, 'index'])->name('inventory-items.index');
+    Route::get('admin/items/{product}', function (\App\Models\Product $product) {
+        return redirect()->route('inventory-items.index', ['tab' => 'products', 'search' => $product->item_name]);
+    })->name('admin.items.show');
+    Route::resource('admin/products', ProductController::class)->only(['store', 'update', 'destroy']);
+    Route::resource('admin/inventory-adjustments', InventoryAdjustmentController::class)->only(['index', 'create', 'store', 'show']);
+
     Route::resource('admin/users', UserController::class);
     Route::resource('admin/purchases', PurchaseController::class);    
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
@@ -138,18 +149,6 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // Return Items Actions
     Route::post('admin/return-items/{returnItem}/approve', [ReturnItemController::class, 'approve'])->name('return-items.approve');
     Route::post('admin/return-items/{returnItem}/reject', [ReturnItemController::class, 'reject'])->name('return-items.reject');
-
-    // Stock Management Routes
-    Route::prefix('admin/stock')->name('stock.')->group(function () {
-        Route::get('restock', [StockController::class, 'restockPage'])->name('restock-page');
-        Route::post('items/{item}/restock', [StockController::class, 'restock'])->name('restock');
-        Route::get('items/{item}/history', [StockController::class, 'history'])->name('history');
-        Route::post('items/{item}/deduct', [StockController::class, 'deduct'])->name('deduct');
-        Route::post('items/{item}/adjust', [StockController::class, 'adjust'])->name('adjust');
-        Route::get('items/{item}/report', [StockController::class, 'report'])->name('report');
-        Route::get('low-stock', [StockController::class, 'lowStockItems'])->name('low-stock');
-        Route::get('out-of-stock', [StockController::class, 'outOfStockItems'])->name('out-of-stock');
-    });
 });
 
 // API Routes - Protected with auth middleware
