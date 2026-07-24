@@ -13,6 +13,7 @@ class DeliveryReceipt extends Model
         'sales_order_id',
         'dr_no',
         'transaction_type',
+        'description',
         'receipt_date',
         'prepared_by',
     ];
@@ -20,6 +21,38 @@ class DeliveryReceipt extends Model
     protected $casts = [
         'receipt_date' => 'date',
     ];
+
+    public const TRANSACTION_TYPES = [
+        'advance_order' => 'ADVANCE ORDER',
+        'purchase_order' => 'PURCHASE ORDER',
+        'walk_in' => 'WALK-IN',
+    ];
+
+    /**
+     * Every existing DR deducts stock immediately at creation time (no
+     * pending/in-transit reservation state exists yet), so this is always
+     * "delivered" — kept as a method (not a stored column) so it stays
+     * truthful if a real pending-delivery state is ever introduced later.
+     */
+    public function deliveryStatus(): string
+    {
+        return 'DELIVERED';
+    }
+
+    /**
+     * COMPLETE once every line is fully invoiced, PARTIALLY INVOICED once
+     * any line has some invoiced qty, otherwise NOT INVOICED.
+     */
+    public function getInvoiceStatusAttribute(): string
+    {
+        $items = $this->items;
+
+        return match (true) {
+            $items->isNotEmpty() && $items->every(fn (DeliveryReceiptItem $item) => $item->invoiced_qty >= $item->qty) => 'COMPLETE',
+            $items->contains(fn (DeliveryReceiptItem $item) => $item->invoiced_qty > 0) => 'PARTIALLY INVOICED',
+            default => 'NOT INVOICED',
+        };
+    }
 
     public function customer(): BelongsTo
     {

@@ -30,11 +30,15 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>D.R. No.</th>
+                        <th>Delivery Date</th>
+                        <th>Reference</th>
+                        <th>Sales Order No.</th>
                         <th>Customer</th>
-                        <th>Type</th>
-                        <th>Sales Order</th>
-                        <th>Receipt Date</th>
+                        <th>Description</th>
+                        <th>Transaction Type</th>
+                        <th>Delivery Status</th>
+                        <th>Invoice Status</th>
+                        <th>Timestamp</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -42,13 +46,8 @@
                     @forelse ($deliveryReceipts as $deliveryReceipt)
                         <tr>
                             <td>{{ $deliveryReceipt->id }}</td>
+                            <td>{{ $deliveryReceipt->receipt_date->format('M d, Y') }}</td>
                             <td>{{ $deliveryReceipt->dr_no }}</td>
-                            <td>{{ $deliveryReceipt->customer->customer_name }}</td>
-                            <td>
-                                <span class="badge bg-{{ $deliveryReceipt->transaction_type === 'purchase_order' ? 'info' : 'secondary' }}">
-                                    {{ $deliveryReceipt->transaction_type === 'purchase_order' ? 'Purchase Order' : 'Advance Order' }}
-                                </span>
-                            </td>
                             <td>
                                 @if($deliveryReceipt->salesOrder)
                                     <a href="{{ route('sales-orders.show', $deliveryReceipt->salesOrder) }}">{{ $deliveryReceipt->salesOrder->so_no }}</a>
@@ -56,7 +55,19 @@
                                     —
                                 @endif
                             </td>
-                            <td>{{ $deliveryReceipt->receipt_date->format('M d, Y') }}</td>
+                            <td>{{ $deliveryReceipt->customer->customer_name }}</td>
+                            <td>{{ $deliveryReceipt->description ?? '—' }}</td>
+                            <td>
+                                <span class="badge bg-{{ ['purchase_order' => 'info', 'walk_in' => 'warning'][$deliveryReceipt->transaction_type] ?? 'secondary' }}">
+                                    {{ \App\Models\DeliveryReceipt::TRANSACTION_TYPES[$deliveryReceipt->transaction_type] ?? $deliveryReceipt->transaction_type }}
+                                </span>
+                            </td>
+                            <td><span class="badge bg-success">{{ $deliveryReceipt->deliveryStatus() }}</span></td>
+                            <td>
+                                @php $invoiceStatusColor = ['COMPLETE' => 'success', 'PARTIALLY INVOICED' => 'warning', 'NOT INVOICED' => 'secondary'][$deliveryReceipt->invoice_status] ?? 'secondary'; @endphp
+                                <span class="badge bg-{{ $invoiceStatusColor }}">{{ $deliveryReceipt->invoice_status }}</span>
+                            </td>
+                            <td>{{ $deliveryReceipt->created_at->format('m/d/Y h:i A') }}</td>
                             <td>
                                 <a href="{{ route('delivery-receipts.show', $deliveryReceipt) }}" class="btn btn-sm btn-info">
                                     View
@@ -65,7 +76,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted">No Delivery Receipts found.</td>
+                            <td colspan="11" class="text-center text-muted">No Delivery Receipts found.</td>
                         </tr>
                     @endforelse
                 </tbody>

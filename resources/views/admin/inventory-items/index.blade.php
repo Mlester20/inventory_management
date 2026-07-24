@@ -247,6 +247,9 @@
                                     <td>{{ $reserved }}</td>
                                     <td>{{ $qty - $reserved }}</td>
                                     <td>
+                                        <a href="{{ route('inventory-items.index', ['tab' => 'history', 'product_id' => $product->id]) }}" class="btn btn-sm btn-outline-secondary" title="View Product History">
+                                            <i class="bx bx-history"></i>
+                                        </a>
                                         <button type="button" class="btn btn-sm btn-warning edit-product-btn"
                                             data-bs-toggle="modal" data-bs-target="#updateProductModal"
                                             data-id="{{ $product->id }}"
@@ -317,6 +320,7 @@
                                 <th>Qty</th>
                                 <th>Reserved</th>
                                 <th>Available</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -331,9 +335,14 @@
                                     <td>{{ $batch->qty }}</td>
                                     <td>{{ $batch->reserved_qty }}</td>
                                     <td>{{ $batch->available_qty }}</td>
+                                    <td>
+                                        <a href="{{ route('inventory-items.index', ['tab' => 'history', 'product_id' => $batch->product_id]) }}" class="btn btn-sm btn-outline-secondary" title="View Product History">
+                                            <i class="bx bx-history"></i>
+                                        </a>
+                                    </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="9" class="text-center text-muted py-4">No batches found. Try a different search.</td></tr>
+                                <tr><td colspan="10" class="text-center text-muted py-4">No batches found. Try a different search.</td></tr>
                             @endforelse
                         </tbody>
                         @if($batches && $batches->count())
@@ -343,6 +352,7 @@
                                     <td>{{ $batches->sum('qty') }}</td>
                                     <td>{{ $batches->sum('reserved_qty') }}</td>
                                     <td>{{ $batches->sum('qty') - $batches->sum('reserved_qty') }}</td>
+                                    <td></td>
                                 </tr>
                             </tfoot>
                         @endif
@@ -353,6 +363,15 @@
 
         {{-- ============================= PRODUCT HISTORY TAB ============================= --}}
         @if($tab === 'history')
+            @if($historyProduct)
+                <div class="alert alert-secondary py-2 mb-3">
+                    Showing history for <strong>{{ $historyProduct->item_name }}</strong> ({{ $historyProduct->code }})
+                </div>
+            @else
+                <div class="alert alert-info py-2 mb-3">
+                    Search for a product's name/brand above, or click the <i class="bx bx-history"></i> button on the Products or Lot/Serial &amp; Expiry tab, to view its history.
+                </div>
+            @endif
             <div class="card">
                 <div class="table-responsive nowrap">
                     <table class="table">

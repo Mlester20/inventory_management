@@ -48,6 +48,20 @@
                     </div>
                 </div>
 
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" name="description" id="description" class="form-control @error('description') is-invalid @enderror" value="{{ old('description') }}">
+                        @error('description')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Sales Order Number</label>
+                        <input type="text" id="so_no_display" class="form-control" readonly placeholder="Blank unless Purchase Order type">
+                    </div>
+                </div>
+
                 <div class="btn-group mb-4" role="group">
                     <button type="button" class="btn btn-outline-primary active" id="tabBtnAdvance" onclick="showTab('advance_order')">
                         Advance Order
@@ -55,9 +69,12 @@
                     <button type="button" class="btn btn-outline-info" id="tabBtnPurchase" onclick="showTab('purchase_order')">
                         Purchase Order
                     </button>
+                    <button type="button" class="btn btn-outline-warning" id="tabBtnWalkIn" onclick="showTab('walk_in')">
+                        Walk-in
+                    </button>
                 </div>
 
-                <!-- Advance Order Tab -->
+                <!-- Advance Order / Walk-in Tab -->
                 <div id="advance_order_tab" class="do-tab">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -66,7 +83,7 @@
                                 <select name="customer_id" id="ao_customer_id" class="form-select">
                                     <option value="">-- Select Customer --</option>
                                     @foreach ($customers as $customer)
-                                        <option value="{{ $customer->id }}">{{ $customer->customer_name }}</option>
+                                        <option value="{{ $customer->id }}" data-address="{{ $customer->delivery_address }}">{{ $customer->customer_name }}</option>
                                     @endforeach
                                 </select>
                                 @if(Auth::user()->role === 'admin')
@@ -76,6 +93,10 @@
                                 @endif
                             </div>
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Delivery Address</label>
+                            <textarea id="ao_delivery_address" class="form-control" rows="1" readonly></textarea>
+                        </div>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -84,7 +105,24 @@
                             <i class="bx bx-plus"></i> Add Generic
                         </button>
                     </div>
-                    <div id="aoLineItemsBody"></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width:3%">#</th>
+                                    <th style="width:18%">Generic Description</th>
+                                    <th style="width:16%">Item Description</th>
+                                    <th style="width:9%">Lot/Batch No.</th>
+                                    <th style="width:9%">Expiry Date</th>
+                                    <th style="width:14%">Remarks</th>
+                                    <th style="width:12%">Qty</th>
+                                    <th style="width:8%">Unit</th>
+                                    <th style="width:4%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="aoLineItemsBody"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Purchase Order Tab -->
@@ -106,9 +144,31 @@
                             <input type="text" id="po_customer_display" class="form-control" readonly>
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Delivery Address</label>
+                            <textarea id="po_delivery_address" class="form-control" rows="1" readonly></textarea>
+                        </div>
+                    </div>
 
                     <h6 class="mb-2">Remaining Generic Lines</h6>
-                    <div id="poLineItemsBody"></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width:3%">#</th>
+                                    <th style="width:18%">Generic Description</th>
+                                    <th style="width:16%">Item Description</th>
+                                    <th style="width:9%">Lot/Batch No.</th>
+                                    <th style="width:9%">Expiry Date</th>
+                                    <th style="width:14%">Remarks</th>
+                                    <th style="width:12%">Qty</th>
+                                    <th style="width:8%">Unit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="poLineItemsBody"></tbody>
+                        </table>
+                    </div>
                     <div id="poEmptyMessage" class="alert alert-info d-none">Select a Sales Order to load its remaining lines.</div>
                 </div>
 
@@ -171,10 +231,19 @@
 
     function showTab(tab) {
         document.getElementById('transaction_type').value = tab;
-        document.getElementById('advance_order_tab').style.display = tab === 'advance_order' ? 'block' : 'none';
+        // Walk-in reuses the exact same customer + generic-item picker as
+        // Advance Order — it's the same mechanics, just a different label
+        // for reporting/classification.
+        const showAdvancePanel = tab === 'advance_order' || tab === 'walk_in';
+        document.getElementById('advance_order_tab').style.display = showAdvancePanel ? 'block' : 'none';
         document.getElementById('purchase_order_tab').style.display = tab === 'purchase_order' ? 'block' : 'none';
         document.getElementById('tabBtnAdvance').classList.toggle('active', tab === 'advance_order');
         document.getElementById('tabBtnPurchase').classList.toggle('active', tab === 'purchase_order');
+        document.getElementById('tabBtnWalkIn').classList.toggle('active', tab === 'walk_in');
+
+        if (showAdvancePanel) {
+            document.getElementById('so_no_display').value = '';
+        }
     }
 
     function itemOptionsHtml(items) {
@@ -183,7 +252,7 @@
         }
         let html = '<option value="">-- Select Item --</option>';
         items.forEach(item => {
-            html += `<option value="${item.id}" data-max="${item.quantity}">${item.brand_name} — Batch ${item.batch_no || 'N/A'} (Stock: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})</option>`;
+            html += `<option value="${item.id}" data-max="${item.quantity}" data-batch="${item.batch_no || ''}" data-exp="${item.expiration_date || ''}">${item.brand_name} — Batch ${item.batch_no || 'N/A'} (Stock: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})</option>`;
         });
         return html;
     }
@@ -193,89 +262,114 @@
         return res.json();
     }
 
-    // ---------- Advance Order tab ----------
+    // ---------- Delivery Address auto-fill ----------
 
-    function addAoRow() {
-        const index = aoRowIndex++;
-        const card = document.createElement('div');
-        card.className = 'line-item-card border rounded p-3 mb-3';
-        card.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-semibold text-muted">Generic Item</span>
-                <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn">
-                    <i class="bx bx-trash"></i> Remove
-                </button>
-            </div>
-            <div class="row g-2">
-                <div class="col-md-5">
-                    <label class="form-label small mb-1">Generic Description</label>
-                    <select class="form-select ao-generic-select" required>
-                        <option value="">-- Select Generic Name --</option>
-                        @foreach ($genericNames as $g)
-                            <option value="{{ $g->id }}">{{ $g->generic_name }} ({{ $g->unit }}) — {{ $g->category->category_name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-7 availability-area">
-                    <div class="text-muted small">Select a generic to check availability.</div>
-                </div>
-            </div>
-        `;
-        document.getElementById('aoLineItemsBody').appendChild(card);
+    document.getElementById('ao_customer_id').addEventListener('change', function () {
+        const selected = this.options[this.selectedIndex];
+        document.getElementById('ao_delivery_address').value = selected ? (selected.getAttribute('data-address') || '') : '';
+    });
 
-        card.querySelector('.remove-row-btn').addEventListener('click', () => card.remove());
+    // ---------- Advance Order / Walk-in tab ----------
 
-        const genericSelect = card.querySelector('.ao-generic-select');
-        genericSelect.addEventListener('change', async function () {
-            const area = card.querySelector('.availability-area');
-            if (!this.value) {
-                area.innerHTML = '<div class="text-muted small">Select a generic to check availability.</div>';
-                return;
-            }
-            area.innerHTML = '<div class="text-muted small">Checking availability…</div>';
-            const items = await fetchAvailableItems(this.value);
-            renderAvailability(area, items, index, this.value, null, null);
+    function renumberAoRows() {
+        document.querySelectorAll('#aoLineItemsBody tr').forEach((row, i) => {
+            row.querySelector('.row-number').textContent = i + 1;
         });
     }
 
-    function renderAvailability(area, items, index, genericNameId, salesOrderItemId, remainingQty) {
+    function addAoRow() {
+        const index = aoRowIndex++;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="row-number"></td>
+            <td>
+                <select class="form-select form-select-sm ao-generic-select" required>
+                    <option value="">-- Select Generic Name --</option>
+                    @foreach ($genericNames as $g)
+                        <option value="{{ $g->id }}" data-unit="{{ $g->unit }}">{{ $g->generic_name }} ({{ $g->unit }}) — {{ $g->category->category_name }}</option>
+                    @endforeach
+                </select>
+            </td>
+            <td class="item-select-cell"><span class="text-muted small">Select a generic first</span></td>
+            <td class="batch-cell"></td>
+            <td class="expiry-cell"></td>
+            <td class="remarks-cell"></td>
+            <td class="qty-cell"></td>
+            <td class="unit-cell"></td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger remove-row-btn"><i class="bx bx-trash"></i></button></td>
+        `;
+        document.getElementById('aoLineItemsBody').appendChild(row);
+        renumberAoRows();
+
+        row.querySelector('.remove-row-btn').addEventListener('click', () => {
+            row.remove();
+            renumberAoRows();
+        });
+
+        const genericSelect = row.querySelector('.ao-generic-select');
+        genericSelect.addEventListener('change', async function () {
+            const cells = {
+                item: row.querySelector('.item-select-cell'),
+                batch: row.querySelector('.batch-cell'),
+                expiry: row.querySelector('.expiry-cell'),
+                qty: row.querySelector('.qty-cell'),
+                remarks: row.querySelector('.remarks-cell'),
+                unit: row.querySelector('.unit-cell'),
+            };
+            cells.batch.innerHTML = '';
+            cells.expiry.innerHTML = '';
+            cells.qty.innerHTML = '';
+            cells.remarks.innerHTML = '';
+            cells.unit.innerHTML = '';
+
+            if (!this.value) {
+                cells.item.innerHTML = '<span class="text-muted small">Select a generic first</span>';
+                return;
+            }
+            const unit = this.options[this.selectedIndex].getAttribute('data-unit') || '';
+            cells.item.innerHTML = '<span class="text-muted small">Checking availability…</span>';
+            const items = await fetchAvailableItems(this.value);
+            renderAvailability(cells, items, index, null, null, unit);
+        });
+    }
+
+    function renderAvailability(cells, items, index, salesOrderItemId, remainingQty, unit) {
         const optionsHtml = itemOptionsHtml(items);
 
         if (!optionsHtml) {
-            area.innerHTML = `
-                <div class="alert alert-warning py-2 mb-0">
-                    <i class="bx bx-error"></i> No stock available for this generic — will be skipped.
+            cells.item.innerHTML = `
+                <div class="alert alert-warning py-1 px-2 mb-0 small">
+                    <i class="bx bx-error"></i> No stock available — will be skipped.
                 </div>
             `;
             return;
         }
 
-        area.innerHTML = `
-            <div class="row g-2">
-                <div class="col-md-8">
-                    <label class="form-label small mb-1">Item (Brand / Batch)</label>
-                    <select class="form-select item-select" name="items[${index}][product_batch_id]">${optionsHtml}</select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small mb-1">Qty</label>
-                    <input type="number" class="form-control qty-input" name="items[${index}][qty]" min="1" value="1">
-                </div>
-            </div>
-        `;
+        cells.item.innerHTML = `<select class="form-select form-select-sm item-select" name="items[${index}][product_batch_id]">${optionsHtml}</select>`;
+        cells.batch.innerHTML = `<input type="text" class="form-control form-control-sm batch-display" readonly>`;
+        cells.expiry.innerHTML = `<input type="text" class="form-control form-control-sm expiry-display" readonly>`;
+        cells.qty.innerHTML = `<input type="number" class="form-control form-control-sm qty-input" name="items[${index}][qty]" min="1" value="1">`;
+        cells.remarks.innerHTML = `<input type="text" class="form-control form-control-sm" name="items[${index}][remarks]" placeholder="Type any text here">`;
+        cells.unit.innerHTML = `<input type="text" class="form-control form-control-sm" value="${unit || ''}" readonly>`;
 
         if (salesOrderItemId) {
             const hidden = document.createElement('input');
             hidden.type = 'hidden';
             hidden.name = `items[${index}][sales_order_item_id]`;
             hidden.value = salesOrderItemId;
-            area.appendChild(hidden);
+            cells.remarks.appendChild(hidden);
         }
 
-        const itemSelect = area.querySelector('.item-select');
-        const qtyInput = area.querySelector('.qty-input');
+        const itemSelect = cells.item.querySelector('.item-select');
+        const qtyInput = cells.qty.querySelector('.qty-input');
+        const batchDisplay = cells.batch.querySelector('.batch-display');
+        const expiryDisplay = cells.expiry.querySelector('.expiry-display');
 
-        function clampQty() {
+        function syncSelected() {
             const selected = itemSelect.options[itemSelect.selectedIndex];
+            batchDisplay.value = selected ? (selected.getAttribute('data-batch') || 'N/A') : '';
+            expiryDisplay.value = selected ? (selected.getAttribute('data-exp') || 'N/A') : '';
+
             const maxStock = selected ? parseInt(selected.getAttribute('data-max') || '0', 10) : 0;
             const cap = remainingQty ? Math.min(maxStock, remainingQty) : maxStock;
             qtyInput.max = cap || 1;
@@ -283,8 +377,8 @@
                 qtyInput.value = cap || 1;
             }
         }
-        itemSelect.addEventListener('change', clampQty);
-        clampQty();
+        itemSelect.addEventListener('change', syncSelected);
+        syncSelected();
     }
 
     document.getElementById('addAoRowBtn').addEventListener('click', addAoRow);
@@ -298,6 +392,9 @@
         body.innerHTML = '';
         document.getElementById('po_customer_display').value = '';
 
+        const selectedOption = this.options[this.selectedIndex];
+        document.getElementById('so_no_display').value = soId ? selectedOption.textContent.split(' — ')[0].trim() : '';
+
         if (!soId) {
             emptyMsg.classList.remove('d-none');
             return;
@@ -307,6 +404,7 @@
         const data = await res.json();
 
         document.getElementById('po_customer_display').value = data.customer.customer_name;
+        document.getElementById('po_delivery_address').value = data.customer.delivery_address || '';
 
         if (data.items.length === 0) {
             emptyMsg.textContent = 'This Sales Order has no remaining lines to deliver.';
@@ -317,22 +415,29 @@
 
         for (const line of data.items) {
             const index = poRowIndex++;
-            const card = document.createElement('div');
-            card.className = 'line-item-card border rounded p-3 mb-3';
-            card.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="fw-semibold">${line.generic_name}</span>
-                    <span class="badge bg-warning text-dark">Remaining: ${line.remaining_qty}</span>
-                </div>
-                <div class="availability-area">
-                    <div class="text-muted small">Checking availability…</div>
-                </div>
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${body.children.length + 1}</td>
+                <td>${line.generic_name} <span class="badge bg-warning text-dark">Remaining: ${line.remaining_qty}</span></td>
+                <td class="item-select-cell"><span class="text-muted small">Checking availability…</span></td>
+                <td class="batch-cell"></td>
+                <td class="expiry-cell"></td>
+                <td class="remarks-cell"></td>
+                <td class="qty-cell"></td>
+                <td class="unit-cell"></td>
             `;
-            body.appendChild(card);
+            body.appendChild(row);
 
-            const area = card.querySelector('.availability-area');
+            const cells = {
+                item: row.querySelector('.item-select-cell'),
+                batch: row.querySelector('.batch-cell'),
+                expiry: row.querySelector('.expiry-cell'),
+                qty: row.querySelector('.qty-cell'),
+                remarks: row.querySelector('.remarks-cell'),
+                unit: row.querySelector('.unit-cell'),
+            };
             const items = await fetchAvailableItems(line.generic_name_id);
-            renderAvailability(area, items, index, line.generic_name_id, line.sales_order_item_id, line.remaining_qty);
+            renderAvailability(cells, items, index, line.sales_order_item_id, line.remaining_qty, line.unit);
         }
     });
 
@@ -388,7 +493,8 @@
     // Disable the inactive tab's inputs before submit, so they aren't posted
     document.getElementById('deliveryReceiptForm').addEventListener('submit', function () {
         const activeTab = document.getElementById('transaction_type').value;
-        const inactiveTabEl = document.getElementById(activeTab === 'advance_order' ? 'purchase_order_tab' : 'advance_order_tab');
+        const usesAdvancePanel = activeTab === 'advance_order' || activeTab === 'walk_in';
+        const inactiveTabEl = document.getElementById(usesAdvancePanel ? 'purchase_order_tab' : 'advance_order_tab');
         inactiveTabEl.querySelectorAll('input, select').forEach(el => el.disabled = true);
     });
 

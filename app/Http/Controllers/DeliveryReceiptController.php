@@ -25,7 +25,7 @@ class DeliveryReceiptController extends Controller
         $search = $request->input('search');
 
         $deliveryReceipts = DeliveryReceipt::query()
-            ->with('customer', 'salesOrder')
+            ->with('customer', 'salesOrder', 'items')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('dr_no', 'like', "%{$search}%")
@@ -66,14 +66,16 @@ class DeliveryReceiptController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'transaction_type' => 'required|in:advance_order,purchase_order',
-            'customer_id' => 'required_if:transaction_type,advance_order|nullable|exists:customers,id',
+            'transaction_type' => 'required|in:advance_order,purchase_order,walk_in',
+            'customer_id' => 'required_if:transaction_type,advance_order,walk_in|nullable|exists:customers,id',
             'sales_order_id' => 'required_if:transaction_type,purchase_order|nullable|exists:sales_orders,id',
+            'description' => 'nullable|string|max:255',
             'receipt_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
             'items' => 'required|array|min:1',
             'items.*.product_batch_id' => 'required|exists:product_batches,id',
             'items.*.qty' => 'required|integer|min:1',
+            'items.*.remarks' => 'nullable|string|max:255',
             'items.*.sales_order_item_id' => 'nullable|exists:sales_order_items,id',
         ]);
 
@@ -98,9 +100,34 @@ class DeliveryReceiptController extends Controller
      */
     public function show(DeliveryReceipt $deliveryReceipt)
     {
-        $deliveryReceipt->load('customer', 'salesOrder', 'preparedBy', 'items.productBatch.product');
+        $deliveryReceipt->load('customer', 'salesOrder', 'preparedBy', 'items.productBatch.product', 'items.sales.invoice');
 
         return view('admin.delivery-receipts.show', compact('deliveryReceipt'));
+    }
+
+    /**
+     * Create a Sales Invoice covering the checked (undelivered-but-not-yet-
+     * invoiced) lines of this Delivery Receipt.
+     */
+    public function createInvoice(Request $request, DeliveryReceipt $deliveryReceipt)
+    {
+        $validated = $request->validate([
+            'line_ids' => 'required|array|min:1',
+            'line_ids.*' => 'exists:delivery_receipt_items,id',
+        ]);
+
+        try {
+            $invoice = $this->deliveryReceiptService->createInvoiceFromLines(
+                $deliveryReceipt,
+                $validated['line_ids'],
+                Auth::id()
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        Alert::success('Success', 'Invoice created successfully');
+        return redirect()->route('invoices.show', $invoice);
     }
 
     /**

@@ -99,6 +99,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('admin/invoices', InvoiceController::class)->except(['destroy']);
     Route::resource('admin/sales-orders', SalesOrderController::class)->except(['destroy']);
     Route::resource('admin/delivery-receipts', DeliveryReceiptController::class)->except(['destroy']);
+    Route::post('admin/delivery-receipts/{deliveryReceipt}/create-invoice', [DeliveryReceiptController::class, 'createInvoice'])->name('delivery-receipts.create-invoice');
 });
 
 // Admin Routes - Protected with admin middleware 
