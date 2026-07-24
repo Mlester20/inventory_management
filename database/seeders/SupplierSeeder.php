@@ -15,31 +15,35 @@ class SupplierSeeder extends Seeder
         $suppliers = [
             [
                 'supplier_name' => 'MedSupply Philippines Inc.',
+                'vat_type' => 'VAT',
                 'contact_person' => 'Jorel Licuanan',
-                'phone' => '09171234567',
+                'contact_number' => '09171234567',
                 'email' => 'sales@medsupplyph.com',
-                'address' => '123 Quirino Highway, Quezon City',
+                'delivery_address' => '123 Quirino Highway, Quezon City',
             ],
             [
                 'supplier_name' => 'PharmaCorp Distribution',
+                'vat_type' => 'VAT',
                 'contact_person' => 'Anna Reyes',
-                'phone' => '09182345678',
+                'contact_number' => '09182345678',
                 'email' => 'orders@pharmacorp.ph',
-                'address' => '45 Shaw Boulevard, Mandaluyong City',
+                'delivery_address' => '45 Shaw Boulevard, Mandaluyong City',
             ],
             [
                 'supplier_name' => 'HealthLine Traders',
+                'vat_type' => 'VAT',
                 'contact_person' => 'Mark Santos',
-                'phone' => '09193456789',
+                'contact_number' => '09193456789',
                 'email' => 'contact@healthlinetraders.com',
-                'address' => '78 Aguinaldo Highway, Imus, Cavite',
+                'delivery_address' => '78 Aguinaldo Highway, Imus, Cavite',
             ],
             [
                 'supplier_name' => 'Metro Drug Distributors',
+                'vat_type' => 'VAT',
                 'contact_person' => 'Liza Gonzales',
-                'phone' => '09204567890',
+                'contact_number' => '09204567890',
                 'email' => 'info@metrodrug.ph',
-                'address' => '12 EDSA, Caloocan City',
+                'delivery_address' => '12 EDSA, Caloocan City',
             ],
         ];
 

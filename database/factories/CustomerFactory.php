@@ -18,10 +18,13 @@ class CustomerFactory extends Factory
     {
         return [
             'customer_name' => $this->faker->unique()->name(),
+            'customer_type' => $this->faker->randomElement(['Pharmacy', 'Hospital', 'Clinic']),
+            'price_level' => 'retail',
+            'vat_type' => 'VAT',
             'contact_person' => $this->faker->name(),
-            'phone' => $this->faker->phoneNumber(),
+            'contact_number' => $this->faker->phoneNumber(),
             'email' => $this->faker->unique()->safeEmail(),
-            'address' => $this->faker->address(),
+            'delivery_address' => $this->faker->address(),
         ];
     }
 }

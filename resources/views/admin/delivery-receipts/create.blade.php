@@ -136,9 +136,13 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Customer Type</label>
-                        <select id="nc_customer_type" class="form-select">
-                            @foreach (\App\Models\Customer::CUSTOMER_TYPES as $value => $label)
-                                <option value="{{ $value }}">{{ $label }}</option>
+                        <input type="text" id="nc_customer_type" class="form-control" placeholder="e.g. Pharmacy, Hospital, Clinic (optional)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price Level</label>
+                        <select id="nc_price_level" class="form-select">
+                            @foreach (\App\Models\Customer::PRICE_LEVELS as $value => $label)
+                                <option value="{{ $value }}" {{ $value === 'retail' ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -147,8 +151,8 @@
                         <input type="text" id="nc_contact_person" class="form-control">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Phone</label>
-                        <input type="text" id="nc_phone" class="form-control">
+                        <label class="form-label">Contact Number</label>
+                        <input type="text" id="nc_contact_number" class="form-control">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -347,8 +351,10 @@
         const payload = {
             customer_name: document.getElementById('nc_customer_name').value,
             customer_type: document.getElementById('nc_customer_type').value,
+            price_level: document.getElementById('nc_price_level').value,
+            vat_type: 'VAT',
             contact_person: document.getElementById('nc_contact_person').value,
-            phone: document.getElementById('nc_phone').value,
+            contact_number: document.getElementById('nc_contact_number').value,
             _token: '{{ csrf_token() }}',
         };
 

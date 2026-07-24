@@ -13,7 +13,26 @@ class CustomerController extends Controller
      */
     public function index()
     {
-        $customers = Customer::all();
+        $customers = Customer::withCount(['salesOrders', 'deliveryReceipts'])->get();
+
+        // Invoices aren't linked to a customer_id (invoices.customer_name is
+        // free text — see the earlier Sales Per Customer report), so this is
+        // a best-effort name match, same caveat as that report.
+        $invoiceCounts = \App\Models\Invoice::selectRaw('customer_name, COUNT(*) as count, SUM(amount_due) as total_due')
+            ->groupBy('customer_name')
+            ->get()
+            ->keyBy('customer_name');
+
+        foreach ($customers as $customer) {
+            $invoiceData = $invoiceCounts->get($customer->customer_name);
+            $customer->sales_invoices_count = $invoiceData->count ?? 0;
+            // "Receivables" proxy = sum of invoice amount_due for this customer.
+            // There's no payments/AR ledger in this app yet, so this doesn't
+            // account for money already collected — it's the closest available
+            // approximation, not a true running balance.
+            $customer->receivables = $invoiceData->total_due ?? 0;
+        }
+
         return view('admin.customers', compact('customers'));
     }
 
@@ -25,19 +44,23 @@ class CustomerController extends Controller
         //validate the request
         $request->validate([
             'customer_name' => 'required|unique:customers,customer_name',
-            'customer_type' => 'required|in:' . implode(',', array_keys(Customer::CUSTOMER_TYPES)),
-            'contact_person' => 'nullable',
+            'delivery_address' => 'nullable|string',
+            'contact_number' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:customers,email',
-            'phone' => 'nullable|unique:customers,phone',
-            'address' => 'nullable',
+            'contact_person' => 'nullable|string|max:255',
+            'customer_type' => 'nullable|string|max:255',
+            'price_level' => 'required|in:' . implode(',', array_keys(Customer::PRICE_LEVELS)),
+            'vat_type' => 'required|in:' . implode(',', array_keys(Customer::VAT_TYPES)),
         ]);
         $customer = Customer::create([
             'customer_name' => $request->customer_name,
-            'customer_type' => $request->customer_type,
-            'contact_person' => $request->contact_person,
+            'delivery_address' => $request->delivery_address,
+            'contact_number' => $request->contact_number,
             'email' => $request->email,
-            'phone' => $request->phone,
-            'address' => $request->address,
+            'contact_person' => $request->contact_person,
+            'customer_type' => $request->customer_type,
+            'price_level' => $request->price_level,
+            'vat_type' => $request->vat_type,
         ]);
 
         if ($request->expectsJson()) {
@@ -59,20 +82,24 @@ class CustomerController extends Controller
         //validate the request
         $request->validate([
             'customer_name' => 'required|unique:customers,customer_name,' . $customer->id,
-            'customer_type' => 'required|in:' . implode(',', array_keys(Customer::CUSTOMER_TYPES)),
-            'contact_person' => 'nullable',
+            'delivery_address' => 'nullable|string',
+            'contact_number' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:customers,email,' . $customer->id,
-            'phone' => 'nullable|unique:customers,phone,' . $customer->id,
-            'address' => 'nullable',
+            'contact_person' => 'nullable|string|max:255',
+            'customer_type' => 'nullable|string|max:255',
+            'price_level' => 'required|in:' . implode(',', array_keys(Customer::PRICE_LEVELS)),
+            'vat_type' => 'required|in:' . implode(',', array_keys(Customer::VAT_TYPES)),
         ]);
         //update the customer
         $customer->update([
             'customer_name' => $request->customer_name,
-            'customer_type' => $request->customer_type,
-            'contact_person' => $request->contact_person,
+            'delivery_address' => $request->delivery_address,
+            'contact_number' => $request->contact_number,
             'email' => $request->email,
-            'phone' => $request->phone,
-            'address' => $request->address,
+            'contact_person' => $request->contact_person,
+            'customer_type' => $request->customer_type,
+            'price_level' => $request->price_level,
+            'vat_type' => $request->vat_type,
         ]);
         //redirect to the customers page
         Alert::success('Success', 'Customer updated successfully');

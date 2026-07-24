@@ -30,7 +30,7 @@
                         >
                             <option value="">-- Select Customer --</option>
                             @foreach ($customers as $customer)
-                                <option value="{{ $customer->id }}" data-customer-type="{{ $customer->customer_type }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+                                <option value="{{ $customer->id }}" data-price-level="{{ $customer->price_level }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
                                     {{ $customer->customer_name }}
                                 </option>
                             @endforeach
@@ -142,10 +142,10 @@
         return html;
     }
 
-    function currentCustomerType() {
+    function currentPriceLevel() {
         const select = document.getElementById('customer_id');
         const selected = select.options[select.selectedIndex];
-        return selected ? (selected.getAttribute('data-customer-type') || 'walk_in') : 'walk_in';
+        return selected ? (selected.getAttribute('data-price-level') || 'retail') : 'retail';
     }
 
     function renumberRows() {
@@ -206,7 +206,7 @@
         genericSelect.addEventListener('change', function () {
             const generic = GENERIC_NAMES.find(g => String(g.id) === String(this.value));
             if (generic) {
-                const price = generic.prices[currentCustomerType()];
+                const price = generic.prices[currentPriceLevel()];
                 if (price !== null && price !== undefined) {
                     priceInput.value = parseFloat(price).toFixed(2);
                 }
@@ -248,7 +248,7 @@
             const priceInput = card.querySelector('.price-input');
             const generic = GENERIC_NAMES.find(g => String(g.id) === String(genericSelect.value));
             if (generic) {
-                const price = generic.prices[currentCustomerType()];
+                const price = generic.prices[currentPriceLevel()];
                 if (price !== null && price !== undefined) {
                     priceInput.value = parseFloat(price).toFixed(2);
                 }

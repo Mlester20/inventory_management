@@ -13,7 +13,21 @@ class SupplierController extends Controller
      */
     public function index()
     {
-        $suppliers = Supplier::all();
+        $suppliers = Supplier::withCount(['purchaseOrders', 'goodsReceipts'])
+            ->with('purchaseOrders.items')
+            ->get();
+
+        foreach ($suppliers as $supplier) {
+            // "Payables" proxy = total value of this supplier's purchase order
+            // lines (qty x unit_cost). There's no accounts-payable/payments
+            // ledger in this app yet, so this doesn't account for anything
+            // already paid — it's the closest available approximation, not a
+            // true running balance.
+            $supplier->payables = $supplier->purchaseOrders
+                ->flatMap(fn ($po) => $po->items)
+                ->sum(fn ($item) => $item->qty * $item->unit_cost);
+        }
+
         return view('admin.supplier', compact('suppliers'));
     }
 
@@ -27,15 +41,17 @@ class SupplierController extends Controller
             'supplier_name' => 'required|unique:suppliers,supplier_name',
             'contact_person' => 'required',
             'email' => 'required|email|unique:suppliers,email',
-            'phone' => 'required|unique:suppliers,phone',
-            'address' => 'required',
+            'contact_number' => 'required|unique:suppliers,contact_number',
+            'delivery_address' => 'required',
+            'vat_type' => 'required|in:' . implode(',', array_keys(Supplier::VAT_TYPES)),
         ]);
         Supplier::create([
             'supplier_name' => $request->supplier_name,
             'contact_person' => $request->contact_person,
             'email' => $request->email,
-            'phone' => $request->phone,
-            'address' => $request->address,
+            'contact_number' => $request->contact_number,
+            'delivery_address' => $request->delivery_address,
+            'vat_type' => $request->vat_type,
         ]);
         Alert::success('Success', 'Supplier created successfully');
         return redirect()->route('suppliers.index');
@@ -51,16 +67,18 @@ class SupplierController extends Controller
             'supplier_name' => 'required|unique:suppliers,supplier_name,' . $supplier->id,
             'contact_person' => 'required',
             'email' => 'required|email|unique:suppliers,email,' . $supplier->id,
-            'phone' => 'required|unique:suppliers,phone,' . $supplier->id,
-            'address' => 'required',
+            'contact_number' => 'required|unique:suppliers,contact_number,' . $supplier->id,
+            'delivery_address' => 'required',
+            'vat_type' => 'required|in:' . implode(',', array_keys(Supplier::VAT_TYPES)),
         ]);
         //update the supplier
         $supplier->update([
             'supplier_name' => $request->supplier_name,
             'contact_person' => $request->contact_person,
             'email' => $request->email,
-            'phone' => $request->phone,
-            'address' => $request->address,
+            'contact_number' => $request->contact_number,
+            'delivery_address' => $request->delivery_address,
+            'vat_type' => $request->vat_type,
         ]);
         //redirect to the suppliers page
         Alert::success('Success', 'Supplier updated successfully');

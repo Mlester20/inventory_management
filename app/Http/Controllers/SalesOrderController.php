@@ -59,9 +59,11 @@ class SalesOrderController extends Controller
                 'unit' => $genericName->unit,
                 'category_name' => $genericName->category->category_name,
                 'prices' => [
-                    'walk_in' => $firstItem?->unit_price,
-                    'pharmacy_clinic' => $firstItem?->wholesale_price,
-                    'category_2' => $firstItem?->price_1,
+                    'retail' => $firstItem?->unit_price,
+                    'wholesale' => $firstItem?->wholesale_price,
+                    'price_level_1' => $firstItem?->price_1,
+                    'price_level_2' => $firstItem?->price_2,
+                    'price_level_3' => $firstItem?->price_3,
                 ],
             ];
         })->values();

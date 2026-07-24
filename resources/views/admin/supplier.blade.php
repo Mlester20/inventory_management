@@ -1,6 +1,6 @@
 @extends('layout.app')
 
-@section('title', 'Categories')
+@section('title', 'Suppliers')
 
 @section('content')
     <div class="mt-3">
@@ -11,7 +11,7 @@
             data-bs-toggle="modal"
             data-bs-target="#supplierModal"
         >
-            Add Supplier
+            New Supplier
         </button>
 
         <!-- Add Supplier Modal -->
@@ -24,7 +24,7 @@
                     <div class="modal-content">
 
                         <div class="modal-header">
-                            <h5 class="modal-title">Add Supplier</h5>
+                            <h5 class="modal-title">New Supplier</h5>
                             <button
                                 type="button"
                                 class="btn-close"
@@ -35,7 +35,7 @@
                         <div class="modal-body">
                             <div class="mb-3">
                                 <label for="supplier_name" class="form-label">
-                                    Supplier Name
+                                    Name
                                 </label>
                                 <input
                                     type="text"
@@ -47,15 +47,28 @@
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="contact_person" class="form-label">
-                                    Contact Person
+                                <label for="delivery_address" class="form-label">
+                                    Delivery address
+                                </label>
+                                <textarea
+                                    name="delivery_address"
+                                    id="delivery_address"
+                                    class="form-control"
+                                    placeholder="Enter delivery address"
+                                    rows="3"
+                                    required
+                                ></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="contact_number" class="form-label">
+                                    Contact Number
                                 </label>
                                 <input
                                     type="text"
-                                    name="contact_person"
-                                    id="contact_person"
+                                    name="contact_number"
+                                    id="contact_number"
                                     class="form-control"
-                                    placeholder="Enter contact person"
+                                    placeholder="Enter contact number"
                                     required
                                 >
                             </div>
@@ -73,31 +86,32 @@
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="phone" class="form-label">
-                                    Phone
+                                <label for="contact_person" class="form-label">
+                                    Contact Person
                                 </label>
                                 <input
-                                    type="number"
-                                    maxlength="11"
-                                    name="phone"
-                                    id="phone"
+                                    type="text"
+                                    name="contact_person"
+                                    id="contact_person"
                                     class="form-control"
-                                    placeholder="Enter phone"
+                                    placeholder="Enter contact person"
                                     required
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="address" class="form-label">
-                                    Address
+                                <label for="vat_type" class="form-label">
+                                    VAT Type
                                 </label>
-                                <input
-                                    type="text"
-                                    name="address"
-                                    id="address"
-                                    class="form-control"
-                                    placeholder="Enter address"
+                                <select
+                                    name="vat_type"
+                                    id="vat_type"
+                                    class="form-select"
                                     required
                                 >
+                                    @foreach (\App\Models\Supplier::VAT_TYPES as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
 
@@ -139,7 +153,7 @@
                                 <p id="view_supplier_id" class="text-muted"></p>
                             </div>
                             <div class="col-md-6">
-                                <label><strong>Supplier Name:</strong></label>
+                                <label><strong>Name:</strong></label>
                                 <p id="view_supplier_name" class="text-muted"></p>
                             </div>
                         </div>
@@ -149,8 +163,8 @@
                                 <p id="view_contact_person" class="text-muted"></p>
                             </div>
                             <div class="col-md-6">
-                                <label><strong>Phone:</strong></label>
-                                <p id="view_phone" class="text-muted"></p>
+                                <label><strong>Contact Number:</strong></label>
+                                <p id="view_contact_number" class="text-muted"></p>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -158,11 +172,15 @@
                                 <label><strong>Email:</strong></label>
                                 <p id="view_email" class="text-muted"></p>
                             </div>
+                            <div class="col-md-6">
+                                <label><strong>VAT Type:</strong></label>
+                                <p id="view_vat_type" class="text-muted"></p>
+                            </div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-12">
-                                <label><strong>Address:</strong></label>
-                                <p id="view_address" class="text-muted"></p>
+                                <label><strong>Delivery address:</strong></label>
+                                <p id="view_delivery_address" class="text-muted"></p>
                             </div>
                         </div>
                     </div>
@@ -202,7 +220,7 @@
                         <div class="modal-body">
                             <div class="mb-3">
                                 <label for="update_supplier_name" class="form-label">
-                                    Supplier Name
+                                    Name
                                 </label>
                                 <input
                                     type="text"
@@ -214,15 +232,28 @@
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="update_contact_person" class="form-label">
-                                    Contact Person
+                                <label for="update_delivery_address" class="form-label">
+                                    Delivery address
+                                </label>
+                                <textarea
+                                    name="delivery_address"
+                                    id="update_delivery_address"
+                                    class="form-control"
+                                    placeholder="Enter delivery address"
+                                    rows="3"
+                                    required
+                                ></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="update_contact_number" class="form-label">
+                                    Contact Number
                                 </label>
                                 <input
                                     type="text"
-                                    name="contact_person"
-                                    id="update_contact_person"
+                                    name="contact_number"
+                                    id="update_contact_number"
                                     class="form-control"
-                                    placeholder="Enter contact person"
+                                    placeholder="Enter contact number"
                                     required
                                 >
                             </div>
@@ -240,31 +271,32 @@
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="update_phone" class="form-label">
-                                    Phone
+                                <label for="update_contact_person" class="form-label">
+                                    Contact Person
                                 </label>
                                 <input
-                                    type="number"
-                                    maxlength="11"
-                                    name="phone"
-                                    id="update_phone"
+                                    type="text"
+                                    name="contact_person"
+                                    id="update_contact_person"
                                     class="form-control"
-                                    placeholder="Enter phone"
+                                    placeholder="Enter contact person"
                                     required
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="update_address" class="form-label">
-                                    Address
+                                <label for="update_vat_type" class="form-label">
+                                    VAT Type
                                 </label>
-                                <input
-                                    type="text"
-                                    name="address"
-                                    id="update_address"
-                                    class="form-control"
-                                    placeholder="Enter address"
+                                <select
+                                    name="vat_type"
+                                    id="update_vat_type"
+                                    class="form-select"
                                     required
                                 >
+                                    @foreach (\App\Models\Supplier::VAT_TYPES as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
 
@@ -294,19 +326,25 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Supplier Name</th>
-                        <th>Contact Person</th>
-                        <th>Email</th>
+                        <th>Name</th>
+                        <th class="text-end">Purchase Orders</th>
+                        <th class="text-end">Purchase Invoices</th>
+                        <th class="text-end">Goods Receipts</th>
+                        <th class="text-end">Balances</th>
+                        <th class="text-end">Payables (PHP)</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($suppliers as $supplier)
+                    @forelse ($suppliers as $supplier)
                         <tr>
                             <td>{{ $supplier->id }}</td>
                             <td>{{ $supplier->supplier_name }}</td>
-                            <td>{{ $supplier->contact_person }}</td>
-                            <td>{{ $supplier->email }}</td>
+                            <td class="text-end">{{ $supplier->purchase_orders_count }}</td>
+                            <td class="text-end text-muted" title="No Purchase Invoice module exists in this app yet">—</td>
+                            <td class="text-end">{{ $supplier->goods_receipts_count }}</td>
+                            <td class="text-end text-muted" title="No accounts-payable ledger exists in this app yet">—</td>
+                            <td class="text-end">{{ number_format($supplier->payables, 2) }}</td>
                             <td>
                                 <button
                                     type="button"
@@ -316,9 +354,10 @@
                                     data-id="{{ $supplier->id }}"
                                     data-name="{{ $supplier->supplier_name }}"
                                     data-contact="{{ $supplier->contact_person }}"
-                                    data-phone="{{ $supplier->phone }}"
+                                    data-contact-number="{{ $supplier->contact_number }}"
                                     data-email="{{ $supplier->email }}"
-                                    data-address="{{ $supplier->address }}"
+                                    data-address="{{ $supplier->delivery_address }}"
+                                    data-vat-type="{{ $supplier->vat_type }}"
                                 >
                                     View
                                 </button>
@@ -331,9 +370,10 @@
                                     data-id="{{ $supplier->id }}"
                                     data-name="{{ $supplier->supplier_name }}"
                                     data-contact="{{ $supplier->contact_person }}"
-                                    data-phone="{{ $supplier->phone }}"
+                                    data-contact-number="{{ $supplier->contact_number }}"
                                     data-email="{{ $supplier->email }}"
-                                    data-address="{{ $supplier->address }}"
+                                    data-address="{{ $supplier->delivery_address }}"
+                                    data-vat-type="{{ $supplier->vat_type }}"
                                 >
                                     Edit
                                 </button>
@@ -356,7 +396,11 @@
                                 </form>
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">No suppliers yet.</td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -368,20 +412,13 @@
     // Handle view button click to populate the view modal
     document.querySelectorAll('.view-btn').forEach(button => {
         button.addEventListener('click', function() {
-            const supplierId = this.getAttribute('data-id');
-            const supplierName = this.getAttribute('data-name');
-            const contactPerson = this.getAttribute('data-contact');
-            const phone = this.getAttribute('data-phone');
-            const email = this.getAttribute('data-email');
-            const address = this.getAttribute('data-address');
-            
-            // Populate the view modal
-            document.getElementById('view_supplier_id').textContent = supplierId;
-            document.getElementById('view_supplier_name').textContent = supplierName;
-            document.getElementById('view_contact_person').textContent = contactPerson;
-            document.getElementById('view_phone').textContent = phone;
-            document.getElementById('view_email').textContent = email;
-            document.getElementById('view_address').textContent = address;
+            document.getElementById('view_supplier_id').textContent = this.getAttribute('data-id');
+            document.getElementById('view_supplier_name').textContent = this.getAttribute('data-name');
+            document.getElementById('view_contact_person').textContent = this.getAttribute('data-contact');
+            document.getElementById('view_contact_number').textContent = this.getAttribute('data-contact-number');
+            document.getElementById('view_email').textContent = this.getAttribute('data-email');
+            document.getElementById('view_address').textContent = this.getAttribute('data-address');
+            document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type');
         });
     });
 
@@ -389,19 +426,14 @@
     document.querySelectorAll('.edit-btn').forEach(button => {
         button.addEventListener('click', function() {
             const supplierId = this.getAttribute('data-id');
-            const supplierName = this.getAttribute('data-name');
-            const contactPerson = this.getAttribute('data-contact');
-            const phone = this.getAttribute('data-phone');
-            const email = this.getAttribute('data-email');
-            const address = this.getAttribute('data-address');
-            
-            // Populate the modal form
-            document.getElementById('update_supplier_name').value = supplierName;
-            document.getElementById('update_contact_person').value = contactPerson;
-            document.getElementById('update_email').value = email;
-            document.getElementById('update_phone').value = phone;
-            document.getElementById('update_address').value = address;
-            
+
+            document.getElementById('update_supplier_name').value = this.getAttribute('data-name');
+            document.getElementById('update_contact_person').value = this.getAttribute('data-contact');
+            document.getElementById('update_contact_number').value = this.getAttribute('data-contact-number');
+            document.getElementById('update_email').value = this.getAttribute('data-email');
+            document.getElementById('update_delivery_address').value = this.getAttribute('data-address');
+            document.getElementById('update_vat_type').value = this.getAttribute('data-vat-type') || 'VAT';
+
             // Set the form action to the update route
             const form = document.getElementById('updateSupplierForm');
             form.action = `/admin/suppliers/${supplierId}`;
@@ -412,20 +444,11 @@
     const supplierModal = document.getElementById('supplierModal');
     supplierModal.addEventListener('hide.bs.modal', function() {
         document.getElementById('supplier_name').value = '';
-        document.getElementById('contact_person').value = '';
+        document.getElementById('delivery_address').value = '';
+        document.getElementById('contact_number').value = '';
         document.getElementById('email').value = '';
-        document.getElementById('phone').value = '';
-        document.getElementById('address').value = '';
-    });
-
-    // Clear the update supplier form when the modal is hidden
-    const updateSupplierModal = document.getElementById('updateSupplierModal');
-    updateSupplierModal.addEventListener('hide.bs.modal', function() {
-        document.getElementById('update_supplier_name').value = '';
-        document.getElementById('update_contact_person').value = '';
-        document.getElementById('update_email').value = '';
-        document.getElementById('update_phone').value = '';
-        document.getElementById('update_address').value = '';
+        document.getElementById('contact_person').value = '';
+        document.getElementById('vat_type').value = 'VAT';
     });
 </script>
 @endsection

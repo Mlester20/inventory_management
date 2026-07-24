@@ -11,7 +11,7 @@
             data-bs-toggle="modal"
             data-bs-target="#customerModal"
         >
-            Add Customer
+            New Customer
         </button>
 
         <!-- Add Customer Modal -->
@@ -24,7 +24,7 @@
                     <div class="modal-content">
 
                         <div class="modal-header">
-                            <h5 class="modal-title">Add Customer</h5>
+                            <h5 class="modal-title">New Customer</h5>
                             <button
                                 type="button"
                                 class="btn-close"
@@ -35,7 +35,7 @@
                         <div class="modal-body">
                             <div class="mb-3">
                                 <label for="customer_name" class="form-label">
-                                    Customer Name
+                                    Name
                                 </label>
                                 <input
                                     type="text"
@@ -47,30 +47,27 @@
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="customer_type" class="form-label">
-                                    Customer Type
+                                <label for="delivery_address" class="form-label">
+                                    Delivery address
                                 </label>
-                                <select
-                                    name="customer_type"
-                                    id="customer_type"
-                                    class="form-select"
-                                    required
-                                >
-                                    @foreach (\App\Models\Customer::CUSTOMER_TYPES as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
+                                <textarea
+                                    name="delivery_address"
+                                    id="delivery_address"
+                                    class="form-control"
+                                    placeholder="Enter delivery address (optional)"
+                                    rows="3"
+                                ></textarea>
                             </div>
                             <div class="mb-3">
-                                <label for="contact_person" class="form-label">
-                                    Contact Person
+                                <label for="contact_number" class="form-label">
+                                    Contact Number
                                 </label>
                                 <input
                                     type="text"
-                                    name="contact_person"
-                                    id="contact_person"
+                                    name="contact_number"
+                                    id="contact_number"
                                     class="form-control"
-                                    placeholder="Enter contact person (optional)"
+                                    placeholder="Enter contact number (optional)"
                                 >
                             </div>
                             <div class="mb-3">
@@ -86,28 +83,58 @@
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="phone" class="form-label">
-                                    Phone
+                                <label for="contact_person" class="form-label">
+                                    Contact Person
                                 </label>
                                 <input
                                     type="text"
-                                    name="phone"
-                                    id="phone"
+                                    name="contact_person"
+                                    id="contact_person"
                                     class="form-control"
-                                    placeholder="Enter phone (optional)"
+                                    placeholder="Enter contact person (optional)"
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="address" class="form-label">
-                                    Address
+                                <label for="customer_type" class="form-label">
+                                    Customer Type
                                 </label>
                                 <input
                                     type="text"
-                                    name="address"
-                                    id="address"
+                                    name="customer_type"
+                                    id="customer_type"
                                     class="form-control"
-                                    placeholder="Enter address (optional)"
+                                    placeholder="e.g. Pharmacy, Hospital, Clinic (optional)"
                                 >
+                            </div>
+                            <div class="mb-3">
+                                <label for="price_level" class="form-label">
+                                    Price Level
+                                </label>
+                                <select
+                                    name="price_level"
+                                    id="price_level"
+                                    class="form-select"
+                                    required
+                                >
+                                    @foreach (\App\Models\Customer::PRICE_LEVELS as $value => $label)
+                                        <option value="{{ $value }}" {{ $value === 'retail' ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="vat_type" class="form-label">
+                                    VAT Type
+                                </label>
+                                <select
+                                    name="vat_type"
+                                    id="vat_type"
+                                    class="form-select"
+                                    required
+                                >
+                                    @foreach (\App\Models\Customer::VAT_TYPES as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
 
@@ -149,7 +176,7 @@
                                 <p id="view_customer_id" class="text-muted"></p>
                             </div>
                             <div class="col-md-6">
-                                <label><strong>Customer Name:</strong></label>
+                                <label><strong>Name:</strong></label>
                                 <p id="view_customer_name" class="text-muted"></p>
                             </div>
                         </div>
@@ -162,21 +189,31 @@
                                 <label><strong>Contact Person:</strong></label>
                                 <p id="view_contact_person" class="text-muted"></p>
                             </div>
-                            <div class="col-md-6">
-                                <label><strong>Phone:</strong></label>
-                                <p id="view_phone" class="text-muted"></p>
-                            </div>
                         </div>
                         <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label><strong>Contact Number:</strong></label>
+                                <p id="view_contact_number" class="text-muted"></p>
+                            </div>
                             <div class="col-md-6">
                                 <label><strong>Email:</strong></label>
                                 <p id="view_email" class="text-muted"></p>
                             </div>
                         </div>
                         <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label><strong>Price Level:</strong></label>
+                                <p id="view_price_level" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label><strong>VAT Type:</strong></label>
+                                <p id="view_vat_type" class="text-muted"></p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
                             <div class="col-md-12">
-                                <label><strong>Address:</strong></label>
-                                <p id="view_address" class="text-muted"></p>
+                                <label><strong>Delivery address:</strong></label>
+                                <p id="view_delivery_address" class="text-muted"></p>
                             </div>
                         </div>
                     </div>
@@ -216,7 +253,7 @@
                         <div class="modal-body">
                             <div class="mb-3">
                                 <label for="update_customer_name" class="form-label">
-                                    Customer Name
+                                    Name
                                 </label>
                                 <input
                                     type="text"
@@ -228,30 +265,27 @@
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="update_customer_type" class="form-label">
-                                    Customer Type
+                                <label for="update_delivery_address" class="form-label">
+                                    Delivery address
                                 </label>
-                                <select
-                                    name="customer_type"
-                                    id="update_customer_type"
-                                    class="form-select"
-                                    required
-                                >
-                                    @foreach (\App\Models\Customer::CUSTOMER_TYPES as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
+                                <textarea
+                                    name="delivery_address"
+                                    id="update_delivery_address"
+                                    class="form-control"
+                                    placeholder="Enter delivery address (optional)"
+                                    rows="3"
+                                ></textarea>
                             </div>
                             <div class="mb-3">
-                                <label for="update_contact_person" class="form-label">
-                                    Contact Person
+                                <label for="update_contact_number" class="form-label">
+                                    Contact Number
                                 </label>
                                 <input
                                     type="text"
-                                    name="contact_person"
-                                    id="update_contact_person"
+                                    name="contact_number"
+                                    id="update_contact_number"
                                     class="form-control"
-                                    placeholder="Enter contact person (optional)"
+                                    placeholder="Enter contact number (optional)"
                                 >
                             </div>
                             <div class="mb-3">
@@ -267,28 +301,58 @@
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="update_phone" class="form-label">
-                                    Phone
+                                <label for="update_contact_person" class="form-label">
+                                    Contact Person
                                 </label>
                                 <input
                                     type="text"
-                                    name="phone"
-                                    id="update_phone"
+                                    name="contact_person"
+                                    id="update_contact_person"
                                     class="form-control"
-                                    placeholder="Enter phone (optional)"
+                                    placeholder="Enter contact person (optional)"
                                 >
                             </div>
                             <div class="mb-3">
-                                <label for="update_address" class="form-label">
-                                    Address
+                                <label for="update_customer_type" class="form-label">
+                                    Customer Type
                                 </label>
                                 <input
                                     type="text"
-                                    name="address"
-                                    id="update_address"
+                                    name="customer_type"
+                                    id="update_customer_type"
                                     class="form-control"
-                                    placeholder="Enter address (optional)"
+                                    placeholder="e.g. Pharmacy, Hospital, Clinic (optional)"
                                 >
+                            </div>
+                            <div class="mb-3">
+                                <label for="update_price_level" class="form-label">
+                                    Price Level
+                                </label>
+                                <select
+                                    name="price_level"
+                                    id="update_price_level"
+                                    class="form-select"
+                                    required
+                                >
+                                    @foreach (\App\Models\Customer::PRICE_LEVELS as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="update_vat_type" class="form-label">
+                                    VAT Type
+                                </label>
+                                <select
+                                    name="vat_type"
+                                    id="update_vat_type"
+                                    class="form-select"
+                                    required
+                                >
+                                    @foreach (\App\Models\Customer::VAT_TYPES as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
 
@@ -318,21 +382,29 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Customer Name</th>
-                        <th>Type</th>
-                        <th>Contact Person</th>
-                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Customer Type</th>
+                        <th class="text-end">Sales Orders</th>
+                        <th class="text-end">Sales Invoices</th>
+                        <th class="text-end">Delivery Notes</th>
+                        <th class="text-end">Advances</th>
+                        <th class="text-end">Balances</th>
+                        <th class="text-end">Receivables (PHP)</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($customers as $customer)
+                    @forelse ($customers as $customer)
                         <tr>
                             <td>{{ $customer->id }}</td>
                             <td>{{ $customer->customer_name }}</td>
-                            <td>{{ \App\Models\Customer::CUSTOMER_TYPES[$customer->customer_type] ?? $customer->customer_type }}</td>
-                            <td>{{ $customer->contact_person }}</td>
-                            <td>{{ $customer->email }}</td>
+                            <td>{{ $customer->customer_type ?: '—' }}</td>
+                            <td class="text-end">{{ $customer->sales_orders_count }}</td>
+                            <td class="text-end">{{ $customer->sales_invoices_count }}</td>
+                            <td class="text-end">{{ $customer->delivery_receipts_count }}</td>
+                            <td class="text-end text-muted" title="No advances/payments ledger exists in this app yet">—</td>
+                            <td class="text-end text-muted" title="No accounts-receivable ledger exists in this app yet">—</td>
+                            <td class="text-end">{{ number_format($customer->receivables, 2) }}</td>
                             <td>
                                 <button
                                     type="button"
@@ -341,11 +413,13 @@
                                     data-bs-target="#viewCustomerModal"
                                     data-id="{{ $customer->id }}"
                                     data-name="{{ $customer->customer_name }}"
-                                    data-type="{{ \App\Models\Customer::CUSTOMER_TYPES[$customer->customer_type] ?? $customer->customer_type }}"
+                                    data-type="{{ $customer->customer_type }}"
                                     data-contact="{{ $customer->contact_person }}"
-                                    data-phone="{{ $customer->phone }}"
+                                    data-contact-number="{{ $customer->contact_number }}"
                                     data-email="{{ $customer->email }}"
-                                    data-address="{{ $customer->address }}"
+                                    data-address="{{ $customer->delivery_address }}"
+                                    data-price-level="{{ \App\Models\Customer::PRICE_LEVELS[$customer->price_level] ?? $customer->price_level }}"
+                                    data-vat-type="{{ $customer->vat_type }}"
                                 >
                                     View
                                 </button>
@@ -357,11 +431,13 @@
                                     data-bs-target="#updateCustomerModal"
                                     data-id="{{ $customer->id }}"
                                     data-name="{{ $customer->customer_name }}"
-                                    data-type-value="{{ $customer->customer_type }}"
+                                    data-type="{{ $customer->customer_type }}"
                                     data-contact="{{ $customer->contact_person }}"
-                                    data-phone="{{ $customer->phone }}"
+                                    data-contact-number="{{ $customer->contact_number }}"
                                     data-email="{{ $customer->email }}"
-                                    data-address="{{ $customer->address }}"
+                                    data-address="{{ $customer->delivery_address }}"
+                                    data-price-level="{{ $customer->price_level }}"
+                                    data-vat-type="{{ $customer->vat_type }}"
                                 >
                                     Edit
                                 </button>
@@ -384,7 +460,11 @@
                                 </form>
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-4">No customers yet.</td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -396,22 +476,15 @@
     // Handle view button click to populate the view modal
     document.querySelectorAll('.view-btn').forEach(button => {
         button.addEventListener('click', function() {
-            const customerId = this.getAttribute('data-id');
-            const customerName = this.getAttribute('data-name');
-            const customerType = this.getAttribute('data-type');
-            const contactPerson = this.getAttribute('data-contact');
-            const phone = this.getAttribute('data-phone');
-            const email = this.getAttribute('data-email');
-            const address = this.getAttribute('data-address');
-
-            // Populate the view modal
-            document.getElementById('view_customer_id').textContent = customerId;
-            document.getElementById('view_customer_name').textContent = customerName;
-            document.getElementById('view_customer_type').textContent = customerType || 'N/A';
-            document.getElementById('view_contact_person').textContent = contactPerson || 'N/A';
-            document.getElementById('view_phone').textContent = phone || 'N/A';
-            document.getElementById('view_email').textContent = email || 'N/A';
-            document.getElementById('view_address').textContent = address || 'N/A';
+            document.getElementById('view_customer_id').textContent = this.getAttribute('data-id');
+            document.getElementById('view_customer_name').textContent = this.getAttribute('data-name');
+            document.getElementById('view_customer_type').textContent = this.getAttribute('data-type') || 'N/A';
+            document.getElementById('view_contact_person').textContent = this.getAttribute('data-contact') || 'N/A';
+            document.getElementById('view_contact_number').textContent = this.getAttribute('data-contact-number') || 'N/A';
+            document.getElementById('view_email').textContent = this.getAttribute('data-email') || 'N/A';
+            document.getElementById('view_address').textContent = this.getAttribute('data-address') || 'N/A';
+            document.getElementById('view_price_level').textContent = this.getAttribute('data-price-level') || 'N/A';
+            document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type') || 'N/A';
         });
     });
 
@@ -419,20 +492,15 @@
     document.querySelectorAll('.edit-btn').forEach(button => {
         button.addEventListener('click', function() {
             const customerId = this.getAttribute('data-id');
-            const customerName = this.getAttribute('data-name');
-            const customerType = this.getAttribute('data-type-value');
-            const contactPerson = this.getAttribute('data-contact');
-            const phone = this.getAttribute('data-phone');
-            const email = this.getAttribute('data-email');
-            const address = this.getAttribute('data-address');
 
-            // Populate the modal form
-            document.getElementById('update_customer_name').value = customerName;
-            document.getElementById('update_customer_type').value = customerType || 'walk_in';
-            document.getElementById('update_contact_person').value = contactPerson || '';
-            document.getElementById('update_email').value = email || '';
-            document.getElementById('update_phone').value = phone || '';
-            document.getElementById('update_address').value = address || '';
+            document.getElementById('update_customer_name').value = this.getAttribute('data-name');
+            document.getElementById('update_customer_type').value = this.getAttribute('data-type') || '';
+            document.getElementById('update_contact_person').value = this.getAttribute('data-contact') || '';
+            document.getElementById('update_contact_number').value = this.getAttribute('data-contact-number') || '';
+            document.getElementById('update_email').value = this.getAttribute('data-email') || '';
+            document.getElementById('update_delivery_address').value = this.getAttribute('data-address') || '';
+            document.getElementById('update_price_level').value = this.getAttribute('data-price-level') || 'retail';
+            document.getElementById('update_vat_type').value = this.getAttribute('data-vat-type') || 'VAT';
 
             // Set the form action to the update route
             const form = document.getElementById('updateCustomerForm');
@@ -444,21 +512,13 @@
     const customerModal = document.getElementById('customerModal');
     customerModal.addEventListener('hide.bs.modal', function() {
         document.getElementById('customer_name').value = '';
-        document.getElementById('customer_type').value = 'walk_in';
-        document.getElementById('contact_person').value = '';
+        document.getElementById('delivery_address').value = '';
+        document.getElementById('contact_number').value = '';
         document.getElementById('email').value = '';
-        document.getElementById('phone').value = '';
-        document.getElementById('address').value = '';
-    });
-
-    // Clear the update customer form when the modal is hidden
-    const updateCustomerModal = document.getElementById('updateCustomerModal');
-    updateCustomerModal.addEventListener('hide.bs.modal', function() {
-        document.getElementById('update_customer_name').value = '';
-        document.getElementById('update_contact_person').value = '';
-        document.getElementById('update_email').value = '';
-        document.getElementById('update_phone').value = '';
-        document.getElementById('update_address').value = '';
+        document.getElementById('contact_person').value = '';
+        document.getElementById('customer_type').value = '';
+        document.getElementById('price_level').value = 'retail';
+        document.getElementById('vat_type').value = 'VAT';
     });
 </script>
 @endsection

@@ -19,10 +19,11 @@ class SupplierFactory extends Factory
     {
         return [
             'supplier_name' => $this->faker->company(),
+            'vat_type' => 'VAT',
             'contact_person' => $this->faker->name(),
-            'phone' => $this->faker->phoneNumber(),
+            'contact_number' => $this->faker->phoneNumber(),
             'email' => $this->faker->companyEmail(),
-            'address' => $this->faker->address(),
+            'delivery_address' => $this->faker->address(),
         ];
     }
 }
