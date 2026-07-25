@@ -22,8 +22,12 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TaxesController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ExpenseCategoryController;
+use App\Http\Controllers\Admin\ExpenseReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\SalesOrderController;
+use App\Http\Controllers\SalesQuoteController;
 use App\Http\Controllers\DeliveryReceiptController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\GoodsReceiptController;
@@ -97,6 +101,8 @@ Route::middleware(['auth'])->group(function() {
 // Deleting a transaction stays admin-only (registered in the admin group).
 Route::middleware(['auth'])->group(function () {
     Route::resource('admin/invoices', InvoiceController::class)->except(['destroy']);
+    Route::resource('admin/sales-quotes', SalesQuoteController::class)->except(['destroy']);
+    Route::post('admin/sales-quotes/{salesQuote}/convert', [SalesQuoteController::class, 'convertToSalesOrder'])->name('sales-quotes.convert');
     Route::resource('admin/sales-orders', SalesOrderController::class)->except(['destroy']);
     Route::resource('admin/delivery-receipts', DeliveryReceiptController::class)->except(['destroy']);
     Route::post('admin/delivery-receipts/{deliveryReceipt}/create-invoice', [DeliveryReceiptController::class, 'createInvoice'])->name('delivery-receipts.create-invoice');
@@ -114,6 +120,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/reports/sales-per-customer', [SalesReportController::class, 'perCustomer'])->name('admin.reports.sales-per-customer');
     Route::get('admin/reports/purchase-summary', [PurchaseReportController::class, 'summary'])->name('admin.reports.purchase-summary');
     Route::get('admin/reports/purchases-per-supplier', [PurchaseReportController::class, 'perSupplier'])->name('admin.reports.purchases-per-supplier');
+    Route::get('admin/reports/expense-summary', [ExpenseReportController::class, 'summary'])->name('admin.reports.expense-summary');
 
     // Admin Profile Routes
     Route::get('admin/profile/edit', [ProfileController::class, 'edit'])->name('admin.profile.edit');
@@ -139,6 +146,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::resource('admin/return-items', ReturnItemController::class);
     Route::resource('admin/taxes', TaxesController::class);
+    Route::resource('admin/expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('admin/expense-categories', ExpenseCategoryController::class)->only(['store', 'destroy']);
     Route::resource('admin/purchase-orders', PurchaseOrderController::class);
     Route::resource('admin/goods-receipts', GoodsReceiptController::class)->except(['destroy']);
 
@@ -146,6 +155,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // and regular users (see the 'auth'-only group below) — deleting them
     // is the one action that stays admin-only.
     Route::delete('admin/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
+    Route::delete('admin/sales-quotes/{sales_quote}', [SalesQuoteController::class, 'destroy'])->name('sales-quotes.destroy');
     Route::delete('admin/sales-orders/{sales_order}', [SalesOrderController::class, 'destroy'])->name('sales-orders.destroy');
 
     // Return Items Actions

@@ -5,31 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class SalesOrder extends Model
+class SalesQuote extends Model
 {
     protected $fillable = [
         'customer_id',
-        'sales_quote_id',
-        'so_no',
-        'po_no',
+        'quote_no',
         'status',
-        'order_date',
+        'quote_date',
+        'valid_until',
         'prepared_by',
     ];
 
     protected $casts = [
-        'order_date' => 'date',
+        'quote_date' => 'date',
+        'valid_until' => 'date',
     ];
 
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
-    }
-
-    public function salesQuote(): BelongsTo
-    {
-        return $this->belongsTo(SalesQuote::class);
     }
 
     public function preparedBy(): BelongsTo
@@ -39,11 +35,11 @@ class SalesOrder extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(SalesOrderItem::class);
+        return $this->hasMany(SalesQuoteItem::class);
     }
 
-    public function deliveryReceipts(): HasMany
+    public function salesOrder(): HasOne
     {
-        return $this->hasMany(DeliveryReceipt::class);
+        return $this->hasOne(SalesOrder::class);
     }
 }

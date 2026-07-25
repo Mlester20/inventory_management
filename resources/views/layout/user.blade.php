@@ -155,8 +155,26 @@
             </li>
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-file"></i>
+                <div data-i18n="Sales Quote">Sales Quote</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="{{ route('sales-quotes.index') }}" class="menu-link">
+                    <div data-i18n="Error">Sales Quotes</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('sales-quotes.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Sales Quote</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-cart"></i>
-                <div data-i18n="Purchase Order">Purchase Order</div>
+                <div data-i18n="Sales Order">Sales Order</div>
               </a>
               <ul class="menu-sub">
                 <li class="menu-item">

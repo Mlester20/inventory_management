@@ -2,34 +2,38 @@
 
 namespace App\Services;
 
-use App\Models\Purchase;
+use App\Models\GoodsReceiptItem;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class PurchaseReportService
 {
     /**
-     * Base query joining purchase (POS checkout) lines through their batch
-     * to their product, with the date-range filter applied. Rebuilt fresh
-     * on every call so the totals/breakdowns below don't share mutated
-     * query state.
+     * Base query joining Goods Receipt lines through their batch to their
+     * product, with the date-range filter applied. Rebuilt fresh on every
+     * call so the totals/breakdowns below don't share mutated query state.
      *
-     * Despite the table's name, `purchases` records POS checkout/sale
-     * transactions (see PurchaseController/CogsService) — not money paid to
-     * suppliers. There is no supplier-side procurement tracking in this
-     * schema, so this report is scoped to that existing table as-is.
+     * Sourced from `goods_receipt_items`/`goods_receipts` — the actual
+     * supplier-side procurement ledger (Purchase Order / Goods Receipt) —
+     * not the POS checkout `purchases` table used elsewhere in this app.
      */
     protected function baseQuery(?string $startDate, ?string $endDate): Builder
     {
-        return Purchase::query()
-            ->join('product_batches', 'product_batches.id', '=', 'purchases.product_batch_id')
-            ->join('products', 'products.id', '=', 'product_batches.product_id')
-            ->dateRange($startDate, $endDate);
+        $query = GoodsReceiptItem::query()
+            ->join('goods_receipts', 'goods_receipts.id', '=', 'goods_receipt_items.goods_receipt_id')
+            ->join('product_batches', 'product_batches.id', '=', 'goods_receipt_items.product_batch_id')
+            ->join('products', 'products.id', '=', 'product_batches.product_id');
+
+        if ($startDate && $endDate) {
+            $query->whereBetween('goods_receipts.receipt_date', [$startDate, $endDate]);
+        }
+
+        return $query;
     }
 
     /**
-     * Aggregate purchase (POS checkout) summary over a date range,
-     * optionally filtered by category.
+     * Aggregate Goods Receipt summary over a date range, optionally
+     * filtered by category.
      *
      * @return array{total_amount: float, total_qty: int, total_transactions: int, by_item: Collection, by_category: Collection}
      */
@@ -46,18 +50,18 @@ class PurchaseReportService
         };
 
         $totals = $filtered()
-            ->selectRaw('SUM(purchases.total_price) as total_amount, SUM(purchases.quantity_sold) as total_qty, COUNT(*) as total_transactions')
+            ->selectRaw('SUM(goods_receipt_items.qty * goods_receipt_items.unit_cost) as total_amount, SUM(goods_receipt_items.qty) as total_qty, COUNT(DISTINCT goods_receipt_items.goods_receipt_id) as total_transactions')
             ->first();
 
         $byItem = $filtered()
-            ->selectRaw('products.id, products.item_name, SUM(purchases.quantity_sold) as qty, SUM(purchases.total_price) as amount')
+            ->selectRaw('products.id, products.item_name, SUM(goods_receipt_items.qty) as qty, SUM(goods_receipt_items.qty * goods_receipt_items.unit_cost) as amount')
             ->groupBy('products.id', 'products.item_name')
             ->orderByDesc('amount')
             ->get();
 
         $byCategory = $filtered()
             ->join('categories', 'categories.id', '=', 'products.category_id')
-            ->selectRaw('categories.id, categories.category_name, SUM(purchases.quantity_sold) as qty, SUM(purchases.total_price) as amount')
+            ->selectRaw('categories.id, categories.category_name, SUM(goods_receipt_items.qty) as qty, SUM(goods_receipt_items.qty * goods_receipt_items.unit_cost) as amount')
             ->groupBy('categories.id', 'categories.category_name')
             ->orderByDesc('amount')
             ->get();
@@ -72,20 +76,18 @@ class PurchaseReportService
     }
 
     /**
-     * Purchase (POS checkout) transactions grouped by supplier, inferred
-     * via products.supplier_id since `purchases` has no direct supplier_id
-     * column of its own.
+     * Goods Receipts grouped by supplier, via `goods_receipts.supplier_id` directly.
      */
     public function getPurchasesPerSupplier(?string $startDate = null, ?string $endDate = null): Collection
     {
         return $this->baseQuery($startDate, $endDate)
-            ->join('suppliers', 'suppliers.id', '=', 'products.supplier_id')
+            ->join('suppliers', 'suppliers.id', '=', 'goods_receipts.supplier_id')
             ->selectRaw('
                 suppliers.id,
                 suppliers.supplier_name,
-                SUM(purchases.total_price) as total_amount,
-                COUNT(*) as transactions,
-                MAX(purchases.purchase_date) as last_purchase_at
+                SUM(goods_receipt_items.qty * goods_receipt_items.unit_cost) as total_amount,
+                COUNT(DISTINCT goods_receipt_items.goods_receipt_id) as transactions,
+                MAX(goods_receipts.receipt_date) as last_purchase_at
             ')
             ->groupBy('suppliers.id', 'suppliers.supplier_name')
             ->orderByDesc('total_amount')

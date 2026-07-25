@@ -12,7 +12,7 @@ class PurchaseReportController extends Controller
     public function __construct(protected PurchaseReportService $purchaseReportService) {}
 
     /**
-     * Display the purchase (POS checkout) summary report.
+     * Display the purchase (Goods Receipt) summary report.
      * Accepts optional query params: start_date, end_date, category_id
      */
     public function summary(Request $request)
