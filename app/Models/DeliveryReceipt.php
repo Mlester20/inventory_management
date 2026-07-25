@@ -13,6 +13,7 @@ class DeliveryReceipt extends Model
         'sales_order_id',
         'dr_no',
         'transaction_type',
+        'status',
         'description',
         'receipt_date',
         'prepared_by',
@@ -26,6 +27,11 @@ class DeliveryReceipt extends Model
         'advance_order' => 'ADVANCE ORDER',
         'purchase_order' => 'PURCHASE ORDER',
         'walk_in' => 'WALK-IN',
+    ];
+
+    public const STATUSES = [
+        'for_delivery' => 'FOR DELIVERY',
+        'delivered' => 'DELIVERED',
     ];
 
     /**

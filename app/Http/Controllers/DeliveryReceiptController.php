@@ -131,6 +131,17 @@ class DeliveryReceiptController extends Controller
     }
 
     /**
+     * Mark this Delivery Receipt as physically delivered to the customer.
+     */
+    public function markDelivered(DeliveryReceipt $deliveryReceipt)
+    {
+        $deliveryReceipt->update(['status' => 'delivered']);
+
+        Alert::success('Success', 'Delivery Receipt marked as delivered');
+        return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+    }
+
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit(DeliveryReceipt $deliveryReceipt)

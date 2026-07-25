@@ -7,6 +7,14 @@
         <a href="{{ route('delivery-receipts.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Delivery Receipts
         </a>
+        @if($deliveryReceipt->status !== 'delivered')
+            <form action="{{ route('delivery-receipts.mark-delivered', $deliveryReceipt) }}" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-success">
+                    <i class="bx bx-check-circle"></i> Mark as Delivered
+                </button>
+            </form>
+        @endif
     </div>
 
     @if ($errors->any())
@@ -27,6 +35,9 @@
                 <div class="d-flex gap-2">
                     <span class="badge bg-{{ ['purchase_order' => 'info', 'walk_in' => 'warning'][$deliveryReceipt->transaction_type] ?? 'secondary' }}">
                         {{ \App\Models\DeliveryReceipt::TRANSACTION_TYPES[$deliveryReceipt->transaction_type] ?? $deliveryReceipt->transaction_type }}
+                    </span>
+                    <span class="badge bg-{{ $deliveryReceipt->status === 'delivered' ? 'success' : 'warning text-dark' }}">
+                        {{ \App\Models\DeliveryReceipt::STATUSES[$deliveryReceipt->status] ?? $deliveryReceipt->status }}
                     </span>
                     @php $invoiceStatusColor = ['COMPLETE' => 'success', 'PARTIALLY INVOICED' => 'warning', 'NOT INVOICED' => 'secondary'][$deliveryReceipt->invoice_status] ?? 'secondary'; @endphp
                     <span class="badge bg-{{ $invoiceStatusColor }}">{{ $deliveryReceipt->invoice_status }}</span>
