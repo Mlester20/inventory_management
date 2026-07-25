@@ -78,7 +78,7 @@
                 <div class="card-body">
                     <div class="content-left">
                         <span class="text-muted d-block mb-2 small">Items Listed</span>
-                        <h4 class="mb-0">{{ $items->count() }}</h4>
+                        <h4 class="mb-0">{{ $items->total() }}</h4>
                     </div>
                 </div>
             </div>
@@ -88,7 +88,7 @@
                 <div class="card-body">
                     <div class="content-left">
                         <span class="text-muted d-block mb-2 small">Low Stock Items</span>
-                        <h4 class="mb-0">{{ $items->where('is_low_stock', true)->count() }}</h4>
+                        <h4 class="mb-0">{{ $lowStockCount }}</h4>
                     </div>
                 </div>
             </div>
@@ -144,6 +144,11 @@
                         </tfoot>
                     </table>
                 </div>
+                @if($items->hasPages())
+                    <div class="mt-3">
+                        {{ $items->links() }}
+                    </div>
+                @endif
                 @endif
             @empty
                 <div class="alert alert-info" role="alert">

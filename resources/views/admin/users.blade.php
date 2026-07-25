@@ -125,7 +125,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($users as $user)
+                    @forelse ($users as $user)
                         <tr>
                             <td>{{ $user->id }}</td>
                             <td>
@@ -153,9 +153,19 @@
                                 </form>
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">No users yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
             </table>
         </div>
+        @if($users->hasPages())
+            <div class="card-footer">
+                {{ $users->links() }}
+            </div>
+        @endif
     </div>
 @endsection
 

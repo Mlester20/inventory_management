@@ -15,7 +15,7 @@ class PurchaseController extends Controller
      */
     public function index()
     {
-        $purchases = Purchase::all();
+        $purchases = Purchase::with('productBatch.product')->latest('purchase_date')->paginate(15);
         $products = Product::all();
         return view('admin.purchases', compact('purchases', 'products'));
     }

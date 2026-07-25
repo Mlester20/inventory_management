@@ -10,6 +10,7 @@ use App\Models\Supplier;
 use App\Models\Taxes;
 use App\Services\InventoryReportService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class InventoryItemsController extends Controller
 {
@@ -38,6 +39,7 @@ class InventoryItemsController extends Controller
         $generalItems = null;
         $products = null;
         $batches = null;
+        $batchTotals = null;
         $historyProduct = null;
         $history = null;
         $nextGenericCode = null;
@@ -48,7 +50,8 @@ class InventoryItemsController extends Controller
                 ->withCount('products')
                 ->when($search, fn ($q) => $q->where('generic_name', 'like', "%{$search}%"))
                 ->orderBy('generic_name')
-                ->get();
+                ->paginate(15)
+                ->withQueryString();
 
             foreach ($generalItems as $genericName) {
                 $genericName->on_hand_qty = (int) ProductBatch::query()
@@ -70,23 +73,35 @@ class InventoryItemsController extends Controller
                         ->orWhere('code', 'like', "%{$search}%");
                 })
                 ->orderBy('item_name')
-                ->get();
+                ->paginate(15)
+                ->withQueryString();
 
             $nextProductCode = str_pad((string) (Product::max('id') + 1), 5, '0', STR_PAD_LEFT);
         }
 
         if ($tab === 'batches') {
-            $batches = ProductBatch::with('product.category')
+            $batchQuery = fn () => ProductBatch::query()
                 ->whereHas('product', function ($q) use ($search) {
                     if ($search) {
                         $q->where('item_name', 'like', "%{$search}%")
                             ->orWhere('brand_name', 'like', "%{$search}%")
                             ->orWhere('code', 'like', "%{$search}%");
                     }
-                })
+                });
+
+            $batches = $batchQuery()
+                ->with('product.category')
                 ->orderBy('product_id')
                 ->orderBy('expiration_date')
-                ->get();
+                ->paginate(15)
+                ->withQueryString();
+
+            // Grand totals across every matching batch, not just the current
+            // page, so the footer row stays accurate under pagination.
+            $batchTotals = $batchQuery()->selectRaw('
+                COALESCE(SUM(qty), 0) as qty,
+                COALESCE(SUM(reserved_qty), 0) as reserved_qty
+            ')->first();
         }
 
         if ($tab === 'history') {
@@ -101,13 +116,27 @@ class InventoryItemsController extends Controller
             }
 
             if ($historyProduct) {
-                $history = $this->inventoryReportService->getProductHistory($historyProduct->id);
+                $fullHistory = $this->inventoryReportService->getProductHistory($historyProduct->id);
+
+                // Manual pagination: the running balance must be computed
+                // over the full, ordered movement list before slicing, so
+                // this can't just be a paginated query like the other tabs.
+                $page = (int) $request->query('page', 1);
+                $perPage = 15;
+
+                $history = new LengthAwarePaginator(
+                    $fullHistory->forPage($page, $perPage),
+                    $fullHistory->count(),
+                    $perPage,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                );
             }
         }
 
         return view('admin.inventory-items.index', compact(
             'tab', 'search', 'categories', 'genericNames', 'suppliers', 'taxes',
-            'generalItems', 'products', 'batches', 'historyProduct', 'history',
+            'generalItems', 'products', 'batches', 'batchTotals', 'historyProduct', 'history',
             'nextGenericCode', 'nextProductCode'
         ));
     }

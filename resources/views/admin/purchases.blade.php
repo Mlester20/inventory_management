@@ -1,6 +1,6 @@
 @extends('layout.app')
 
-@section('title', 'Categories')
+@section('title', 'Purchases')
 
 @section('content')
 
@@ -18,10 +18,11 @@
                         <th>Unit Price</th>
                         <th>Total Price</th>
                         <th>Purchase Date</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($purchases as $purchase)
+                    @forelse ($purchases as $purchase)
                         <tr>
                             <td>{{ $purchase->id }}</td>
                             <td>
@@ -55,9 +56,19 @@
                                 </form>
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">No purchases yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
             </table>
         </div>
+        @if($purchases->hasPages())
+            <div class="card-footer">
+                {{ $purchases->links() }}
+            </div>
+        @endif
     </div>
 @endsection
 

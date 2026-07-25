@@ -181,6 +181,11 @@
                         </tbody>
                     </table>
                 </div>
+                @if($items->hasPages())
+                    <div class="mt-3">
+                        {{ $items->links() }}
+                    </div>
+                @endif
                 @endif
             @empty
                 <div class="alert alert-info" role="alert">

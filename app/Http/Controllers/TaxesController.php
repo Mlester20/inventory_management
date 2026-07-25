@@ -13,7 +13,7 @@ class TaxesController extends Controller
      */
     public function index()
     {
-        $taxes = Taxes::all();
+        $taxes = Taxes::orderBy('name')->paginate(15);
         return view('admin.taxes', compact('taxes'));
     }
 

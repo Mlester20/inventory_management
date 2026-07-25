@@ -121,10 +121,16 @@
     let poRowIndex = 0;
 
     function showTab(tab) {
-        document.getElementById('direct_tab').style.display = tab === 'direct' ? 'block' : 'none';
-        document.getElementById('purchase_order_tab').style.display = tab === 'purchase_order' ? 'block' : 'none';
-        document.getElementById('tabBtnDirect').classList.toggle('active', tab === 'direct');
-        document.getElementById('tabBtnPo').classList.toggle('active', tab === 'purchase_order');
+        const directVisible = tab === 'direct';
+        document.getElementById('direct_tab').style.display = directVisible ? 'block' : 'none';
+        document.getElementById('purchase_order_tab').style.display = directVisible ? 'none' : 'block';
+        document.getElementById('tabBtnDirect').classList.toggle('active', directVisible);
+        document.getElementById('tabBtnPo').classList.toggle('active', !directVisible);
+
+        // Disable (not just hide) the inactive tab's fields so hidden `required`
+        // inputs can't silently block native HTML5 validation on submit.
+        document.querySelectorAll('#direct_tab input, #direct_tab select').forEach(el => el.disabled = !directVisible);
+        document.querySelectorAll('#purchase_order_tab input, #purchase_order_tab select').forEach(el => el.disabled = directVisible);
     }
 
     // ---------- Direct Receipt tab ----------
@@ -195,6 +201,12 @@
         });
 
         card.querySelector('.remove-row-btn').addEventListener('click', () => card.remove());
+
+        // A row can be added while the Direct Receipt tab is inactive (e.g. a
+        // purchase_order_id preselected via the URL already switched tabs
+        // before this initial row gets created) — keep it disabled in that case.
+        const directVisible = document.getElementById('direct_tab').style.display !== 'none';
+        card.querySelectorAll('input, select').forEach(el => el.disabled = !directVisible);
     }
 
     document.getElementById('addDirectRowBtn').addEventListener('click', addDirectRow);
@@ -270,6 +282,9 @@
                     this.value = line.remaining_qty;
                 }
             });
+
+            const poVisible = document.getElementById('purchase_order_tab').style.display !== 'none';
+            card.querySelectorAll('input, select').forEach(el => el.disabled = !poVisible);
         });
     });
 
@@ -277,16 +292,11 @@
     @if($preselectedPurchaseOrderId)
         showTab('purchase_order');
         document.getElementById('purchase_order_id').dispatchEvent(new Event('change'));
+    @else
+        showTab('direct');
     @endif
 
-    // Disable the inactive tab's inputs before submit, so they aren't posted
-    document.getElementById('goodsReceiptForm').addEventListener('submit', function () {
-        const poTabActive = document.getElementById('purchase_order_tab').style.display !== 'none';
-        const inactiveTabEl = document.getElementById(poTabActive ? 'direct_tab' : 'purchase_order_tab');
-        inactiveTabEl.querySelectorAll('input, select').forEach(el => el.disabled = true);
-    });
-
-    // Start with one empty Direct Receipt row
+    // Start with one empty Direct Receipt row (self-disables if the Direct tab isn't active)
     addDirectRow();
 </script>
 @endsection

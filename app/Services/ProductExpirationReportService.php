@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ProductBatch;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -34,14 +35,17 @@ class ProductExpirationReportService
     /**
      * Batches expiring within the given number of days (including already expired).
      */
-    public function getExpiringItems(int $daysThreshold = 30, ?int $categoryId = null, ?int $supplierId = null): Collection
+    public function getExpiringItems(int $daysThreshold = 30, ?int $categoryId = null, ?int $supplierId = null, int $perPage = 15): LengthAwarePaginator
     {
         $batches = $this->baseQuery($categoryId, $supplierId)
             ->whereDate('expiration_date', '<=', Carbon::today()->addDays($daysThreshold))
             ->orderBy('expiration_date')
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
 
-        return $this->withExpirationMeta($batches);
+        $this->withExpirationMeta($batches->getCollection());
+
+        return $batches;
     }
 
     /**

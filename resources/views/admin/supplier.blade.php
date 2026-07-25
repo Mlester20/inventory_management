@@ -404,6 +404,11 @@
                 </tbody>
             </table>
         </div>
+        @if($suppliers->hasPages())
+            <div class="card-footer">
+                {{ $suppliers->links() }}
+            </div>
+        @endif
     </div>
 @endsection
 

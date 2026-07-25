@@ -36,7 +36,6 @@
                         <th>Customer</th>
                         <th>Description</th>
                         <th>Transaction Type</th>
-                        <th>Delivery Status</th>
                         <th>Invoice Status</th>
                         <th>Timestamp</th>
                         <th>Actions</th>
@@ -62,7 +61,6 @@
                                     {{ \App\Models\DeliveryReceipt::TRANSACTION_TYPES[$deliveryReceipt->transaction_type] ?? $deliveryReceipt->transaction_type }}
                                 </span>
                             </td>
-                            <td><span class="badge bg-success">{{ $deliveryReceipt->deliveryStatus() }}</span></td>
                             <td>
                                 @php $invoiceStatusColor = ['COMPLETE' => 'success', 'PARTIALLY INVOICED' => 'warning', 'NOT INVOICED' => 'secondary'][$deliveryReceipt->invoice_status] ?? 'secondary'; @endphp
                                 <span class="badge bg-{{ $invoiceStatusColor }}">{{ $deliveryReceipt->invoice_status }}</span>
@@ -76,7 +74,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="text-center text-muted">No Delivery Receipts found.</td>
+                            <td colspan="10" class="text-center text-muted">No Delivery Receipts found.</td>
                         </tr>
                     @endforelse
                 </tbody>

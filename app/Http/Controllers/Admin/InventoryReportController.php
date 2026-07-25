@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Supplier;
 use App\Services\InventoryReportService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class InventoryReportController extends Controller
 {
@@ -29,12 +30,27 @@ class InventoryReportController extends Controller
         $supplierId = $validated['supplier_id'] ?? null;
         $lowStockOnly = $request->boolean('low_stock_only');
 
-        $items = $this->inventoryReportService->getInventorySummary($categoryId, $supplierId, $lowStockOnly);
-        $grandTotal = $items->sum('total_value');
+        $allItems = $this->inventoryReportService->getInventorySummary($categoryId, $supplierId, $lowStockOnly);
+        $grandTotal = $allItems->sum('total_value');
+        $lowStockCount = $allItems->where('is_low_stock', true)->count();
+
+        // Low-stock filtering and the grand total both need the full result
+        // set, so pagination is applied afterward, over the already-computed
+        // collection, rather than at the query level.
+        $perPage = 15;
+        $page = (int) $request->query('page', 1);
+        $items = new LengthAwarePaginator(
+            $allItems->forPage($page, $perPage),
+            $allItems->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         return view('admin.reports.inventory-summary', [
             'items' => $items,
             'grandTotal' => $grandTotal,
+            'lowStockCount' => $lowStockCount,
             'categories' => Category::orderBy('category_name')->get(),
             'suppliers' => Supplier::orderBy('supplier_name')->get(),
             'categoryId' => $categoryId,

@@ -15,7 +15,8 @@ class SupplierController extends Controller
     {
         $suppliers = Supplier::withCount(['purchaseOrders', 'goodsReceipts'])
             ->with('purchaseOrders.items')
-            ->get();
+            ->orderBy('supplier_name')
+            ->paginate(15);
 
         foreach ($suppliers as $supplier) {
             // "Payables" proxy = total value of this supplier's purchase order

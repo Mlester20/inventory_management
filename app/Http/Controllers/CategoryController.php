@@ -18,7 +18,7 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = Category::orderBy('category_name')->get();
+        $categories = Category::orderBy('category_name')->paginate(15);
         $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
         return view('admin.categories', compact('categories', 'genericNames'));
     }

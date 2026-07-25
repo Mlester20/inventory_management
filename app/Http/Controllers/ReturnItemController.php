@@ -34,7 +34,7 @@ class ReturnItemController extends Controller
         }
 
         // Admin view - all return items
-        $returnItems = ReturnItem::with('productBatch.product')->get();
+        $returnItems = ReturnItem::with('productBatch.product')->latest()->paginate(15);
         $products = Product::with('batches')->orderBy('item_name')->get();
         return view('admin.return-items', compact('returnItems', 'products'));
     }

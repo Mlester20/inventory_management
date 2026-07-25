@@ -13,7 +13,9 @@ class CustomerController extends Controller
      */
     public function index()
     {
-        $customers = Customer::withCount(['salesOrders', 'deliveryReceipts'])->get();
+        $customers = Customer::withCount(['salesOrders', 'deliveryReceipts'])
+            ->orderBy('customer_name')
+            ->paginate(15);
 
         // Invoices aren't linked to a customer_id (invoices.customer_name is
         // free text — see the earlier Sales Per Customer report), so this is

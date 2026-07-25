@@ -29,17 +29,6 @@ class DeliveryReceipt extends Model
     ];
 
     /**
-     * Every existing DR deducts stock immediately at creation time (no
-     * pending/in-transit reservation state exists yet), so this is always
-     * "delivered" — kept as a method (not a stored column) so it stays
-     * truthful if a real pending-delivery state is ever introduced later.
-     */
-    public function deliveryStatus(): string
-    {
-        return 'DELIVERED';
-    }
-
-    /**
      * COMPLETE once every line is fully invoiced, PARTIALLY INVOICED once
      * any line has some invoiced qty, otherwise NOT INVOICED.
      */

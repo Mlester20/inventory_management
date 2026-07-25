@@ -468,6 +468,11 @@
                 </tbody>
             </table>
         </div>
+        @if($customers->hasPages())
+            <div class="card-footer">
+                {{ $customers->links() }}
+            </div>
+        @endif
     </div>
 @endsection
 

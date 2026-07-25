@@ -83,15 +83,25 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($categories as $category)
+                    @forelse ($categories as $category)
                         <tr>
                             <td>{{ $category->id }}</td>
                             <td>{{ $category->category_name }}</td>
                             <td>{{ $category->created_at->format('d/m/Y H:i:s') }}</td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">No categories yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
             </table>
         </div>
+        @if($categories->hasPages())
+            <div class="card-footer">
+                {{ $categories->links() }}
+            </div>
+        @endif
     </div>
 @endsection
 

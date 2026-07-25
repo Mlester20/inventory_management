@@ -91,6 +91,11 @@
                         </tbody>
                     </table>
                 </div>
+                @if($generalItems->hasPages())
+                    <div class="card-footer">
+                        {{ $generalItems->links() }}
+                    </div>
+                @endif
             </div>
 
             <!-- New Generic Item Modal -->
@@ -296,6 +301,11 @@
                         </tbody>
                     </table>
                 </div>
+                @if($products->hasPages())
+                    <div class="card-footer">
+                        {{ $products->links() }}
+                    </div>
+                @endif
             </div>
 
             @include('admin.inventory-items.partials.product-modal', ['mode' => 'create', 'nextProductCode' => $nextProductCode])
@@ -345,19 +355,24 @@
                                 <tr><td colspan="10" class="text-center text-muted py-4">No batches found. Try a different search.</td></tr>
                             @endforelse
                         </tbody>
-                        @if($batches && $batches->count())
+                        @if($batchTotals)
                             <tfoot>
                                 <tr class="fw-bold">
-                                    <td colspan="6" class="text-end">Total</td>
-                                    <td>{{ $batches->sum('qty') }}</td>
-                                    <td>{{ $batches->sum('reserved_qty') }}</td>
-                                    <td>{{ $batches->sum('qty') - $batches->sum('reserved_qty') }}</td>
+                                    <td colspan="6" class="text-end">Grand Total</td>
+                                    <td>{{ $batchTotals->qty }}</td>
+                                    <td>{{ $batchTotals->reserved_qty }}</td>
+                                    <td>{{ $batchTotals->qty - $batchTotals->reserved_qty }}</td>
                                     <td></td>
                                 </tr>
                             </tfoot>
                         @endif
                     </table>
                 </div>
+                @if($batches->hasPages())
+                    <div class="card-footer">
+                        {{ $batches->links() }}
+                    </div>
+                @endif
             </div>
         @endif
 
@@ -423,6 +438,11 @@
                         </tbody>
                     </table>
                 </div>
+                @if($historyProduct && $history->hasPages())
+                    <div class="card-footer">
+                        {{ $history->links() }}
+                    </div>
+                @endif
             </div>
         @endif
     </div>

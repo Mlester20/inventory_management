@@ -190,7 +190,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($taxes as $tax)
+                    @forelse($taxes as $tax)
                         <tr>
                             <td>{{ $tax->id }}</td>
                             <td>{{ $tax->name }}</td>
@@ -232,10 +232,19 @@
                                 </form>
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">No taxes yet.</td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
+        @if($taxes->hasPages())
+            <div class="card-footer">
+                {{ $taxes->links() }}
+            </div>
+        @endif
     </div>
 
 

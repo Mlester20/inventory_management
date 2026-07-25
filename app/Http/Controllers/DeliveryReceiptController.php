@@ -100,7 +100,7 @@ class DeliveryReceiptController extends Controller
      */
     public function show(DeliveryReceipt $deliveryReceipt)
     {
-        $deliveryReceipt->load('customer', 'salesOrder', 'preparedBy', 'items.productBatch.product', 'items.sales.invoice');
+        $deliveryReceipt->load('customer', 'salesOrder', 'preparedBy', 'items.productBatch.product.genericName', 'items.sales.invoice');
 
         return view('admin.delivery-receipts.show', compact('deliveryReceipt'));
     }

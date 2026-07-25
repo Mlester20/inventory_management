@@ -19,7 +19,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($returnItems as $returnItem)
+                @forelse($returnItems as $returnItem)
                 <tr>
                     <td>{{ $returnItem->id }}</td>
                     <td>{{ $returnItem->productBatch->product->item_name }}</td>
@@ -72,10 +72,19 @@
                         @endif
                     </td>
                 </tr>
-                @endforeach
+                @empty
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No return items yet.</td>
+                </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
+    @if($returnItems->hasPages())
+        <div class="card-footer">
+            {{ $returnItems->links() }}
+        </div>
+    @endif
 </div>
 @endsection
 

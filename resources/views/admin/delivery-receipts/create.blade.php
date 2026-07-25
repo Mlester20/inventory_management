@@ -235,8 +235,20 @@
         // Advance Order — it's the same mechanics, just a different label
         // for reporting/classification.
         const showAdvancePanel = tab === 'advance_order' || tab === 'walk_in';
-        document.getElementById('advance_order_tab').style.display = showAdvancePanel ? 'block' : 'none';
-        document.getElementById('purchase_order_tab').style.display = tab === 'purchase_order' ? 'block' : 'none';
+        const advanceTabEl = document.getElementById('advance_order_tab');
+        const poTabEl = document.getElementById('purchase_order_tab');
+
+        advanceTabEl.style.display = showAdvancePanel ? 'block' : 'none';
+        poTabEl.style.display = tab === 'purchase_order' ? 'block' : 'none';
+
+        // Disable (not just hide) the inactive tab's fields immediately.
+        // A required-but-merely-hidden field can silently block native
+        // HTML5 form validation with no visible error in some browsers —
+        // disabling is the reliable way to exempt it and keep it out of
+        // the submitted payload.
+        advanceTabEl.querySelectorAll('input, select').forEach(el => el.disabled = !showAdvancePanel);
+        poTabEl.querySelectorAll('input, select').forEach(el => el.disabled = (tab !== 'purchase_order'));
+
         document.getElementById('tabBtnAdvance').classList.toggle('active', tab === 'advance_order');
         document.getElementById('tabBtnPurchase').classList.toggle('active', tab === 'purchase_order');
         document.getElementById('tabBtnWalkIn').classList.toggle('active', tab === 'walk_in');
@@ -300,6 +312,14 @@
         `;
         document.getElementById('aoLineItemsBody').appendChild(row);
         renumberAoRows();
+
+        // A row can be created while its tab is hidden (e.g. this initial
+        // row is always created, even when a preselected Sales Order shows
+        // the Purchase Order tab instead) — match its disabled state to the
+        // tab's current visibility so a hidden-but-required field can never
+        // silently block native form validation.
+        const advanceTabVisible = document.getElementById('advance_order_tab').style.display !== 'none';
+        row.querySelectorAll('input, select').forEach(el => el.disabled = !advanceTabVisible);
 
         row.querySelector('.remove-row-btn').addEventListener('click', () => {
             row.remove();
