@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\StockMovement;
 use App\Models\Category;
+use App\Services\DashboardService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    public function __construct(protected DashboardService $dashboardService) {}
+
     /**
      * Display the dashboard with dynamic inventory data.
      */
@@ -54,6 +58,20 @@ class DashboardController extends Controller
         $totalStockIn = StockMovement::where('type', 'in')->sum('quantity');
         $totalStockOut = StockMovement::where('type', 'out')->sum('quantity');
 
+        // --- New widgets, all aggregation delegated to DashboardService ---
+        $salesOverview = $this->dashboardService->getSalesOverview();
+        $purchasesOverview = $this->dashboardService->getPurchasesOverview();
+        $expensesOverview = $this->dashboardService->getExpensesOverview();
+        $inventorySnapshot = $this->dashboardService->getInventorySnapshot();
+        $expiredProducts = $this->dashboardService->getExpiredProductsSnapshot();
+        $pendingActionItems = $this->dashboardService->getPendingActionItems();
+        $recentActivity = $this->dashboardService->getRecentActivity();
+        $monthlySalesTrend = $this->dashboardService->getMonthlySalesTrendChart();
+        $monthlyExpensesTrend = $this->dashboardService->getMonthlyExpensesTrendChart();
+        $last5DaysComparison = $this->dashboardService->getLast5DaysComparison();
+        $customerOrderStats = $this->dashboardService->getCustomerAndOrderStats();
+        $recentInvoices = Invoice::latest()->limit(6)->get();
+
         return view('admin.dashboard', compact(
             'totalItems',
             'totalStock',
@@ -66,6 +84,18 @@ class DashboardController extends Controller
             'recentPurchases',
             'totalStockIn',
             'totalStockOut',
+            'salesOverview',
+            'purchasesOverview',
+            'expensesOverview',
+            'inventorySnapshot',
+            'expiredProducts',
+            'pendingActionItems',
+            'recentActivity',
+            'monthlySalesTrend',
+            'monthlyExpensesTrend',
+            'last5DaysComparison',
+            'customerOrderStats',
+            'recentInvoices',
         ));
     }
 }

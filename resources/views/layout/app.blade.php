@@ -546,7 +546,7 @@
                   <script>
                     document.write(new Date().getFullYear());
                   </script>
-                  , Copyright by <a href="#" class="footer-link fw-bolder" target="_blank">Inventory App</a>
+                  , Copyright by <a href="#" class="footer-link fw-bolder">SAIMS</a>
                 </div>
               </div>
             </footer>
