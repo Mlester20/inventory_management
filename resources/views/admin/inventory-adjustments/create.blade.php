@@ -81,13 +81,19 @@
     const preselectedProductId = @json($preselectedProductId);
     let rowIndex = 0;
 
-    function productOptions(selectedId = '') {
-        let html = '<option value="">-- Select Item --</option>';
-        PRODUCTS.forEach(p => {
-            const selected = String(p.id) === String(selectedId) ? 'selected' : '';
-            html += `<option value="${p.id}" ${selected}>${p.name}</option>`;
-        });
-        return html;
+    // Item Description is a searchable text field (native <datalist>) instead
+    // of a long <select> — the label the user types/picks is matched back to
+    // the real product_id.
+    function productLabel(p) {
+        return p.name;
+    }
+
+    function productDatalistOptions() {
+        return PRODUCTS.map(p => `<option value="${productLabel(p)}"></option>`).join('');
+    }
+
+    function findProductByLabel(label) {
+        return PRODUCTS.find(p => productLabel(p) === label);
     }
 
     function renumberRows() {
@@ -111,14 +117,15 @@
             <div class="row g-2">
                 <div class="col-md-4">
                     <label class="form-label small mb-1">Item Description</label>
-                    <select name="lines[${index}][product_id]" class="form-select product-select" required>
-                        ${productOptions(productId)}
-                    </select>
+                    <input type="text" class="form-control product-search-input" list="product-list-${index}"
+                        placeholder="Search item..." autocomplete="off" required>
+                    <datalist id="product-list-${index}" class="product-datalist">${productDatalistOptions()}</datalist>
+                    <input type="hidden" name="lines[${index}][product_id]" class="product-id-input">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Lot/Batch No.</label>
                     <input type="text" name="lines[${index}][batch_no]" class="form-control batch-input" list="batch-list-${index}">
-                    <datalist id="batch-list-${index}"></datalist>
+                    <datalist id="batch-list-${index}" class="batch-datalist"></datalist>
                     <input type="hidden" name="lines[${index}][product_batch_id]" class="batch-id-input">
                 </div>
                 <div class="col-md-2">
@@ -144,35 +151,41 @@
         renumberRows();
 
         if (productId) {
-            card.querySelector('.product-select').dispatchEvent(new Event('change'));
+            const product = PRODUCTS.find(p => String(p.id) === String(productId));
+            if (product) {
+                card.querySelector('.product-search-input').value = productLabel(product);
+                card.querySelector('.product-search-input').dispatchEvent(new Event('input'));
+            }
         }
     }
 
     function bindRowEvents(card) {
-        const productSelect = card.querySelector('.product-select');
+        const productSearchInput = card.querySelector('.product-search-input');
+        const productIdInput = card.querySelector('.product-id-input');
         const unitDisplay = card.querySelector('.unit-display');
         const batchInput = card.querySelector('.batch-input');
         const batchIdInput = card.querySelector('.batch-id-input');
         const expiryInput = card.querySelector('.expiry-input');
-        const datalist = card.querySelector('datalist');
+        const batchDatalist = card.querySelector('.batch-datalist');
 
-        productSelect.addEventListener('change', function () {
-            const product = PRODUCTS.find(p => String(p.id) === String(this.value));
+        productSearchInput.addEventListener('input', function () {
+            const product = findProductByLabel(this.value);
+            productIdInput.value = product ? product.id : '';
             unitDisplay.value = product ? product.unit : '';
-            datalist.innerHTML = '';
+            batchDatalist.innerHTML = '';
             batchIdInput.value = '';
 
             if (product) {
                 product.batches.forEach(b => {
                     const opt = document.createElement('option');
                     opt.value = b.batch_no || '';
-                    datalist.appendChild(opt);
+                    batchDatalist.appendChild(opt);
                 });
             }
         });
 
         batchInput.addEventListener('input', function () {
-            const product = PRODUCTS.find(p => String(p.id) === String(productSelect.value));
+            const product = findProductByLabel(productSearchInput.value);
             batchIdInput.value = '';
             if (!product) return;
 

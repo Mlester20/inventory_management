@@ -139,18 +139,24 @@
         return document.getElementById('direct_supplier_id').value;
     }
 
-    function itemOptions(selectedId = '') {
-        let html = '<option value="">-- Select Item --</option>';
-        const supplierId = currentDirectSupplierId();
+    // Item is a searchable text field (native <datalist>, matching the same
+    // technique already used for Generic Description pickers) instead of a
+    // long <select> — the label the user types/picks is matched back to the
+    // real product_id, still scoped to the currently chosen supplier.
+    function itemLabel(item) {
+        return item.name;
+    }
 
-        ITEMS.forEach(item => {
-            if (supplierId && String(item.supplier_id) !== String(supplierId)) {
-                return;
-            }
-            const selected = String(item.id) === String(selectedId) ? 'selected' : '';
-            html += `<option value="${item.id}" ${selected}>${item.name}</option>`;
-        });
-        return html;
+    function itemsForSupplier(supplierId) {
+        return supplierId ? ITEMS.filter(i => String(i.supplier_id) === String(supplierId)) : ITEMS;
+    }
+
+    function itemDatalistOptions() {
+        return itemsForSupplier(currentDirectSupplierId()).map(i => `<option value="${itemLabel(i)}"></option>`).join('');
+    }
+
+    function findItemByLabel(label) {
+        return itemsForSupplier(currentDirectSupplierId()).find(i => itemLabel(i) === label);
     }
 
     function addDirectRow() {
@@ -167,9 +173,10 @@
             <div class="row g-2">
                 <div class="col-md-4">
                     <label class="form-label small mb-1">Item</label>
-                    <select name="items[${index}][product_id]" class="form-select item-select" required>
-                        ${itemOptions()}
-                    </select>
+                    <input type="text" class="form-control item-search-input" list="direct-item-list-${index}"
+                        placeholder="Search item..." autocomplete="off" required>
+                    <datalist id="direct-item-list-${index}">${itemDatalistOptions()}</datalist>
+                    <input type="hidden" name="items[${index}][product_id]" class="item-id-input">
                 </div>
                 <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Qty</label>
@@ -191,10 +198,12 @@
         `;
         document.getElementById('directLineItemsBody').appendChild(card);
 
-        const itemSelect = card.querySelector('.item-select');
+        const itemSearchInput = card.querySelector('.item-search-input');
+        const itemIdInput = card.querySelector('.item-id-input');
         const costInput = card.querySelector('.cost-input');
-        itemSelect.addEventListener('change', function () {
-            const item = ITEMS.find(i => String(i.id) === String(this.value));
+        itemSearchInput.addEventListener('input', function () {
+            const item = findItemByLabel(this.value);
+            itemIdInput.value = item ? item.id : '';
             if (item) {
                 costInput.value = item.unit_cost.toFixed(2);
             }
@@ -211,10 +220,20 @@
 
     document.getElementById('addDirectRowBtn').addEventListener('click', addDirectRow);
 
+    // Refresh each row's item datalist when the supplier changes, since items
+    // are filtered to that supplier's catalog. A row's current selection is
+    // cleared if it no longer belongs to the newly chosen supplier.
     document.getElementById('direct_supplier_id').addEventListener('change', function () {
-        document.querySelectorAll('#directLineItemsBody .item-select').forEach(select => {
-            const currentValue = select.value;
-            select.innerHTML = itemOptions(currentValue);
+        document.querySelectorAll('#directLineItemsBody .line-item-card').forEach(card => {
+            const itemSearchInput = card.querySelector('.item-search-input');
+            const itemIdInput = card.querySelector('.item-id-input');
+            const datalist = card.querySelector('datalist');
+            datalist.innerHTML = itemDatalistOptions();
+
+            if (itemIdInput.value && !findItemByLabel(itemSearchInput.value)) {
+                itemSearchInput.value = '';
+                itemIdInput.value = '';
+            }
         });
     });
 

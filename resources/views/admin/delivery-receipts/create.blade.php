@@ -229,6 +229,24 @@
     let aoRowIndex = 0;
     let poRowIndex = 0;
 
+    // Generic Description is a searchable text field (native <datalist>,
+    // matching the same technique already used for the batch-number picker
+    // in Inventory Adjustment) rather than a long <select> — the label the
+    // user types/picks is matched back to the real generic_name_id.
+    const GENERIC_NAMES = @json($genericNamesForJs);
+
+    function genericLabel(g) {
+        return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
+    }
+
+    function genericDatalistOptions() {
+        return GENERIC_NAMES.map(g => `<option value="${genericLabel(g)}"></option>`).join('');
+    }
+
+    function findGenericByLabel(label) {
+        return GENERIC_NAMES.find(g => genericLabel(g) === label);
+    }
+
     function showTab(tab) {
         document.getElementById('transaction_type').value = tab;
         // Walk-in reuses the exact same customer + generic-item picker as
@@ -295,12 +313,9 @@
         row.innerHTML = `
             <td class="row-number"></td>
             <td>
-                <select class="form-select form-select-sm ao-generic-select" required>
-                    <option value="">-- Select Generic Name --</option>
-                    @foreach ($genericNames as $g)
-                        <option value="{{ $g->id }}" data-unit="{{ $g->unit }}">{{ $g->generic_name }} ({{ $g->unit }}) — {{ $g->category->category_name }}</option>
-                    @endforeach
-                </select>
+                <input type="text" class="form-control form-control-sm ao-generic-search-input" list="ao-generic-list-${index}"
+                    placeholder="Search generic name..." autocomplete="off" required>
+                <datalist id="ao-generic-list-${index}">${genericDatalistOptions()}</datalist>
             </td>
             <td class="item-select-cell"><span class="text-muted small">Select a generic first</span></td>
             <td class="batch-cell"></td>
@@ -326,8 +341,8 @@
             renumberAoRows();
         });
 
-        const genericSelect = row.querySelector('.ao-generic-select');
-        genericSelect.addEventListener('change', async function () {
+        const genericSearchInput = row.querySelector('.ao-generic-search-input');
+        genericSearchInput.addEventListener('input', async function () {
             const cells = {
                 item: row.querySelector('.item-select-cell'),
                 batch: row.querySelector('.batch-cell'),
@@ -342,14 +357,14 @@
             cells.remarks.innerHTML = '';
             cells.unit.innerHTML = '';
 
-            if (!this.value) {
+            const generic = findGenericByLabel(this.value);
+            if (!generic) {
                 cells.item.innerHTML = '<span class="text-muted small">Select a generic first</span>';
                 return;
             }
-            const unit = this.options[this.selectedIndex].getAttribute('data-unit') || '';
             cells.item.innerHTML = '<span class="text-muted small">Checking availability…</span>';
-            const items = await fetchAvailableItems(this.value);
-            renderAvailability(cells, items, index, null, null, unit);
+            const items = await fetchAvailableItems(generic.id);
+            renderAvailability(cells, items, index, null, null, generic.unit);
         });
     }
 

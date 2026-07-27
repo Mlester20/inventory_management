@@ -210,13 +210,20 @@
 
     let rowIndex = 0;
 
-    function itemOptions(selectedId = '') {
-        let html = '<option value="">-- Select Item --</option>';
-        ITEMS.forEach(item => {
-            const selected = String(item.id) === String(selectedId) ? 'selected' : '';
-            html += `<option value="${item.id}" ${selected}>${item.name} (Stock: ${item.quantity})</option>`;
-        });
-        return html;
+    // Item is a searchable text field (native <datalist>, matching the same
+    // technique already used for Generic Description pickers) instead of a
+    // long <select> — the label the user types/picks is matched back to the
+    // real product_id.
+    function itemLabel(item) {
+        return `${item.name} (Stock: ${item.quantity})`;
+    }
+
+    function itemDatalistOptions() {
+        return ITEMS.map(i => `<option value="${itemLabel(i)}"></option>`).join('');
+    }
+
+    function findItemByLabel(label) {
+        return ITEMS.find(i => itemLabel(i) === label);
     }
 
     function renumberRows() {
@@ -241,9 +248,10 @@
             <div class="row g-2">
                 <div class="col-md-5">
                     <label class="form-label small mb-1">Item</label>
-                    <select name="items[${index}][item_id]" class="form-select item-select" required>
-                        ${itemOptions()}
-                    </select>
+                    <input type="text" class="form-control item-search-input" list="item-list-${index}"
+                        placeholder="Search item..." autocomplete="off" required>
+                    <datalist id="item-list-${index}">${itemDatalistOptions()}</datalist>
+                    <input type="hidden" name="items[${index}][item_id]" class="item-id-input">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small mb-1">Description</label>
@@ -299,13 +307,15 @@
     }
 
     function bindRowEvents(card) {
-        const itemSelect = card.querySelector('.item-select');
+        const itemSearchInput = card.querySelector('.item-search-input');
+        const itemIdInput = card.querySelector('.item-id-input');
         const descInput = card.querySelector('.desc-input');
         const unitInput = card.querySelector('.unit-input');
         const priceInput = card.querySelector('.price-input');
 
-        itemSelect.addEventListener('change', function () {
-            const item = ITEMS.find(i => String(i.id) === String(this.value));
+        itemSearchInput.addEventListener('input', function () {
+            const item = findItemByLabel(this.value);
+            itemIdInput.value = item ? item.id : '';
             if (item) {
                 priceInput.value = item.price.toFixed(2);
                 if (!descInput.value) {
@@ -335,7 +345,7 @@
         if (override) {
             return override;
         }
-        const itemId = card.querySelector('.item-select').value;
+        const itemId = card.querySelector('.item-id-input').value;
         const item = ITEMS.find(i => String(i.id) === String(itemId));
         return (item && item.taxable) ? 'vatable' : 'vatex';
     }

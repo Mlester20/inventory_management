@@ -133,13 +133,20 @@
 
     let rowIndex = 0;
 
-    function genericOptions(selectedId = '') {
-        let html = '<option value="">-- Select Generic Name --</option>';
-        GENERIC_NAMES.forEach(g => {
-            const selected = String(g.id) === String(selectedId) ? 'selected' : '';
-            html += `<option value="${g.id}" ${selected}>${g.generic_name} (${g.unit}) — ${g.category_name}</option>`;
-        });
-        return html;
+    // Generic Description is a searchable text field (native <datalist>,
+    // matching the same technique already used for the batch-number picker
+    // in Inventory Adjustment) rather than a long <select> — the label the
+    // user types/picks is matched back to the real generic_name_id.
+    function genericLabel(g) {
+        return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
+    }
+
+    function genericDatalistOptions() {
+        return GENERIC_NAMES.map(g => `<option value="${genericLabel(g)}"></option>`).join('');
+    }
+
+    function findGenericByLabel(label) {
+        return GENERIC_NAMES.find(g => genericLabel(g) === label);
     }
 
     function currentPriceLevel() {
@@ -170,9 +177,10 @@
             <div class="row g-2">
                 <div class="col-md-5">
                     <label class="form-label small mb-1">Generic Description</label>
-                    <select name="items[${index}][generic_name_id]" class="form-select generic-select" required>
-                        ${genericOptions()}
-                    </select>
+                    <input type="text" class="form-control generic-search-input" list="generic-list-${index}"
+                        placeholder="Search generic name..." autocomplete="off" required>
+                    <datalist id="generic-list-${index}">${genericDatalistOptions()}</datalist>
+                    <input type="hidden" name="items[${index}][generic_name_id]" class="generic-id-input">
                 </div>
                 <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Qty</label>
@@ -200,11 +208,14 @@
     }
 
     function bindRowEvents(card) {
-        const genericSelect = card.querySelector('.generic-select');
+        const genericSearchInput = card.querySelector('.generic-search-input');
+        const genericIdInput = card.querySelector('.generic-id-input');
         const priceInput = card.querySelector('.price-input');
 
-        genericSelect.addEventListener('change', function () {
-            const generic = GENERIC_NAMES.find(g => String(g.id) === String(this.value));
+        genericSearchInput.addEventListener('input', function () {
+            const generic = findGenericByLabel(this.value);
+            genericIdInput.value = generic ? generic.id : '';
+
             if (generic) {
                 const price = generic.prices[currentPriceLevel()];
                 if (price !== null && price !== undefined) {
@@ -244,9 +255,9 @@
     // Re-suggest prices for all rows when the customer (and thus customer type) changes
     document.getElementById('customer_id').addEventListener('change', function () {
         document.querySelectorAll('#lineItemsBody .line-item-card').forEach(card => {
-            const genericSelect = card.querySelector('.generic-select');
+            const genericIdInput = card.querySelector('.generic-id-input');
             const priceInput = card.querySelector('.price-input');
-            const generic = GENERIC_NAMES.find(g => String(g.id) === String(genericSelect.value));
+            const generic = GENERIC_NAMES.find(g => String(g.id) === String(genericIdInput.value));
             if (generic) {
                 const price = generic.prices[currentPriceLevel()];
                 if (price !== null && price !== undefined) {

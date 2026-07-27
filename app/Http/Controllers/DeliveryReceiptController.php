@@ -55,8 +55,15 @@ class DeliveryReceiptController extends Controller
         $users = User::orderBy('name')->get();
         $preselectedSalesOrderId = $request->query('sales_order_id');
 
+        $genericNamesForJs = $genericNames->map(fn (GenericName $g) => [
+            'id' => $g->id,
+            'generic_name' => $g->generic_name,
+            'unit' => $g->unit,
+            'category_name' => $g->category->category_name,
+        ])->values();
+
         return view('admin.delivery-receipts.create', compact(
-            'customers', 'genericNames', 'openSalesOrders', 'users', 'preselectedSalesOrderId'
+            'customers', 'genericNames', 'openSalesOrders', 'users', 'preselectedSalesOrderId', 'genericNamesForJs'
         ));
     }
 
