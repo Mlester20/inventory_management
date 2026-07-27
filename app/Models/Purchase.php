@@ -13,9 +13,12 @@ class Purchase extends Model
     protected $fillable = [
         'product_batch_id',
         'user_id',
+        'transaction_id',
         'quantity_sold',
         'unit_price',
         'total_price',
+        'amount_tendered',
+        'change_amount',
         'purchase_date',
     ];
 
@@ -23,6 +26,8 @@ class Purchase extends Model
         'purchase_date' => 'date',
         'total_price' => 'decimal:2',
         'unit_price' => 'decimal:2',
+        'amount_tendered' => 'decimal:2',
+        'change_amount' => 'decimal:2',
     ];
 
     /**

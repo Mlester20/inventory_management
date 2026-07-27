@@ -60,9 +60,7 @@ Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->middl
 //User Route - Protected with auth middleware
 Route::middleware(['auth'])->group(function() {
     // Dashboard / Home Page
-    Route::get('/pages/home', function() {
-        return view('pages.home');
-    })->name('pages.home');
+    Route::get('/pages/home', [\App\Http\Controllers\HomeController::class, 'index'])->name('pages.home');
 
     // Purchase History
     Route::get('/purchases/history', function() {
@@ -77,7 +75,8 @@ Route::middleware(['auth'])->group(function() {
 
     // POS - Point of Sale
     Route::get('/pos', function() {
-        return view('pages.pos');
+        $activeVatRate = (float) (\App\Models\Taxes::where('is_active', true)->value('rate') ?? 0);
+        return view('pages.pos', compact('activeVatRate'));
     })->name('pos');
 
     // User Profile
@@ -167,6 +166,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
     // Items API
     Route::get('items', [ApiItemController::class, 'index'])->name('items.index');
+    Route::get('items/barcode/{barcode}', [ApiItemController::class, 'findByBarcode'])->name('items.barcode');
     Route::get('items/{item}', [ApiItemController::class, 'show'])->name('items.show');
 
     // Purchases API

@@ -40,55 +40,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Purchase Summary Cards -->
-    <div class="row mt-4">
-        <div class="col-md-4 mb-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div>
-                            <span class="text-muted d-block mb-1">Total Transactions</span>
-                            <h4 class="mb-0" id="totalPurchases">0</h4>
-                        </div>
-                        <span class="avatar-initial rounded bg-label-primary">
-                            <i class="bx bx-shopping-bag"></i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div>
-                            <span class="text-muted d-block mb-1">Total Units Sold</span>
-                            <h4 class="mb-0" id="totalItems">0</h4>
-                        </div>
-                        <span class="avatar-initial rounded bg-label-success">
-                            <i class="bx bx-package"></i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div>
-                            <span class="text-muted d-block mb-1">Total Sales Amount</span>
-                            <h4 class="mb-0" id="totalSpent">₱0.00</h4>
-                        </div>
-                        <span class="avatar-initial rounded bg-label-info">
-                            <i class="bx bx-money"></i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 @endsection
@@ -106,21 +57,13 @@
                 return;
             }
 
-            let totalPurchases = 0;
-            let totalItems = 0;
-            let totalSpent = 0;
-
             const rows = purchases.map((purchase, index) => {
-                totalPurchases++;
-                totalItems += purchase.quantity_sold;
-                totalSpent += parseFloat(purchase.total_price);
-
                 return `
                     <tr>
                         <td>${purchase.id}</td>
-                        <td>${purchase.item?.item_name || 'N/A'}</td>
+                        <td>${purchase.product_batch?.product?.item_name || 'N/A'}</td>
                         <td>
-                            <span class="badge bg-label-primary">${purchase.item?.category?.category_name || 'N/A'}</span>
+                            <span class="badge bg-label-primary">${purchase.product_batch?.product?.category?.category_name || 'N/A'}</span>
                         </td>
                         <td>${purchase.quantity_sold}</td>
                         <td>₱${parseFloat(purchase.unit_price).toFixed(2)}</td>
@@ -135,9 +78,6 @@
             }).join('');
 
             document.getElementById('purchasesTableBody').innerHTML = rows;
-            document.getElementById('totalPurchases').textContent = totalPurchases;
-            document.getElementById('totalItems').textContent = totalItems;
-            document.getElementById('totalSpent').textContent = `₱${totalSpent.toFixed(2)}`;
 
         } catch (error) {
             console.error('Error loading purchases:', error);

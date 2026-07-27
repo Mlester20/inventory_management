@@ -1,4 +1,4 @@
-@extends('layout.app')
+@extends(Auth::user()->role === 'admin' ? 'layout.app' : 'layout.user')
 
 @section('title', 'Delivery Receipt ' . $deliveryReceipt->dr_no)
 

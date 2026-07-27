@@ -25,14 +25,30 @@ class PurchaseController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.total_price' => 'required|numeric|min:0',
+            'amount_tendered' => 'required|numeric|min:0',
         ]);
+
+        // The cart's own line totals already sum to what's owed — validate
+        // the cash tendered against that before touching stock/DB, same
+        // trust boundary the rest of this method already applies to
+        // unit_price/total_price coming from the cart.
+        $cartTotal = round(collect($validated['items'])->sum('total_price'), 2);
+        $amountTendered = round((float) $validated['amount_tendered'], 2);
+
+        if ($amountTendered < $cartTotal) {
+            return response()->json([
+                'success' => false,
+                'message' => "Amount tendered (₱{$amountTendered}) is less than the total due (₱{$cartTotal}).",
+            ], 422);
+        }
 
         try {
             $purchaseCount = 0;
             $transactionId = uniqid('TXN-');
             $totalAmount = 0;
+            $changeAmount = 0;
 
-            \DB::transaction(function () use ($validated, &$purchaseCount, $transactionId, &$totalAmount) {
+            \DB::transaction(function () use ($validated, &$purchaseCount, $transactionId, &$totalAmount, &$changeAmount, $amountTendered) {
                 $stockService = new StockService();
                 $userId = auth()->id();
 
@@ -54,6 +70,7 @@ class PurchaseController extends Controller
                         Purchase::create([
                             'product_batch_id' => $movement->product_batch_id,
                             'user_id' => $userId,
+                            'transaction_id' => $transactionId,
                             'quantity_sold' => $movementQty,
                             'unit_price' => $cartItem['unit_price'],
                             'total_price' => $lineTotal,
@@ -64,6 +81,15 @@ class PurchaseController extends Controller
                         $totalAmount += $lineTotal;
                     }
                 }
+
+                // Tendered/change apply to the whole checkout, not any single
+                // line — stamped onto every row of this transaction once the
+                // real (FEFO-split) total is known.
+                $changeAmount = round($amountTendered - $totalAmount, 2);
+                Purchase::where('transaction_id', $transactionId)->update([
+                    'amount_tendered' => $amountTendered,
+                    'change_amount' => $changeAmount,
+                ]);
             });
 
             return response()->json([
@@ -72,6 +98,8 @@ class PurchaseController extends Controller
                 'message' => 'Purchase completed successfully',
                 'purchase_count' => $purchaseCount,
                 'total_amount' => $totalAmount,
+                'amount_tendered' => $amountTendered,
+                'change_amount' => $changeAmount,
             ], 201);
 
         } catch (ValidationException $e) {
