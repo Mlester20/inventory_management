@@ -12,15 +12,15 @@ class ResetPasswordMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $token;
+    public $code;
     public $user;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($token, $user)
+    public function __construct($code, $user)
     {
-        $this->token = $token;
+        $this->code = $code;
         $this->user = $user;
     }
 
@@ -31,7 +31,7 @@ class ResetPasswordMail extends Mailable
     {
         return new Envelope(
             to: $this->user->email,
-            subject: 'Reset Your Password - Inventory App',
+            subject: 'Your Password Reset Code - SAIMS',
         );
     }
 
@@ -40,15 +40,10 @@ class ResetPasswordMail extends Mailable
      */
     public function content(): Content
     {
-        $resetUrl = route('password.reset', [
-            'token' => $this->token,
-            'email' => $this->user->email,
-        ]);
-
         return new Content(
             view: 'emails.reset-password',
             with: [
-                'resetUrl' => $resetUrl,
+                'code' => $this->code,
                 'userName' => $this->user->name,
             ],
         );

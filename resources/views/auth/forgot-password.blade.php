@@ -1,107 +1,109 @@
 <!DOCTYPE html>
-<html lang="en" class="light-style customizer-hide" dir="ltr">
+
+<html
+  lang="en"
+  class="light-style customizer-hide"
+  dir="ltr"
+  data-theme="theme-default"
+  data-assets-path="{{ asset('assets/') }}"
+  data-template="vertical-menu-template-free"
+>
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
     <title>Forgot Password</title>
-
-    <!-- Favicon -->
-    <link rel="icon" href="{{ asset('assets/img/favicon/favicon.ico') }}" />
-
-    <!-- Fonts -->
+    <meta name="description" content="" />
+    <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/favicon/icon.png') }}" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans&display=swap" rel="stylesheet" />
-
-    <!-- CSS -->
-    <link rel="stylesheet" href="{{ asset('assets/vendor/fonts/boxicons.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/css/core.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/css/theme-default.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/demo.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}">
-    <!-- JS Helpers -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/fonts/boxicons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/core.css') }}" class="template-customizer-core-css" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/theme-default.css') }}" class="template-customizer-theme-css" />
+    <link rel="stylesheet" href="{{ asset('assets/css/demo.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/auth-custom.css') }}" />
     <script src="{{ asset('assets/vendor/js/helpers.js') }}"></script>
     <script src="{{ asset('assets/js/config.js') }}"></script>
 </head>
-<body>
+<body class="auth-body">
 
-    <div class="container-xxl">
-        <div class="authentication-wrapper authentication-basic container-p-y">
-            <div class="authentication-inner py-4">
-                <div class="card">
-                    <div class="card-body">
-                        <!-- Logo -->
-                        <div class="app-brand justify-content-center">
-                            <a href="{{ url('/') }}" class="app-brand-link gap-2">
-                                <span class="app-brand-text fw-bolder">Sneat</span>
-                            </a>
-                        </div>
+    <div class="auth-page">
+      <div class="auth-blob auth-blob-1"></div>
+      <div class="auth-blob auth-blob-2"></div>
+      <div class="auth-blob auth-blob-3"></div>
 
-                        <h4 class="mb-2">Forgot Password 🔒</h4>
-                        <p class="mb-4">
-                            Enter your email and we'll send you instructions to reset your password
-                        </p>
-
-                        @if (session('status'))
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                {{ session('status') }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        @endif
-
-                        @if ($errors->any())
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                @foreach ($errors->all() as $error)
-                                    <div>{{ $error }}</div>
-                                @endforeach
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        @endif
-
-                        <form method="POST" action="{{ route('password.email') }}">
-                            @csrf
-
-                            <div class="mb-3">
-                                <label class="form-label" for="email">Email</label>
-                                <input 
-                                    type="email" 
-                                    id="email"
-                                    name="email" 
-                                    class="form-control @error('email') is-invalid @enderror" 
-                                    placeholder="Enter your email"
-                                    value="{{ old('email') }}"
-                                    required>
-                                @error('email')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100">
-                                Send Reset Link
-                            </button>
-                        </form>
-
-                        <div class="text-center mt-3">
-                            <a href="{{ route('auth') }}" class="d-flex align-items-center justify-content-center">
-                                <i class="bx bx-chevron-left bx-sm"></i>
-                                Back to login
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
+      <div class="auth-split">
+        <div class="auth-form-panel">
+          <div class="auth-card">
+            <div class="auth-card-header">
+              <span class="auth-card-logo">
+                <img src="{{ asset('assets/img/favicon/icon.png') }}" alt="SAIMS" />
+              </span>
+              <h2 class="auth-card-title">Forgot Password?</h2>
+              <p class="auth-card-subtitle">Enter your email and we'll send you a reset link</p>
             </div>
+
+            @if ($errors->any())
+              <div class="auth-alert" role="alert">
+                {{ $errors->first() }}
+              </div>
+            @endif
+
+            <form class="auth-form" action="{{ route('password.email') }}" method="POST">
+              @csrf
+
+              <div class="auth-input-group mb-3">
+                <label for="email" class="auth-label">Email</label>
+                <div class="auth-input-wrapper">
+                  <i class='bx bx-envelope auth-input-icon' aria-hidden="true"></i>
+                  <input
+                    type="email"
+                    class="form-control auth-input"
+                    id="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    value="{{ old('email') }}"
+                    autofocus
+                    spellcheck="false"
+                    autocomplete="username"
+                  />
+                </div>
+              </div>
+
+              <button class="auth-submit-btn" type="submit">
+                <span class="auth-submit-label">Send Reset Link</span>
+                <span class="auth-submit-spinner" aria-hidden="true"></span>
+              </button>
+            </form>
+
+            <div class="auth-divider"><span>SAIMS</span></div>
+
+            <p class="text-center mb-0">
+              <a href="{{ route('auth') }}" class="auth-forgot-link">
+                <i class="bx bx-chevron-left"></i> Back to login
+              </a>
+            </p>
+          </div>
         </div>
+      </div>
     </div>
 
-<!-- JS -->
-<script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
-<script src="{{ asset('assets/vendor/libs/popper/popper.js') }}"></script>
-<script src="{{ asset('assets/vendor/js/bootstrap.js') }}"></script>
-<script src="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js') }}"></script>
-<script src="{{ asset('assets/vendor/js/menu.js') }}"></script>
-<script src="{{ asset('assets/js/main.js') }}"></script>
+    @include('sweetalert::alert')
 
+    <script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/popper/popper.js') }}"></script>
+    <script src="{{ asset('assets/vendor/js/bootstrap.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js') }}"></script>
+    <script src="{{ asset('assets/vendor/js/menu.js') }}"></script>
+    <script src="{{ asset('assets/js/main.js') }}"></script>
+    <script src="{{ asset('assets/js/auth-custom.js') }}"></script>
 </body>
 </html>

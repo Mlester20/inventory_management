@@ -212,7 +212,7 @@
                   <input class="form-check-input" type="checkbox" id="remember-me" />
                   <label class="form-check-label" for="remember-me">Remember Me</label>
                 </div>
-                <a href="#" class="auth-forgot-link">Forgot Password?</a>
+                <a href="{{ route('password.request') }}" class="auth-forgot-link">Forgot Password?</a>
               </div>
 
               <button class="auth-submit-btn" type="submit" id="authSubmitBtn">

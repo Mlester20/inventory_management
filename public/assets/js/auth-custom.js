@@ -1,16 +1,21 @@
 /**
- * Login page interactions: password visibility toggle, submit-button
- * loading state, and a small ripple effect. Purely presentational —
- * does not touch form action/inputs/validation.
+ * Shared auth-page interactions (login, forgot-password, reset-password):
+ * password visibility toggle, submit-button loading state, and a small
+ * ripple effect. Purely presentational — does not touch form action,
+ * inputs, or validation. Selectors are class-based so any number of
+ * password fields / forms on a page are wired up automatically.
  */
 (function () {
   'use strict';
 
   document.addEventListener('DOMContentLoaded', function () {
-    var passwordInput = document.getElementById('password');
-    var toggleBtn = document.getElementById('authPasswordToggle');
+    document.querySelectorAll('.auth-password-toggle').forEach(function (toggleBtn) {
+      var wrapper = toggleBtn.closest('.auth-input-wrapper');
+      var passwordInput = wrapper ? wrapper.querySelector('input') : null;
+      if (!passwordInput) {
+        return;
+      }
 
-    if (passwordInput && toggleBtn) {
       toggleBtn.addEventListener('click', function () {
         var isHidden = passwordInput.type === 'password';
         passwordInput.type = isHidden ? 'text' : 'password';
@@ -23,16 +28,16 @@
           icon.classList.toggle('bx-show', isHidden);
         }
       });
-    }
+    });
 
-    var loginForm = document.getElementById('loginForm');
-    var submitBtn = document.getElementById('authSubmitBtn');
-
-    if (loginForm && submitBtn) {
-      loginForm.addEventListener('submit', function () {
-        submitBtn.classList.add('is-loading');
-        submitBtn.disabled = true;
-      });
+    document.querySelectorAll('.auth-submit-btn').forEach(function (submitBtn) {
+      var form = submitBtn.closest('form');
+      if (form) {
+        form.addEventListener('submit', function () {
+          submitBtn.classList.add('is-loading');
+          submitBtn.disabled = true;
+        });
+      }
 
       submitBtn.addEventListener('click', function (event) {
         var rect = submitBtn.getBoundingClientRect();
@@ -49,6 +54,6 @@
           ripple.remove();
         });
       });
-    }
+    });
   });
 })();

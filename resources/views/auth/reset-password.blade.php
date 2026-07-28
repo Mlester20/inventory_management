@@ -1,124 +1,197 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
+<html
+  lang="en"
+  class="light-style customizer-hide"
+  dir="ltr"
+  data-theme="theme-default"
+  data-assets-path="{{ asset('assets/') }}"
+  data-template="vertical-menu-template-free"
+>
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reset Password - Inventory App</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .auth-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 400px;
-        }
-        .auth-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .auth-header h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: #333;
-        }
-        .auth-header p {
-            color: #666;
-            margin-top: 0.5rem;
-        }
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            padding: 0.75rem;
-            font-weight: 600;
-        }
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
-        }
-        .auth-link {
-            text-align: center;
-            margin-top: 1.5rem;
-            font-size: 0.875rem;
-        }
-        .auth-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .error-message {
-            color: #dc3545;
-            font-size: 0.875rem;
-            margin-top: 0.25rem;
-        }
-    </style>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    <title>Reset Password</title>
+    <meta name="description" content="" />
+    <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/favicon/icon.png') }}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/fonts/boxicons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/core.css') }}" class="template-customizer-core-css" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/theme-default.css') }}" class="template-customizer-theme-css" />
+    <link rel="stylesheet" href="{{ asset('assets/css/demo.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/css/auth-custom.css') }}" />
+    <script src="{{ asset('assets/vendor/js/helpers.js') }}"></script>
+    <script src="{{ asset('assets/js/config.js') }}"></script>
 </head>
-<body>
-    <div class="auth-container">
-        <div class="auth-header">
-            <h1>Reset Password</h1>
-            <p>Enter your new password</p>
+<body class="auth-body">
+
+    <div class="auth-page">
+      <div class="auth-blob auth-blob-1"></div>
+      <div class="auth-blob auth-blob-2"></div>
+      <div class="auth-blob auth-blob-3"></div>
+
+      <div class="auth-split">
+        <div class="auth-form-panel">
+          <div class="auth-card">
+            <div class="auth-card-header">
+              <span class="auth-card-logo">
+                <img src="{{ asset('assets/img/favicon/icon.png') }}" alt="SAIMS" />
+              </span>
+              <h2 class="auth-card-title">Reset Password</h2>
+              <p class="auth-card-subtitle">
+                @if ($step === 'code')
+                  Enter the verification code we emailed you
+                @else
+                  Code verified — set your new password
+                @endif
+              </p>
+            </div>
+
+            @if ($errors->any())
+              <div class="auth-alert" role="alert">
+                {{ $errors->first() }}
+              </div>
+            @endif
+
+            @if ($step === 'code')
+              <form class="auth-form" action="{{ route('password.verify-code') }}" method="POST">
+                @csrf
+
+                <div class="auth-input-group mb-3">
+                  <label for="email" class="auth-label">Email</label>
+                  <div class="auth-input-wrapper">
+                    <i class='bx bx-envelope auth-input-icon' aria-hidden="true"></i>
+                    <input
+                      type="email"
+                      class="form-control auth-input"
+                      id="email"
+                      name="email"
+                      placeholder="Enter your email"
+                      value="{{ old('email', $email) }}"
+                      autofocus
+                      spellcheck="false"
+                      autocomplete="username"
+                    />
+                  </div>
+                </div>
+
+                <div class="auth-input-group mb-1">
+                  <label for="code" class="auth-label">Verification Code</label>
+                  <div class="auth-input-wrapper">
+                    <i class='bx bx-hash auth-input-icon' aria-hidden="true"></i>
+                    <input
+                      type="text"
+                      class="form-control auth-input"
+                      id="code"
+                      name="code"
+                      placeholder="6-digit code"
+                      value="{{ old('code') }}"
+                      inputmode="numeric"
+                      pattern="[0-9]*"
+                      maxlength="6"
+                      autocomplete="one-time-code"
+                    />
+                  </div>
+                </div>
+
+                <div class="auth-form-meta">
+                  <a href="{{ route('password.request') }}" class="auth-forgot-link">Request a new code</a>
+                </div>
+
+                <button class="auth-submit-btn" type="submit">
+                  <span class="auth-submit-label">Verify Code</span>
+                  <span class="auth-submit-spinner" aria-hidden="true"></span>
+                </button>
+              </form>
+            @else
+              <form class="auth-form" action="{{ route('password.store') }}" method="POST">
+                @csrf
+
+                <input type="hidden" name="email" value="{{ $email }}" />
+                <input type="hidden" name="code" value="{{ $code }}" />
+
+                <div class="auth-input-group mb-3">
+                  <label class="auth-label">Email</label>
+                  <div class="auth-input-wrapper">
+                    <i class='bx bx-envelope auth-input-icon' aria-hidden="true"></i>
+                    <input type="email" class="form-control auth-input" value="{{ $email }}" disabled />
+                  </div>
+                </div>
+
+                <div class="auth-input-group mb-3">
+                  <label for="password" class="auth-label">New Password</label>
+                  <div class="auth-input-wrapper">
+                    <i class='bx bx-lock-alt auth-input-icon' aria-hidden="true"></i>
+                    <input
+                      type="password"
+                      id="password"
+                      class="form-control auth-input"
+                      name="password"
+                      placeholder="Enter your new password"
+                      autofocus
+                      autocomplete="new-password"
+                    />
+                    <button type="button" class="auth-password-toggle" aria-label="Show password" aria-pressed="false">
+                      <i class='bx bx-hide' aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="auth-input-group mb-1">
+                  <label for="password_confirmation" class="auth-label">Confirm Password</label>
+                  <div class="auth-input-wrapper">
+                    <i class='bx bx-lock-alt auth-input-icon' aria-hidden="true"></i>
+                    <input
+                      type="password"
+                      id="password_confirmation"
+                      class="form-control auth-input"
+                      name="password_confirmation"
+                      placeholder="Confirm your new password"
+                      autocomplete="new-password"
+                    />
+                    <button type="button" class="auth-password-toggle" aria-label="Show password" aria-pressed="false">
+                      <i class='bx bx-hide' aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <button class="auth-submit-btn" type="submit">
+                  <span class="auth-submit-label">Reset Password</span>
+                  <span class="auth-submit-spinner" aria-hidden="true"></span>
+                </button>
+              </form>
+            @endif
+
+            <div class="auth-divider"><span>SAIMS</span></div>
+
+            <p class="text-center mb-0">
+              <a href="{{ route('auth') }}" class="auth-forgot-link">
+                <i class="bx bx-chevron-left"></i> Back to login
+              </a>
+            </p>
+          </div>
         </div>
-
-        @if ($errors->any())
-            <div class="alert alert-danger" role="alert">
-                <strong>There was a problem:</strong>
-                <ul class="mb-0 mt-2">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('password.store') }}">
-            @csrf
-
-            <input type="hidden" name="token" value="{{ $request->route('token') }}" />
-
-            <div class="mb-3">
-                <label for="email" class="form-label">Email Address</label>
-                <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $request->email) }}" required autofocus autocomplete="username" />
-                @error('email')
-                    <div class="error-message">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <div class="mb-3">
-                <label for="password" class="form-label">New Password</label>
-                <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" required autocomplete="new-password" />
-                @error('password')
-                    <div class="error-message">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <div class="mb-3">
-                <label for="password_confirmation" class="form-label">Confirm Password</label>
-                <input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" id="password_confirmation" name="password_confirmation" required autocomplete="new-password" />
-                @error('password_confirmation')
-                    <div class="error-message">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100">Reset Password</button>
-        </form>
-
-        <div class="auth-link">
-            <a href="{{ route('auth') }}">Back to login</a>
-        </div>
+      </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @include('sweetalert::alert')
+
+    <script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/popper/popper.js') }}"></script>
+    <script src="{{ asset('assets/vendor/js/bootstrap.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js') }}"></script>
+    <script src="{{ asset('assets/vendor/js/menu.js') }}"></script>
+    <script src="{{ asset('assets/js/main.js') }}"></script>
+    <script src="{{ asset('assets/js/auth-custom.js') }}"></script>
 </body>
 </html>

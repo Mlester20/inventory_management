@@ -10,6 +10,8 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InventoryItemsController;
 use App\Http\Controllers\InventoryAdjustmentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\CogsController;
@@ -55,6 +57,14 @@ Route::get('/login', function () {
 })->middleware('guest')->name('login');
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest')->name('login');
 Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+
+Route::middleware('guest')->group(function () {
+    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::get('reset-password', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('reset-password/verify', [NewPasswordController::class, 'verifyCode'])->name('password.verify-code');
+    Route::post('reset-password', [NewPasswordController::class, 'store'])->name('password.store');
+});
 
 
 //User Route - Protected with auth middleware

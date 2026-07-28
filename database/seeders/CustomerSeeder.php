@@ -15,7 +15,7 @@ class CustomerSeeder extends Seeder
         $customers = [
             [
                 'customer_name' => 'Walk-in Customer',
-                'customer_type' => null,
+                'customer_type' => 'walk_in',
                 'price_level' => 'retail',
                 'vat_type' => 'VAT',
                 'contact_person' => null,
