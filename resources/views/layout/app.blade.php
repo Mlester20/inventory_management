@@ -148,6 +148,11 @@
                   </a>
                 </li>
                 <li class="menu-item">
+                  <a href="{{ route('categories.index') }}" class="menu-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
+                    <div data-i18n="Categories">Categories</div>
+                  </a>
+                </li>
+                <li class="menu-item">
                   <a href="{{ route('inventory-adjustments.index') }}" class="menu-link {{ request()->routeIs('inventory-adjustments.*') ? 'active' : '' }}">
                     <div data-i18n="Inventory Adjustments">Inventory Adjustments</div>
                   </a>
