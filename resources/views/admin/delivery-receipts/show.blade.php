@@ -3,22 +3,27 @@
 @section('title', 'Delivery Receipt ' . $deliveryReceipt->dr_no)
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-3 no-print">
         <a href="{{ route('delivery-receipts.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Delivery Receipts
         </a>
-        @if($deliveryReceipt->status !== 'delivered')
-            <form action="{{ route('delivery-receipts.mark-delivered', $deliveryReceipt) }}" method="POST">
-                @csrf
-                <button type="submit" class="btn btn-success">
-                    <i class="bx bx-check-circle"></i> Mark as Delivered
-                </button>
-            </form>
-        @endif
+        <div class="d-flex gap-2">
+            @if($deliveryReceipt->status !== 'delivered')
+                <form action="{{ route('delivery-receipts.mark-delivered', $deliveryReceipt) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-success">
+                        <i class="bx bx-check-circle"></i> Mark as Delivered
+                    </button>
+                </form>
+            @endif
+            <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                <i class="bx bx-printer"></i> Print
+            </button>
+        </div>
     </div>
 
     @if ($errors->any())
-        <div class="alert alert-danger">
+        <div class="alert alert-danger no-print">
             <ul class="mb-0">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -29,7 +34,7 @@
 
     <form action="{{ route('delivery-receipts.create-invoice', $deliveryReceipt) }}" method="POST" id="createInvoiceForm">
         @csrf
-        <div class="card">
+        <div class="card" id="printableDeliveryReceipt">
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">Delivery Note</h5>
                 <div class="d-flex gap-2">
@@ -87,7 +92,7 @@
                     <table class="table table-hover table-sm align-middle">
                         <thead>
                             <tr class="table-header-bg">
-                                <th></th>
+                                <th class="no-print"></th>
                                 <th>#</th>
                                 <th>Generic Description</th>
                                 <th>Item Description</th>
@@ -103,7 +108,7 @@
                             @foreach ($deliveryReceipt->items as $line)
                                 @php $fullyInvoiced = $line->invoiced_qty >= $line->qty; @endphp
                                 <tr>
-                                    <td>
+                                    <td class="no-print">
                                         <input type="checkbox" class="form-check-input line-checkbox" name="line_ids[]" value="{{ $line->id }}" {{ $fullyInvoiced ? 'disabled' : '' }}>
                                     </td>
                                     <td>{{ $loop->iteration }}</td>
@@ -127,7 +132,7 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="text-muted small mb-3">
+                <p class="text-muted small mb-3 no-print">
                     Check the lines to invoice, then click Create Invoice. A line's checkbox disables once it's fully invoiced.
                 </p>
 
@@ -136,7 +141,7 @@
                         <label class="text-muted small">Prepared By</label>
                         <p class="fw-bold mb-0">{{ $deliveryReceipt->preparedBy->name ?? '—' }}</p>
                     </div>
-                    <div class="col-md-8 text-md-end mt-3 mt-md-0">
+                    <div class="col-md-8 text-md-end mt-3 mt-md-0 no-print">
                         <button type="submit" class="btn btn-primary" id="createInvoiceBtn" disabled>
                             <i class="bx bx-receipt"></i> Create Invoice
                         </button>
@@ -149,6 +154,43 @@
 <style>
     .table-header-bg {
         background-color: #f7f8fa;
+    }
+
+    @media print {
+        @page {
+            size: auto;
+            margin: 10mm;
+        }
+
+        .no-print,
+        #layout-menu,
+        #layout-navbar,
+        .content-footer {
+            display: none !important;
+        }
+
+        .layout-page {
+            margin-left: 0 !important;
+        }
+
+        body {
+            font-size: 12px;
+        }
+
+        #printableDeliveryReceipt {
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        table,
+        tr {
+            page-break-inside: avoid;
+        }
+
+        .table-header-bg {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
     }
 </style>
 @endsection

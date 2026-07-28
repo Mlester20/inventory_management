@@ -3,24 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\Models\GenericName;
 use Illuminate\Http\Request;
-// sweet alert
 use RealRashid\SweetAlert\Facades\Alert;
 
 class CategoryController extends Controller
 {
     /**
      * Display a listing of the resource.
-     *
-     * The "Categories" page now primarily manages Generic Names, so this
-     * renders the same shared view as GenericNameController::index().
      */
     public function index()
     {
-        $categories = Category::orderBy('category_name')->paginate(15);
-        $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
-        return view('admin.categories', compact('categories', 'genericNames'));
+        $categories = Category::withCount(['genericNames', 'products'])
+            ->orderBy('category_name')
+            ->paginate(15);
+
+        return view('admin.categories', compact('categories'));
     }
 
     /**
@@ -28,19 +25,16 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        //validate the request
         $request->validate([
             'category_name' => 'required|unique:categories,category_name',
         ]);
 
-        //create the category
         Category::create([
             'category_name' => $request->category_name,
         ]);
 
-        //redirect to the generic names page
         Alert::success('Success', 'Category created successfully');
-        return redirect()->route('generic-names.index');
+        return redirect()->route('categories.index');
     }
 
     /**
@@ -48,19 +42,16 @@ class CategoryController extends Controller
      */
     public function update(Request $request, Category $category)
     {
-        //validate the request
         $request->validate([
             'category_name' => 'required|unique:categories,category_name,' . $category->id,
         ]);
 
-        //update the category
         $category->update([
             'category_name' => $request->category_name,
         ]);
 
-        //redirect to the generic names page
         Alert::success('Success', 'Category updated successfully');
-        return redirect()->route('generic-names.index');
+        return redirect()->route('categories.index');
     }
 
     /**
@@ -68,9 +59,13 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        //
+        if ($category->genericNames()->exists() || $category->products()->exists()) {
+            Alert::error('Cannot delete', 'This category still has Generic Names or Products assigned to it and cannot be deleted.');
+            return redirect()->route('categories.index');
+        }
+
         $category->delete();
         Alert::success('Success', 'Category deleted successfully');
-        return redirect()->route('generic-names.index');
+        return redirect()->route('categories.index');
     }
 }

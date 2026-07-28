@@ -3,17 +3,23 @@
 @section('title', 'Sales Order ' . $salesOrder->so_no)
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-3 no-print">
         <a href="{{ route('sales-orders.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Sales Orders
         </a>
-        @if($salesOrder->status !== 'completed' && $salesOrder->status !== 'cancelled')
-            <a href="{{ route('delivery-receipts.create', ['sales_order_id' => $salesOrder->id]) }}" class="btn btn-primary">
-                <i class="bx bx-plus"></i> Create Delivery Receipt
-            </a>
-        @endif
+        <div class="d-flex gap-2">
+            @if($salesOrder->status !== 'completed' && $salesOrder->status !== 'cancelled')
+                <a href="{{ route('delivery-receipts.create', ['sales_order_id' => $salesOrder->id]) }}" class="btn btn-primary">
+                    <i class="bx bx-plus"></i> Create Delivery Receipt
+                </a>
+            @endif
+            <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                <i class="bx bx-printer"></i> Print
+            </button>
+        </div>
     </div>
 
+    <div id="printableSalesOrder">
     <div class="card mb-4">
         <div class="card-body">
             <div class="row mb-3">
@@ -42,10 +48,6 @@
                 <div class="col-md-3">
                     <label class="text-muted small">Order Date</label>
                     <p class="mb-0">{{ $salesOrder->order_date->format('M d, Y') }}</p>
-                </div>
-                <div class="col-md-3">
-                    <label class="text-muted small">Prepared By</label>
-                    <p class="mb-0">{{ $salesOrder->preparedBy->name ?? '—' }}</p>
                 </div>
             </div>
         </div>
@@ -93,7 +95,14 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="border-top pt-1">Prepared By: {{ $salesOrder->preparedBy->name ?? '—' }}</div>
+        </div>
+    </div>
+    </div>
+
+    <div class="card no-print">
         <h5 class="card-header">Delivery Receipts</h5>
         <div class="table-responsive">
             <table class="table table-hover">
@@ -131,6 +140,44 @@
     }
     .table-info {
         background-color: #e7f3ff;
+    }
+
+    @media print {
+        @page {
+            size: auto;
+            margin: 10mm;
+        }
+
+        .no-print,
+        #layout-menu,
+        #layout-navbar,
+        .content-footer {
+            display: none !important;
+        }
+
+        .layout-page {
+            margin-left: 0 !important;
+        }
+
+        body {
+            font-size: 12px;
+        }
+
+        #printableSalesOrder .card {
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        table,
+        tr {
+            page-break-inside: avoid;
+        }
+
+        .table-header-bg,
+        .table-info {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
     }
 </style>
 @endsection
