@@ -169,6 +169,11 @@
                             @include('admin.partials.dash-trend-badge', ['trend' => $expensesOverview['trend'], 'invert' => true])
                         </div>
                     </div>
+                    <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Chart period filter" id="salesTrendPeriodFilter">
+                        <button type="button" class="btn btn-outline-primary" data-period="week">Week</button>
+                        <button type="button" class="btn btn-outline-primary active" data-period="month">Month</button>
+                        <button type="button" class="btn btn-outline-primary" data-period="year">Year</button>
+                    </div>
                     <div id="monthlySalesTrendChart" style="height: 260px;"></div>
                 </div>
             </div>
@@ -502,55 +507,81 @@
 @section('scripts')
     <script>
         // Wait for ApexCharts to be loaded before initializing the hero chart —
-        // Invoice-based Sales vs. POS Revenue vs. Expenses plotted together for a direct comparison
+        // Invoice-based Sales vs. POS Revenue vs. Expenses plotted together for a direct comparison.
+        // All three periods (week/month/year) are precomputed server-side
+        // (see DashboardService::getSalesTrendChartByPeriod) — the Week/Month/Year
+        // buttons just swap which precomputed dataset is fed into the chart,
+        // no extra request needed.
+        let salesTrendChartInstance = null;
+
         function initMonthlySalesTrendChart() {
             if (typeof ApexCharts === 'undefined') {
                 setTimeout(initMonthlySalesTrendChart, 100);
                 return;
             }
 
-            const monthlySalesTrend = @json($monthlySalesTrend);
-            const monthlyRevenue = @json($monthlyRevenue);
-            const monthlyExpensesTrend = @json($monthlyExpensesTrend);
-            const salesData = Array.from({ length: 12 }, (_, i) => monthlySalesTrend[i + 1] || 0);
-            const posRevenueData = Array.from({ length: 12 }, (_, i) => monthlyRevenue[i + 1] || 0);
-            const expensesData = Array.from({ length: 12 }, (_, i) => monthlyExpensesTrend[i + 1] || 0);
+            const salesTrendByPeriod = @json($salesTrendByPeriod);
 
-            const options = {
-                chart: {
-                    type: 'line',
-                    height: 260,
-                    toolbar: { show: false }
-                },
-                series: [
-                    { name: 'Total Sales', data: salesData },
-                    { name: 'POS Revenue', data: posRevenueData },
-                    { name: 'Expenses', data: expensesData }
-                ],
-                stroke: {
-                    curve: 'smooth',
-                    width: [3, 2, 2],
-                    dashArray: [0, 4, 2]
-                },
-                xaxis: {
-                    categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                },
-                colors: ['#696cff', '#8592a3', '#ffab00'],
-                dataLabels: { enabled: false },
-                legend: { show: false },
-                yaxis: {
-                    labels: {
-                        formatter: val => '₱' + val.toLocaleString()
+            const buildOptions = (period) => {
+                const data = salesTrendByPeriod[period];
+                return {
+                    chart: {
+                        type: 'line',
+                        height: 260,
+                        toolbar: { show: false }
+                    },
+                    series: [
+                        { name: 'Total Sales', data: data.sales },
+                        { name: 'POS Revenue', data: data.revenue },
+                        { name: 'Expenses', data: data.expenses }
+                    ],
+                    stroke: {
+                        curve: 'smooth',
+                        width: [3, 2, 2],
+                        dashArray: [0, 4, 2]
+                    },
+                    xaxis: {
+                        categories: data.categories
+                    },
+                    colors: ['#696cff', '#8592a3', '#ffab00'],
+                    dataLabels: { enabled: false },
+                    legend: { show: false },
+                    yaxis: {
+                        labels: {
+                            formatter: val => '₱' + val.toLocaleString()
+                        }
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: val => '₱' + val.toLocaleString()
+                        }
                     }
-                },
-                tooltip: {
-                    y: {
-                        formatter: val => '₱' + val.toLocaleString()
-                    }
-                }
+                };
             };
 
-            new ApexCharts(document.querySelector("#monthlySalesTrendChart"), options).render();
+            salesTrendChartInstance = new ApexCharts(document.querySelector("#monthlySalesTrendChart"), buildOptions('month'));
+            salesTrendChartInstance.render();
+
+            const filterGroup = document.getElementById('salesTrendPeriodFilter');
+            if (filterGroup) {
+                filterGroup.querySelectorAll('button[data-period]').forEach(button => {
+                    button.addEventListener('click', function () {
+                        filterGroup.querySelectorAll('button[data-period]').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+
+                        const period = this.getAttribute('data-period');
+                        const data = salesTrendByPeriod[period];
+                        salesTrendChartInstance.updateOptions({
+                            xaxis: { categories: data.categories },
+                            series: [
+                                { name: 'Total Sales', data: data.sales },
+                                { name: 'POS Revenue', data: data.revenue },
+                                { name: 'Expenses', data: data.expenses }
+                            ]
+                        });
+                    });
+                });
+            }
         }
 
         // Wait for ApexCharts to be loaded before initializing the last-5-days comparison chart

@@ -109,34 +109,38 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
-                                <div class="mb-3">
-                                    <label class="form-label">Code</label>
-                                    <input type="text" name="code" class="form-control" value="{{ $nextGenericCode }}" required>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Code</label>
+                                        <input type="text" name="code" class="form-control" placeholder="e.g., 00012" value="{{ $nextGenericCode }}" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Category</label>
+                                        <select name="category_id" class="form-select" required>
+                                            <option value="">-- Select Category --</option>
+                                            @foreach ($categories as $category)
+                                                <option value="{{ $category->id }}">{{ $category->category_name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Generic Description</label>
-                                    <textarea name="generic_name" class="form-control" rows="2" required></textarea>
+                                    <textarea name="generic_name" class="form-control" rows="2" placeholder="e.g., Paracetamol 500mg" required></textarea>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Category</label>
-                                    <select name="category_id" class="form-select" required>
-                                        <option value="">-- Select Category --</option>
-                                        @foreach ($categories as $category)
-                                            <option value="{{ $category->id }}">{{ $category->category_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Unit</label>
-                                    <input type="text" name="unit" class="form-control" placeholder="e.g. Tablet, Box, Bottle" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">VAT Type</label>
-                                    <select name="vat_type" class="form-select" required>
-                                        @foreach (\App\Models\GenericName::VAT_TYPES as $value => $label)
-                                            <option value="{{ $value }}">{{ $label }}</option>
-                                        @endforeach
-                                    </select>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Unit</label>
+                                        <input type="text" name="unit" class="form-control" placeholder="e.g. Tablet, Box, Bottle" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">VAT Type</label>
+                                        <select name="vat_type" class="form-select" required>
+                                            @foreach (\App\Models\GenericName::VAT_TYPES as $value => $label)
+                                                <option value="{{ $value }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             <div class="modal-footer">
@@ -160,34 +164,38 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
-                                <div class="mb-3">
-                                    <label class="form-label">Code</label>
-                                    <input type="text" name="code" id="update_generic_code" class="form-control" required>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Code</label>
+                                        <input type="text" name="code" id="update_generic_code" class="form-control" placeholder="e.g., 00012" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Category</label>
+                                        <select name="category_id" id="update_generic_category_id" class="form-select" required>
+                                            <option value="">-- Select Category --</option>
+                                            @foreach ($categories as $category)
+                                                <option value="{{ $category->id }}">{{ $category->category_name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Generic Description</label>
-                                    <textarea name="generic_name" id="update_generic_name" class="form-control" rows="2" required></textarea>
+                                    <textarea name="generic_name" id="update_generic_name" class="form-control" rows="2" placeholder="e.g., Paracetamol 500mg" required></textarea>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Category</label>
-                                    <select name="category_id" id="update_generic_category_id" class="form-select" required>
-                                        <option value="">-- Select Category --</option>
-                                        @foreach ($categories as $category)
-                                            <option value="{{ $category->id }}">{{ $category->category_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Unit</label>
-                                    <input type="text" name="unit" id="update_generic_unit" class="form-control" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">VAT Type</label>
-                                    <select name="vat_type" id="update_generic_vat_type" class="form-select" required>
-                                        @foreach (\App\Models\GenericName::VAT_TYPES as $value => $label)
-                                            <option value="{{ $value }}">{{ $label }}</option>
-                                        @endforeach
-                                    </select>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Unit</label>
+                                        <input type="text" name="unit" id="update_generic_unit" class="form-control" placeholder="e.g. Tablet, Box, Bottle" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">VAT Type</label>
+                                        <select name="vat_type" id="update_generic_vat_type" class="form-select" required>
+                                            @foreach (\App\Models\GenericName::VAT_TYPES as $value => $label)
+                                                <option value="{{ $value }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             <div class="modal-footer">

@@ -35,58 +35,62 @@
                         </div>
 
                         <div class="modal-body">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">
-                                    Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    id="name"
-                                    class="form-control"
-                                    placeholder="Enter user name"
-                                    required
-                                >
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="name" class="form-label">
+                                        Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        id="name"
+                                        class="form-control"
+                                        placeholder="e.g., Juan Dela Cruz"
+                                        required
+                                    >
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        id="email"
+                                        class="form-control"
+                                        placeholder="e.g., juan@saims.com"
+                                        required
+                                    >
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    id="email"
-                                    class="form-control"
-                                    placeholder="Enter user email"
-                                    required
-                                >
-                            </div>
-                            <div class="mb-3">
-                                <label for="role" class="form-label">
-                                    Role
-                                </label>
-                                <select
-                                    name="role"
-                                    id="role"
-                                    class="form-control"
-                                    required
-                                >
-                                    <option value="user">User</option>
-                                    <option value="admin">Admin</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">
-                                    Password
-                                </label>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    id="password"
-                                    class="form-control"
-                                    placeholder="Enter user password"
-                                    required
-                                >
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="role" class="form-label">
+                                        Role
+                                    </label>
+                                    <select
+                                        name="role"
+                                        id="role"
+                                        class="form-control"
+                                        required
+                                    >
+                                        <option value="user">User</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="password" class="form-label">
+                                        Password
+                                    </label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        id="password"
+                                        class="form-control"
+                                        placeholder="Minimum 6 characters"
+                                        required
+                                    >
+                                </div>
                             </div>
                         </div>
 

@@ -22,10 +22,16 @@
                 </div>
 
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Code</label>
-                        <input type="text" name="code" id="{{ $prefix }}code" class="form-control"
-                            value="{{ $isUpdate ? '' : $nextProductCode }}" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Code</label>
+                            <input type="text" name="code" id="{{ $prefix }}code" class="form-control"
+                                placeholder="e.g., 00012" value="{{ $isUpdate ? '' : $nextProductCode }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Barcode</label>
+                            <input type="text" name="barcode" id="{{ $prefix }}barcode" class="form-control" placeholder="e.g., 4800001234567">
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -53,19 +59,20 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Brand Name</label>
-                        <input type="text" name="brand_name" id="{{ $prefix }}brand_name" class="form-control">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Brand Name</label>
+                            <input type="text" name="brand_name" id="{{ $prefix }}brand_name" class="form-control" placeholder="e.g., Biogesic">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Cost</label>
+                            <input type="number" step="0.01" name="unit_cost" id="{{ $prefix }}unit_cost" class="form-control" placeholder="e.g., 2.50">
+                        </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Item Description</label>
-                        <textarea name="description" id="{{ $prefix }}description" class="form-control" rows="2"></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Barcode</label>
-                        <input type="text" name="barcode" id="{{ $prefix }}barcode" class="form-control">
+                        <textarea name="description" id="{{ $prefix }}description" class="form-control" rows="2" placeholder="e.g., Pain reliever and fever reducer"></textarea>
                     </div>
 
                     <div class="row">
@@ -89,11 +96,6 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Cost</label>
-                        <input type="number" step="0.01" name="unit_cost" id="{{ $prefix }}unit_cost" class="form-control">
-                    </div>
-
                     <table class="table table-sm">
                         <thead>
                             <tr><th>Price</th><th>%</th><th>Amount</th></tr>
@@ -109,10 +111,10 @@
                                 <tr>
                                     <td class="align-middle">{{ $tier['label'] }}</td>
                                     <td>
-                                        <input type="number" step="0.01" name="{{ $tier['percent'] }}" id="{{ $prefix }}{{ $tier['percent'] }}" class="form-control form-control-sm">
+                                        <input type="number" step="0.01" name="{{ $tier['percent'] }}" id="{{ $prefix }}{{ $tier['percent'] }}" class="form-control form-control-sm" placeholder="e.g., 5">
                                     </td>
                                     <td>
-                                        <input type="number" step="0.01" name="{{ $tier['value'] }}" id="{{ $prefix }}{{ $tier['value'] }}" class="form-control form-control-sm" {{ !empty($tier['required']) ? 'required' : '' }}>
+                                        <input type="number" step="0.01" name="{{ $tier['value'] }}" id="{{ $prefix }}{{ $tier['value'] }}" class="form-control form-control-sm" placeholder="e.g., 4.75" {{ !empty($tier['required']) ? 'required' : '' }}>
                                     </td>
                                 </tr>
                             @endforeach
@@ -122,7 +124,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">FDA Reg. No.</label>
-                            <input type="text" name="fda_reg_no" id="{{ $prefix }}fda_reg_no" class="form-control">
+                            <input type="text" name="fda_reg_no" id="{{ $prefix }}fda_reg_no" class="form-control" placeholder="e.g., FR-12345">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">FDA Reg. Exp.</label>
@@ -133,30 +135,30 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Custom Field 1</label>
-                            <input type="text" name="custom_field_1" id="{{ $prefix }}custom_field_1" class="form-control">
+                            <input type="text" name="custom_field_1" id="{{ $prefix }}custom_field_1" class="form-control" placeholder="Optional">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Custom Field 2</label>
-                            <input type="text" name="custom_field_2" id="{{ $prefix }}custom_field_2" class="form-control">
+                            <input type="text" name="custom_field_2" id="{{ $prefix }}custom_field_2" class="form-control" placeholder="Optional">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Custom Field 3</label>
-                            <input type="text" name="custom_field_3" id="{{ $prefix }}custom_field_3" class="form-control">
+                            <input type="text" name="custom_field_3" id="{{ $prefix }}custom_field_3" class="form-control" placeholder="Optional">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Custom Field 4</label>
-                            <input type="text" name="custom_field_4" id="{{ $prefix }}custom_field_4" class="form-control">
+                            <input type="text" name="custom_field_4" id="{{ $prefix }}custom_field_4" class="form-control" placeholder="Optional">
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Location</label>
-                            <input type="text" name="location" id="{{ $prefix }}location" class="form-control">
+                            <input type="text" name="location" id="{{ $prefix }}location" class="form-control" placeholder="e.g., Shelf A-3, Warehouse 2">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Low Stock Threshold</label>
-                            <input type="number" name="low_stock_threshold" id="{{ $prefix }}low_stock_threshold" class="form-control" value="{{ $isUpdate ? '' : 5 }}" required>
+                            <input type="number" name="low_stock_threshold" id="{{ $prefix }}low_stock_threshold" class="form-control" placeholder="e.g., 10" value="{{ $isUpdate ? '' : 5 }}" required>
                         </div>
                     </div>
 

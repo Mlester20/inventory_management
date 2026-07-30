@@ -41,13 +41,6 @@ class DashboardController extends Controller
         $totalPurchases = Purchase::count();
         $totalRevenue = Purchase::sum('total_price');
 
-        // Monthly revenue for the current year (for chart)
-        $monthlyRevenue = Purchase::selectRaw('MONTH(purchase_date) as month, SUM(total_price) as revenue')
-            ->whereYear('purchase_date', now()->year)
-            ->groupBy('month')
-            ->orderBy('month')
-            ->pluck('revenue', 'month');
-
         // Recent purchases with product info
         $recentPurchases = Purchase::with('productBatch.product.category')
             ->orderBy('created_at', 'desc')
@@ -66,8 +59,7 @@ class DashboardController extends Controller
         $expiredProducts = $this->dashboardService->getExpiredProductsSnapshot();
         $pendingActionItems = $this->dashboardService->getPendingActionItems();
         $recentActivity = $this->dashboardService->getRecentActivity();
-        $monthlySalesTrend = $this->dashboardService->getMonthlySalesTrendChart();
-        $monthlyExpensesTrend = $this->dashboardService->getMonthlyExpensesTrendChart();
+        $salesTrendByPeriod = $this->dashboardService->getSalesTrendChartByPeriod();
         $last5DaysComparison = $this->dashboardService->getLast5DaysComparison();
         $customerOrderStats = $this->dashboardService->getCustomerAndOrderStats();
         $recentInvoices = Invoice::latest()->limit(6)->get();
@@ -80,7 +72,6 @@ class DashboardController extends Controller
             'stockItems',
             'totalPurchases',
             'totalRevenue',
-            'monthlyRevenue',
             'recentPurchases',
             'totalStockIn',
             'totalStockOut',
@@ -91,8 +82,7 @@ class DashboardController extends Controller
             'expiredProducts',
             'pendingActionItems',
             'recentActivity',
-            'monthlySalesTrend',
-            'monthlyExpensesTrend',
+            'salesTrendByPeriod',
             'last5DaysComparison',
             'customerOrderStats',
             'recentInvoices',

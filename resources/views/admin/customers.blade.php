@@ -42,7 +42,7 @@
                                     name="customer_name"
                                     id="customer_name"
                                     class="form-control"
-                                    placeholder="Enter customer name"
+                                    placeholder="e.g., Green Cross Pharmacy"
                                     required
                                 >
                             </div>
@@ -54,87 +54,93 @@
                                     name="delivery_address"
                                     id="delivery_address"
                                     class="form-control"
-                                    placeholder="Enter delivery address (optional)"
+                                    placeholder="e.g., 123 Rizal St., Quezon City (optional)"
                                     rows="3"
                                 ></textarea>
                             </div>
-                            <div class="mb-3">
-                                <label for="contact_number" class="form-label">
-                                    Contact Number
-                                </label>
-                                <input
-                                    type="text"
-                                    name="contact_number"
-                                    id="contact_number"
-                                    class="form-control"
-                                    placeholder="Enter contact number (optional)"
-                                >
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="contact_number" class="form-label">
+                                        Contact Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact_number"
+                                        id="contact_number"
+                                        class="form-control"
+                                        placeholder="e.g., 0917 123 4567 (optional)"
+                                    >
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        id="email"
+                                        class="form-control"
+                                        placeholder="e.g., contact@pharmacy.com (optional)"
+                                    >
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    id="email"
-                                    class="form-control"
-                                    placeholder="Enter email (optional)"
-                                >
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="contact_person" class="form-label">
+                                        Contact Person
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact_person"
+                                        id="contact_person"
+                                        class="form-control"
+                                        placeholder="e.g., Juan Dela Cruz (optional)"
+                                    >
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="customer_type" class="form-label">
+                                        Customer Type
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="customer_type"
+                                        id="customer_type"
+                                        class="form-control"
+                                        placeholder="e.g. Pharmacy, Hospital, Clinic (optional)"
+                                    >
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="contact_person" class="form-label">
-                                    Contact Person
-                                </label>
-                                <input
-                                    type="text"
-                                    name="contact_person"
-                                    id="contact_person"
-                                    class="form-control"
-                                    placeholder="Enter contact person (optional)"
-                                >
-                            </div>
-                            <div class="mb-3">
-                                <label for="customer_type" class="form-label">
-                                    Customer Type
-                                </label>
-                                <input
-                                    type="text"
-                                    name="customer_type"
-                                    id="customer_type"
-                                    class="form-control"
-                                    placeholder="e.g. Pharmacy, Hospital, Clinic (optional)"
-                                >
-                            </div>
-                            <div class="mb-3">
-                                <label for="price_level" class="form-label">
-                                    Price Level
-                                </label>
-                                <select
-                                    name="price_level"
-                                    id="price_level"
-                                    class="form-select"
-                                    required
-                                >
-                                    @foreach (\App\Models\Customer::PRICE_LEVELS as $value => $label)
-                                        <option value="{{ $value }}" {{ $value === 'retail' ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="vat_type" class="form-label">
-                                    VAT Type
-                                </label>
-                                <select
-                                    name="vat_type"
-                                    id="vat_type"
-                                    class="form-select"
-                                    required
-                                >
-                                    @foreach (\App\Models\Customer::VAT_TYPES as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="price_level" class="form-label">
+                                        Price Level
+                                    </label>
+                                    <select
+                                        name="price_level"
+                                        id="price_level"
+                                        class="form-select"
+                                        required
+                                    >
+                                        @foreach (\App\Models\Customer::PRICE_LEVELS as $value => $label)
+                                            <option value="{{ $value }}" {{ $value === 'retail' ? 'selected' : '' }}>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="vat_type" class="form-label">
+                                        VAT Type
+                                    </label>
+                                    <select
+                                        name="vat_type"
+                                        id="vat_type"
+                                        class="form-select"
+                                        required
+                                    >
+                                        @foreach (\App\Models\Customer::VAT_TYPES as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -260,7 +266,7 @@
                                     name="customer_name"
                                     id="update_customer_name"
                                     class="form-control"
-                                    placeholder="Enter customer name"
+                                    placeholder="e.g., Green Cross Pharmacy"
                                     required
                                 >
                             </div>
@@ -272,87 +278,93 @@
                                     name="delivery_address"
                                     id="update_delivery_address"
                                     class="form-control"
-                                    placeholder="Enter delivery address (optional)"
+                                    placeholder="e.g., 123 Rizal St., Quezon City (optional)"
                                     rows="3"
                                 ></textarea>
                             </div>
-                            <div class="mb-3">
-                                <label for="update_contact_number" class="form-label">
-                                    Contact Number
-                                </label>
-                                <input
-                                    type="text"
-                                    name="contact_number"
-                                    id="update_contact_number"
-                                    class="form-control"
-                                    placeholder="Enter contact number (optional)"
-                                >
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_contact_number" class="form-label">
+                                        Contact Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact_number"
+                                        id="update_contact_number"
+                                        class="form-control"
+                                        placeholder="e.g., 0917 123 4567 (optional)"
+                                    >
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_email" class="form-label">
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        id="update_email"
+                                        class="form-control"
+                                        placeholder="e.g., contact@pharmacy.com (optional)"
+                                    >
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="update_email" class="form-label">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    id="update_email"
-                                    class="form-control"
-                                    placeholder="Enter email (optional)"
-                                >
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_contact_person" class="form-label">
+                                        Contact Person
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact_person"
+                                        id="update_contact_person"
+                                        class="form-control"
+                                        placeholder="e.g., Juan Dela Cruz (optional)"
+                                    >
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_customer_type" class="form-label">
+                                        Customer Type
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="customer_type"
+                                        id="update_customer_type"
+                                        class="form-control"
+                                        placeholder="e.g. Pharmacy, Hospital, Clinic (optional)"
+                                    >
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="update_contact_person" class="form-label">
-                                    Contact Person
-                                </label>
-                                <input
-                                    type="text"
-                                    name="contact_person"
-                                    id="update_contact_person"
-                                    class="form-control"
-                                    placeholder="Enter contact person (optional)"
-                                >
-                            </div>
-                            <div class="mb-3">
-                                <label for="update_customer_type" class="form-label">
-                                    Customer Type
-                                </label>
-                                <input
-                                    type="text"
-                                    name="customer_type"
-                                    id="update_customer_type"
-                                    class="form-control"
-                                    placeholder="e.g. Pharmacy, Hospital, Clinic (optional)"
-                                >
-                            </div>
-                            <div class="mb-3">
-                                <label for="update_price_level" class="form-label">
-                                    Price Level
-                                </label>
-                                <select
-                                    name="price_level"
-                                    id="update_price_level"
-                                    class="form-select"
-                                    required
-                                >
-                                    @foreach (\App\Models\Customer::PRICE_LEVELS as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="update_vat_type" class="form-label">
-                                    VAT Type
-                                </label>
-                                <select
-                                    name="vat_type"
-                                    id="update_vat_type"
-                                    class="form-select"
-                                    required
-                                >
-                                    @foreach (\App\Models\Customer::VAT_TYPES as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_price_level" class="form-label">
+                                        Price Level
+                                    </label>
+                                    <select
+                                        name="price_level"
+                                        id="update_price_level"
+                                        class="form-select"
+                                        required
+                                    >
+                                        @foreach (\App\Models\Customer::PRICE_LEVELS as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_vat_type" class="form-label">
+                                        VAT Type
+                                    </label>
+                                    <select
+                                        name="vat_type"
+                                        id="update_vat_type"
+                                        class="form-select"
+                                        required
+                                    >
+                                        @foreach (\App\Models\Customer::VAT_TYPES as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                         </div>
 

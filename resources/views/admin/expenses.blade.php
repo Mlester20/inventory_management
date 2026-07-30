@@ -33,41 +33,47 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="expense_category_id" class="form-label">Category</label>
-                            <select name="expense_category_id" id="expense_category_id" class="form-select" required>
-                                <option value="">-- Select Category --</option>
-                                @foreach ($expenseCategories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                @endforeach
-                            </select>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="expense_category_id" class="form-label">Category</label>
+                                <select name="expense_category_id" id="expense_category_id" class="form-select" required>
+                                    <option value="">-- Select Category --</option>
+                                    @foreach ($expenseCategories as $category)
+                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="expense_date" class="form-label">Date</label>
+                                <input type="date" name="expense_date" id="expense_date" class="form-control" value="{{ now()->toDateString() }}" required>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="expense_date" class="form-label">Date</label>
-                            <input type="date" name="expense_date" id="expense_date" class="form-control" value="{{ now()->toDateString() }}" required>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="amount" class="form-label">Amount</label>
+                                <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0" placeholder="e.g., 1500.00" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="paid_to" class="form-label">Paid To</label>
+                                <input type="text" name="paid_to" id="paid_to" class="form-control" placeholder="e.g., Meralco">
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="amount" class="form-label">Amount</label>
-                            <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="paid_to" class="form-label">Paid To</label>
-                            <input type="text" name="paid_to" id="paid_to" class="form-control" placeholder="e.g., Meralco">
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description</label>
-                            <input type="text" name="description" id="description" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label for="prepared_by" class="form-label">Prepared By</label>
-                            <select name="prepared_by" id="prepared_by" class="form-select">
-                                <option value="">-- Select User --</option>
-                                @foreach ($users as $user)
-                                    <option value="{{ $user->id }}" {{ auth()->id() == $user->id ? 'selected' : '' }}>
-                                        {{ $user->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <input type="text" name="description" id="description" class="form-control" placeholder="e.g., Electricity bill for July">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="prepared_by" class="form-label">Prepared By</label>
+                                <select name="prepared_by" id="prepared_by" class="form-select">
+                                    <option value="">-- Select User --</option>
+                                    @foreach ($users as $user)
+                                        <option value="{{ $user->id }}" {{ auth()->id() == $user->id ? 'selected' : '' }}>
+                                            {{ $user->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -91,38 +97,45 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="update_expense_category_id" class="form-label">Category</label>
-                            <select name="expense_category_id" id="update_expense_category_id" class="form-select" required>
-                                @foreach ($expenseCategories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                @endforeach
-                            </select>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="update_expense_category_id" class="form-label">Category</label>
+                                <select name="expense_category_id" id="update_expense_category_id" class="form-select" required>
+                                    <option value="">-- Select Category --</option>
+                                    @foreach ($expenseCategories as $category)
+                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="update_expense_date" class="form-label">Date</label>
+                                <input type="date" name="expense_date" id="update_expense_date" class="form-control" required>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="update_expense_date" class="form-label">Date</label>
-                            <input type="date" name="expense_date" id="update_expense_date" class="form-control" required>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="update_amount" class="form-label">Amount</label>
+                                <input type="number" name="amount" id="update_amount" class="form-control" step="0.01" min="0" placeholder="e.g., 1500.00" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="update_paid_to" class="form-label">Paid To</label>
+                                <input type="text" name="paid_to" id="update_paid_to" class="form-control" placeholder="e.g., Meralco">
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="update_amount" class="form-label">Amount</label>
-                            <input type="number" name="amount" id="update_amount" class="form-control" step="0.01" min="0" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="update_paid_to" class="form-label">Paid To</label>
-                            <input type="text" name="paid_to" id="update_paid_to" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label for="update_description" class="form-label">Description</label>
-                            <input type="text" name="description" id="update_description" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label for="update_prepared_by" class="form-label">Prepared By</label>
-                            <select name="prepared_by" id="update_prepared_by" class="form-select">
-                                <option value="">-- Select User --</option>
-                                @foreach ($users as $user)
-                                    <option value="{{ $user->id }}">{{ $user->name }}</option>
-                                @endforeach
-                            </select>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="update_description" class="form-label">Description</label>
+                                <input type="text" name="description" id="update_description" class="form-control" placeholder="e.g., Electricity bill for July">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="update_prepared_by" class="form-label">Prepared By</label>
+                                <select name="prepared_by" id="update_prepared_by" class="form-select">
+                                    <option value="">-- Select User --</option>
+                                    @foreach ($users as $user)
+                                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">

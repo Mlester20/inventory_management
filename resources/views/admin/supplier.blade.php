@@ -42,7 +42,7 @@
                                     name="supplier_name"
                                     id="supplier_name"
                                     class="form-control"
-                                    placeholder="Enter supplier name"
+                                    placeholder="e.g., MedSupply Philippines Inc."
                                     required
                                 >
                             </div>
@@ -54,64 +54,68 @@
                                     name="delivery_address"
                                     id="delivery_address"
                                     class="form-control"
-                                    placeholder="Enter delivery address"
+                                    placeholder="e.g., 123 Quirino Highway, Quezon City"
                                     rows="3"
                                     required
                                 ></textarea>
                             </div>
-                            <div class="mb-3">
-                                <label for="contact_number" class="form-label">
-                                    Contact Number
-                                </label>
-                                <input
-                                    type="text"
-                                    name="contact_number"
-                                    id="contact_number"
-                                    class="form-control"
-                                    placeholder="Enter contact number"
-                                    required
-                                >
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="contact_number" class="form-label">
+                                        Contact Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact_number"
+                                        id="contact_number"
+                                        class="form-control"
+                                        placeholder="e.g., 0917 123 4567"
+                                        required
+                                    >
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        id="email"
+                                        class="form-control"
+                                        placeholder="e.g., sales@medsupplyph.com"
+                                        required
+                                    >
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    id="email"
-                                    class="form-control"
-                                    placeholder="Enter email"
-                                    required
-                                >
-                            </div>
-                            <div class="mb-3">
-                                <label for="contact_person" class="form-label">
-                                    Contact Person
-                                </label>
-                                <input
-                                    type="text"
-                                    name="contact_person"
-                                    id="contact_person"
-                                    class="form-control"
-                                    placeholder="Enter contact person"
-                                    required
-                                >
-                            </div>
-                            <div class="mb-3">
-                                <label for="vat_type" class="form-label">
-                                    VAT Type
-                                </label>
-                                <select
-                                    name="vat_type"
-                                    id="vat_type"
-                                    class="form-select"
-                                    required
-                                >
-                                    @foreach (\App\Models\Supplier::VAT_TYPES as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="contact_person" class="form-label">
+                                        Contact Person
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact_person"
+                                        id="contact_person"
+                                        class="form-control"
+                                        placeholder="e.g., Juan Dela Cruz"
+                                        required
+                                    >
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="vat_type" class="form-label">
+                                        VAT Type
+                                    </label>
+                                    <select
+                                        name="vat_type"
+                                        id="vat_type"
+                                        class="form-select"
+                                        required
+                                    >
+                                        @foreach (\App\Models\Supplier::VAT_TYPES as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -227,7 +231,7 @@
                                     name="supplier_name"
                                     id="update_supplier_name"
                                     class="form-control"
-                                    placeholder="Enter supplier name"
+                                    placeholder="e.g., MedSupply Philippines Inc."
                                     required
                                 >
                             </div>
@@ -239,64 +243,68 @@
                                     name="delivery_address"
                                     id="update_delivery_address"
                                     class="form-control"
-                                    placeholder="Enter delivery address"
+                                    placeholder="e.g., 123 Quirino Highway, Quezon City"
                                     rows="3"
                                     required
                                 ></textarea>
                             </div>
-                            <div class="mb-3">
-                                <label for="update_contact_number" class="form-label">
-                                    Contact Number
-                                </label>
-                                <input
-                                    type="text"
-                                    name="contact_number"
-                                    id="update_contact_number"
-                                    class="form-control"
-                                    placeholder="Enter contact number"
-                                    required
-                                >
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_contact_number" class="form-label">
+                                        Contact Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact_number"
+                                        id="update_contact_number"
+                                        class="form-control"
+                                        placeholder="e.g., 0917 123 4567"
+                                        required
+                                    >
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_email" class="form-label">
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        id="update_email"
+                                        class="form-control"
+                                        placeholder="e.g., sales@medsupplyph.com"
+                                        required
+                                    >
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="update_email" class="form-label">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    id="update_email"
-                                    class="form-control"
-                                    placeholder="Enter email"
-                                    required
-                                >
-                            </div>
-                            <div class="mb-3">
-                                <label for="update_contact_person" class="form-label">
-                                    Contact Person
-                                </label>
-                                <input
-                                    type="text"
-                                    name="contact_person"
-                                    id="update_contact_person"
-                                    class="form-control"
-                                    placeholder="Enter contact person"
-                                    required
-                                >
-                            </div>
-                            <div class="mb-3">
-                                <label for="update_vat_type" class="form-label">
-                                    VAT Type
-                                </label>
-                                <select
-                                    name="vat_type"
-                                    id="update_vat_type"
-                                    class="form-select"
-                                    required
-                                >
-                                    @foreach (\App\Models\Supplier::VAT_TYPES as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_contact_person" class="form-label">
+                                        Contact Person
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact_person"
+                                        id="update_contact_person"
+                                        class="form-control"
+                                        placeholder="e.g., Juan Dela Cruz"
+                                        required
+                                    >
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_vat_type" class="form-label">
+                                        VAT Type
+                                    </label>
+                                    <select
+                                        name="vat_type"
+                                        id="update_vat_type"
+                                        class="form-select"
+                                        required
+                                    >
+                                        @foreach (\App\Models\Supplier::VAT_TYPES as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                         </div>
 

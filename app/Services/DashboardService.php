@@ -7,6 +7,7 @@ use App\Models\DeliveryReceipt;
 use App\Models\Expense;
 use App\Models\GoodsReceipt;
 use App\Models\Invoice;
+use App\Models\Purchase;
 use App\Models\PurchaseOrder;
 use App\Models\Sale;
 use App\Models\SalesOrder;
@@ -164,39 +165,118 @@ class DashboardService
     }
 
     /**
-     * Invoice-based sales summed per month for the current year — the same
-     * `sales` -> `invoices` join `SalesReportService` uses, just grouped by
-     * month instead of aggregated once. Powers the dashboard's hero chart.
+     * Total Sales (Invoice) / POS Revenue (Purchase) / Expenses, bucketed by
+     * week, month, or year — powers the hero chart's period filter toggle.
+     * All three periods are precomputed together (rather than fetched via a
+     * new AJAX endpoint per click) to match how the rest of this dashboard
+     * already works: everything is aggregated once server-side and handed
+     * to the view as JSON, with no separate live-data endpoint.
      *
-     * @return array<int, float> keyed by month number (1-12)
+     * @return array{week: array, month: array, year: array} each shaped as
+     *         array{categories: array<int,string>, sales: array<int,float>, revenue: array<int,float>, expenses: array<int,float>}
      */
-    public function getMonthlySalesTrendChart(): array
+    public function getSalesTrendChartByPeriod(): array
     {
-        return Sale::query()
+        return [
+            'week' => $this->buildWeeklySalesTrend(),
+            'month' => $this->buildMonthlySalesTrend(),
+            'year' => $this->buildYearlySalesTrend(),
+        ];
+    }
+
+    private function buildMonthlySalesTrend(): array
+    {
+        $year = now()->year;
+        $categories = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        $sales = Sale::query()
             ->join('invoices', 'invoices.id', '=', 'sales.invoice_id')
-            ->whereYear('invoices.created_at', now()->year)
-            ->selectRaw('MONTH(invoices.created_at) as month, SUM(sales.amount) as amount')
-            ->groupBy('month')
-            ->pluck('amount', 'month')
-            ->map(fn ($amount) => (float) $amount)
-            ->all();
+            ->whereYear('invoices.created_at', $year)
+            ->selectRaw('MONTH(invoices.created_at) as period, SUM(sales.amount) as total')
+            ->groupBy('period')
+            ->pluck('total', 'period');
+
+        $revenue = Purchase::query()
+            ->whereYear('purchase_date', $year)
+            ->selectRaw('MONTH(purchase_date) as period, SUM(total_price) as total')
+            ->groupBy('period')
+            ->pluck('total', 'period');
+
+        $expenses = Expense::query()
+            ->whereYear('expense_date', $year)
+            ->selectRaw('MONTH(expense_date) as period, SUM(amount) as total')
+            ->groupBy('period')
+            ->pluck('total', 'period');
+
+        return [
+            'categories' => $categories,
+            'sales' => collect(range(1, 12))->map(fn ($m) => (float) ($sales[$m] ?? 0))->all(),
+            'revenue' => collect(range(1, 12))->map(fn ($m) => (float) ($revenue[$m] ?? 0))->all(),
+            'expenses' => collect(range(1, 12))->map(fn ($m) => (float) ($expenses[$m] ?? 0))->all(),
+        ];
     }
 
     /**
-     * Expenses summed per month for the current year — same shape as
-     * `getMonthlySalesTrendChart()`, plotted as the hero chart's 3rd series.
-     *
-     * @return array<int, float> keyed by month number (1-12)
+     * Last 12 weeks (Monday-start), one query per week — same per-period
+     * loop style already used by getLast5DaysComparison() below.
      */
-    public function getMonthlyExpensesTrendChart(): array
+    private function buildWeeklySalesTrend(): array
     {
-        return Expense::query()
-            ->whereYear('expense_date', now()->year)
-            ->selectRaw('MONTH(expense_date) as month, SUM(amount) as amount')
-            ->groupBy('month')
-            ->pluck('amount', 'month')
-            ->map(fn ($amount) => (float) $amount)
-            ->all();
+        $weeks = collect(range(11, 0))->map(fn ($offset) => Carbon::now()->startOfWeek()->subWeeks($offset));
+
+        $categories = [];
+        $sales = [];
+        $revenue = [];
+        $expenses = [];
+
+        foreach ($weeks as $start) {
+            $end = $start->copy()->endOfWeek();
+            $categories[] = $start->format('M d');
+
+            $sales[] = (float) Sale::query()
+                ->join('invoices', 'invoices.id', '=', 'sales.invoice_id')
+                ->whereBetween('invoices.created_at', [$start, $end])
+                ->sum('sales.amount');
+
+            $revenue[] = (float) Purchase::query()
+                ->whereBetween('purchase_date', [$start->toDateString(), $end->toDateString()])
+                ->sum('total_price');
+
+            $expenses[] = (float) Expense::query()
+                ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
+                ->sum('amount');
+        }
+
+        return compact('categories', 'sales', 'revenue', 'expenses');
+    }
+
+    /**
+     * Last 5 calendar years including the current one.
+     */
+    private function buildYearlySalesTrend(): array
+    {
+        $currentYear = now()->year;
+        $years = collect(range(4, 0))->map(fn ($offset) => $currentYear - $offset);
+
+        $categories = [];
+        $sales = [];
+        $revenue = [];
+        $expenses = [];
+
+        foreach ($years as $year) {
+            $categories[] = (string) $year;
+
+            $sales[] = (float) Sale::query()
+                ->join('invoices', 'invoices.id', '=', 'sales.invoice_id')
+                ->whereYear('invoices.created_at', $year)
+                ->sum('sales.amount');
+
+            $revenue[] = (float) Purchase::query()->whereYear('purchase_date', $year)->sum('total_price');
+
+            $expenses[] = (float) Expense::query()->whereYear('expense_date', $year)->sum('amount');
+        }
+
+        return compact('categories', 'sales', 'revenue', 'expenses');
     }
 
     /**
