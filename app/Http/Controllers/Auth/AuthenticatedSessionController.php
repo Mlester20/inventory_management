@@ -35,6 +35,12 @@ class AuthenticatedSessionController extends Controller
             return back()->withInput($request->only('email'));
         }
 
+        if (! Auth::user()->is_active) {
+            Auth::guard('web')->logout();
+            Alert::error('Account Suspended', 'Your account has been suspended. Please contact an administrator.');
+            return back()->withInput($request->only('email'));
+        }
+
         $request->session()->regenerate();
 
         // Log the login activity for the authenticated user (works for admin and regular users)

@@ -38,4 +38,14 @@ class Supplier extends Model
     {
         return $this->hasMany(GoodsReceipt::class);
     }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(SupplierPayment::class);
+    }
+
+    public function purchaseInvoices(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoice::class);
+    }
 }

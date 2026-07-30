@@ -147,37 +147,45 @@
                             <td class="text-end">{{ $category->products_count }}</td>
                             <td>{{ $category->created_at->format('d/m/Y H:i:s') }}</td>
                             <td>
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-warning edit-btn"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#updateCategoryModal"
-                                    data-id="{{ $category->id }}"
-                                    data-name="{{ $category->category_name }}"
-                                >
-                                    Edit
-                                </button>
-
-                                <form
-                                    action="{{ route('categories.destroy', $category) }}"
-                                    method="POST"
-                                    class="d-inline"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-
-                                    @php
-                                        $categoryInUse = $category->generic_names_count > 0 || $category->products_count > 0;
-                                    @endphp
-                                    <button
-                                        type="submit"
-                                        class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Are you sure you want to delete this category?')"
-                                        @if ($categoryInUse) disabled title="Cannot delete: still in use" @endif
-                                    >
-                                        Delete
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
-                                </form>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <button
+                                            type="button"
+                                            class="dropdown-item edit-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#updateCategoryModal"
+                                            data-id="{{ $category->id }}"
+                                            data-name="{{ $category->category_name }}"
+                                        >
+                                            <i class="bx bx-edit-alt me-1"></i> Edit
+                                        </button>
+
+                                        <div class="dropdown-divider"></div>
+
+                                        <form
+                                            action="{{ route('categories.destroy', $category) }}"
+                                            method="POST"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+
+                                            @php
+                                                $categoryInUse = $category->generic_names_count > 0 || $category->products_count > 0;
+                                            @endphp
+                                            <button
+                                                type="submit"
+                                                class="dropdown-item text-danger"
+                                                onclick="return confirm('Are you sure you want to delete this category?')"
+                                                @if ($categoryInUse) disabled title="Cannot delete: still in use" @endif
+                                            >
+                                                <i class="bx bx-trash me-1"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty

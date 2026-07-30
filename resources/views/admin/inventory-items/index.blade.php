@@ -66,23 +66,33 @@
                                         </a>
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-warning edit-generic-btn"
-                                            data-bs-toggle="modal" data-bs-target="#updateGenericItemModal"
-                                            data-id="{{ $genericName->id }}"
-                                            data-code="{{ $genericName->code }}"
-                                            data-name="{{ $genericName->generic_name }}"
-                                            data-category="{{ $genericName->category_id }}"
-                                            data-unit="{{ $genericName->unit }}"
-                                            data-vat-type="{{ $genericName->vat_type }}">
-                                            <i class="bx bx-edit"></i>
-                                        </button>
-                                        <form action="{{ route('generic-names.destroy', $genericName) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this generic item?')">
-                                                <i class="bx bx-trash"></i>
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                                <i class="bx bx-dots-vertical-rounded"></i>
                                             </button>
-                                        </form>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <button type="button" class="dropdown-item edit-generic-btn"
+                                                    data-bs-toggle="modal" data-bs-target="#updateGenericItemModal"
+                                                    data-id="{{ $genericName->id }}"
+                                                    data-code="{{ $genericName->code }}"
+                                                    data-name="{{ $genericName->generic_name }}"
+                                                    data-category="{{ $genericName->category_id }}"
+                                                    data-unit="{{ $genericName->unit }}"
+                                                    data-vat-type="{{ $genericName->vat_type }}">
+                                                    <i class="bx bx-edit-alt me-1"></i> Edit
+                                                </button>
+
+                                                <div class="dropdown-divider"></div>
+
+                                                <form action="{{ route('generic-names.destroy', $genericName) }}" method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Delete this generic item?')">
+                                                        <i class="bx bx-trash me-1"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -260,47 +270,57 @@
                                     <td>{{ $reserved }}</td>
                                     <td>{{ $qty - $reserved }}</td>
                                     <td>
-                                        <a href="{{ route('inventory-items.index', ['tab' => 'history', 'product_id' => $product->id]) }}" class="btn btn-sm btn-outline-secondary" title="View Product History">
-                                            <i class="bx bx-history"></i>
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-warning edit-product-btn"
-                                            data-bs-toggle="modal" data-bs-target="#updateProductModal"
-                                            data-id="{{ $product->id }}"
-                                            data-code="{{ $product->code }}"
-                                            data-generic-name-id="{{ $product->generic_name_id }}"
-                                            data-brand-name="{{ $product->brand_name }}"
-                                            data-description="{{ $product->description }}"
-                                            data-barcode="{{ $product->barcode }}"
-                                            data-supplier-id="{{ $product->supplier_id }}"
-                                            data-tax-id="{{ $product->tax_id }}"
-                                            data-unit-cost="{{ $product->unit_cost }}"
-                                            data-unit-price-percent="{{ $product->unit_price_percent }}"
-                                            data-unit-price="{{ $product->unit_price }}"
-                                            data-wholesale-percent="{{ $product->wholesale_percent }}"
-                                            data-wholesale-price="{{ $product->wholesale_price }}"
-                                            data-price-1-percent="{{ $product->price_1_percent }}"
-                                            data-price-1="{{ $product->price_1 }}"
-                                            data-price-2-percent="{{ $product->price_2_percent }}"
-                                            data-price-2="{{ $product->price_2 }}"
-                                            data-price-3-percent="{{ $product->price_3_percent }}"
-                                            data-price-3="{{ $product->price_3 }}"
-                                            data-fda-reg-no="{{ $product->fda_reg_no }}"
-                                            data-fda-reg-exp="{{ $product->fda_reg_exp?->format('Y-m-d') }}"
-                                            data-custom-1="{{ $product->custom_field_1 }}"
-                                            data-custom-2="{{ $product->custom_field_2 }}"
-                                            data-custom-3="{{ $product->custom_field_3 }}"
-                                            data-custom-4="{{ $product->custom_field_4 }}"
-                                            data-location="{{ $product->location }}"
-                                            data-threshold="{{ $product->low_stock_threshold }}">
-                                            <i class="bx bx-edit"></i>
-                                        </button>
-                                        <form action="{{ route('products.destroy', $product) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this product?')">
-                                                <i class="bx bx-trash"></i>
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                                <i class="bx bx-dots-vertical-rounded"></i>
                                             </button>
-                                        </form>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a href="{{ route('inventory-items.index', ['tab' => 'history', 'product_id' => $product->id]) }}" class="dropdown-item">
+                                                    <i class="bx bx-history me-1"></i> History
+                                                </a>
+                                                <button type="button" class="dropdown-item edit-product-btn"
+                                                    data-bs-toggle="modal" data-bs-target="#updateProductModal"
+                                                    data-id="{{ $product->id }}"
+                                                    data-code="{{ $product->code }}"
+                                                    data-generic-name-id="{{ $product->generic_name_id }}"
+                                                    data-brand-name="{{ $product->brand_name }}"
+                                                    data-description="{{ $product->description }}"
+                                                    data-barcode="{{ $product->barcode }}"
+                                                    data-supplier-id="{{ $product->supplier_id }}"
+                                                    data-tax-id="{{ $product->tax_id }}"
+                                                    data-unit-cost="{{ $product->unit_cost }}"
+                                                    data-unit-price-percent="{{ $product->unit_price_percent }}"
+                                                    data-unit-price="{{ $product->unit_price }}"
+                                                    data-wholesale-percent="{{ $product->wholesale_percent }}"
+                                                    data-wholesale-price="{{ $product->wholesale_price }}"
+                                                    data-price-1-percent="{{ $product->price_1_percent }}"
+                                                    data-price-1="{{ $product->price_1 }}"
+                                                    data-price-2-percent="{{ $product->price_2_percent }}"
+                                                    data-price-2="{{ $product->price_2 }}"
+                                                    data-price-3-percent="{{ $product->price_3_percent }}"
+                                                    data-price-3="{{ $product->price_3 }}"
+                                                    data-fda-reg-no="{{ $product->fda_reg_no }}"
+                                                    data-fda-reg-exp="{{ $product->fda_reg_exp?->format('Y-m-d') }}"
+                                                    data-custom-1="{{ $product->custom_field_1 }}"
+                                                    data-custom-2="{{ $product->custom_field_2 }}"
+                                                    data-custom-3="{{ $product->custom_field_3 }}"
+                                                    data-custom-4="{{ $product->custom_field_4 }}"
+                                                    data-location="{{ $product->location }}"
+                                                    data-threshold="{{ $product->low_stock_threshold }}">
+                                                    <i class="bx bx-edit-alt me-1"></i> Edit
+                                                </button>
+
+                                                <div class="dropdown-divider"></div>
+
+                                                <form action="{{ route('products.destroy', $product) }}" method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Delete this product?')">
+                                                        <i class="bx bx-trash me-1"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

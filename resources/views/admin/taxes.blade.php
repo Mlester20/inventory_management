@@ -201,35 +201,43 @@
                                 </span>
                             </td>
                             <td>
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-warning edit-btn"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#updateTaxModal"
-                                    data-id="{{ $tax->id }}"
-                                    data-name="{{ $tax->name }}"
-                                    data-rate="{{ $tax->rate }}"
-                                    data-active="{{ $tax->is_active ? '1' : '0' }}"
-                                >
-                                    Edit
-                                </button>
-
-                                <form
-                                    action="{{ route('taxes.destroy', $tax) }}"
-                                    method="POST"
-                                    class="d-inline"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button
-                                        type="submit"
-                                        class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Are you sure you want to delete this tax?')"
-                                    >
-                                        Delete
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
-                                </form>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <button
+                                            type="button"
+                                            class="dropdown-item edit-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#updateTaxModal"
+                                            data-id="{{ $tax->id }}"
+                                            data-name="{{ $tax->name }}"
+                                            data-rate="{{ $tax->rate }}"
+                                            data-active="{{ $tax->is_active ? '1' : '0' }}"
+                                        >
+                                            <i class="bx bx-edit-alt me-1"></i> Edit
+                                        </button>
+
+                                        <div class="dropdown-divider"></div>
+
+                                        <form
+                                            action="{{ route('taxes.destroy', $tax) }}"
+                                            method="POST"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button
+                                                type="submit"
+                                                class="dropdown-item text-danger"
+                                                onclick="return confirm('Are you sure you want to delete this tax?')"
+                                            >
+                                                <i class="bx bx-trash me-1"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty

@@ -125,11 +125,16 @@
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($users as $user)
+                        @php
+                            $isAdmin = $user->role === 'admin';
+                            $isSelf = $user->id === auth()->id();
+                        @endphp
                         <tr>
                             <td>{{ $user->id }}</td>
                             <td>
@@ -139,27 +144,65 @@
                             <td>{{ $user->email }}</td>
                             <td>{{ $user->role }}</td>
                             <td>
-                                <form
-                                    action="{{ route('users.destroy', $user) }}"
-                                    method="POST"
-                                    class="d-inline"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button
-                                        type="submit"
-                                        class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Are you sure you want to delete this user?')"
-                                    >
-                                        Delete
+                                <span class="badge {{ $user->is_active ? 'bg-success' : 'bg-secondary' }}">
+                                    {{ $user->is_active ? 'Active' : 'Suspended' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
-                                </form>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <form
+                                            action="{{ route('users.toggle-status', $user) }}"
+                                            method="POST"
+                                        >
+                                            @csrf
+                                            <button
+                                                type="submit"
+                                                class="dropdown-item"
+                                                @if ($isAdmin || $isSelf)
+                                                    disabled
+                                                    title="{{ $isAdmin ? 'Admin accounts cannot be suspended' : 'You cannot suspend your own account' }}"
+                                                @else
+                                                    onclick="return confirm('{{ $user->is_active ? 'Suspend' : 'Reactivate' }} this user?')"
+                                                @endif
+                                            >
+                                                <i class="bx {{ $user->is_active ? 'bx-lock-alt' : 'bx-lock-open-alt' }} me-1"></i>
+                                                {{ $user->is_active ? 'Suspend' : 'Reactivate' }}
+                                            </button>
+                                        </form>
+
+                                        <div class="dropdown-divider"></div>
+
+                                        <form
+                                            action="{{ route('users.destroy', $user) }}"
+                                            method="POST"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button
+                                                type="submit"
+                                                class="dropdown-item text-danger"
+                                                @if ($isAdmin)
+                                                    disabled
+                                                    title="Admin accounts cannot be deleted"
+                                                @else
+                                                    onclick="return confirm('Are you sure you want to delete this user?')"
+                                                @endif
+                                            >
+                                                <i class="bx bx-trash me-1"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">No users yet.</td>
+                            <td colspan="7" class="text-center text-muted py-4">No users yet.</td>
                         </tr>
                     @endforelse
                 </tbody>

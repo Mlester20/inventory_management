@@ -97,7 +97,6 @@
     <script src="{{ asset('assets/vendor/js/helpers.js') }}"></script>
     <script src="{{ asset('assets/js/config.js') }}"></script>
 </head>
-
 <body>
     <!-- Layout wrapper -->
     <div class="layout-wrapper layout-content-navbar">
@@ -327,6 +326,16 @@
                 <li class="menu-item">
                   <a href="{{ route('goods-receipts.create') }}" class="menu-link">
                     <div data-i18n="Error">New Goods Receipt</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('purchase-invoices.index') }}" class="menu-link {{ request()->routeIs('purchase-invoices.*') ? 'active' : '' }}">
+                    <div data-i18n="Error">Purchase Invoices</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('purchase-invoices.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Purchase Invoice</div>
                   </a>
                 </li>
               </ul>

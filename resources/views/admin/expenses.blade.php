@@ -213,32 +213,42 @@
                             <td>{{ $expense->description ?? '—' }}</td>
                             <td>{{ $expense->preparedBy->name ?? '—' }}</td>
                             <td>
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-warning edit-btn"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#updateExpenseModal"
-                                    data-id="{{ $expense->id }}"
-                                    data-category-id="{{ $expense->expense_category_id }}"
-                                    data-date="{{ $expense->expense_date->toDateString() }}"
-                                    data-amount="{{ $expense->amount }}"
-                                    data-paid-to="{{ $expense->paid_to }}"
-                                    data-description="{{ $expense->description }}"
-                                    data-prepared-by="{{ $expense->prepared_by }}"
-                                >
-                                    Edit
-                                </button>
-                                <form action="{{ route('expenses.destroy', $expense) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button
-                                        type="submit"
-                                        class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Are you sure you want to delete this expense?')"
-                                    >
-                                        Delete
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
-                                </form>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <button
+                                            type="button"
+                                            class="dropdown-item edit-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#updateExpenseModal"
+                                            data-id="{{ $expense->id }}"
+                                            data-category-id="{{ $expense->expense_category_id }}"
+                                            data-date="{{ $expense->expense_date->toDateString() }}"
+                                            data-amount="{{ $expense->amount }}"
+                                            data-paid-to="{{ $expense->paid_to }}"
+                                            data-description="{{ $expense->description }}"
+                                            data-prepared-by="{{ $expense->prepared_by }}"
+                                        >
+                                            <i class="bx bx-edit-alt me-1"></i> Edit
+                                        </button>
+
+                                        <div class="dropdown-divider"></div>
+
+                                        <form action="{{ route('expenses.destroy', $expense) }}" method="POST">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button
+                                                type="submit"
+                                                class="dropdown-item text-danger"
+                                                onclick="return confirm('Are you sure you want to delete this expense?')"
+                                            >
+                                                <i class="bx bx-trash me-1"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\CustomerPayment;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -14,6 +15,7 @@ class CustomerController extends Controller
     public function index()
     {
         $customers = Customer::withCount(['salesOrders', 'deliveryReceipts'])
+            ->with(['payments' => fn ($query) => $query->latest('payment_date')->limit(5)])
             ->orderBy('customer_name')
             ->paginate(15);
 
@@ -25,17 +27,67 @@ class CustomerController extends Controller
             ->get()
             ->keyBy('customer_name');
 
+        // Payments are recorded against a real customer_id (see
+        // CustomerPayment), unlike invoices — so these totals are exact, not
+        // a name-match proxy. Split by type since "advance" (prepayment,
+        // not yet tied to any invoice) and "collection" (paid against an
+        // existing balance) are declared explicitly by whoever records the
+        // payment, not inferred from the numbers.
+        $paymentTotals = CustomerPayment::selectRaw('customer_id, type, SUM(amount) as total')
+            ->groupBy('customer_id', 'type')
+            ->get()
+            ->groupBy('customer_id');
+
         foreach ($customers as $customer) {
             $invoiceData = $invoiceCounts->get($customer->customer_name);
             $customer->sales_invoices_count = $invoiceData->count ?? 0;
-            // "Receivables" proxy = sum of invoice amount_due for this customer.
-            // There's no payments/AR ledger in this app yet, so this doesn't
-            // account for money already collected — it's the closest available
-            // approximation, not a true running balance.
-            $customer->receivables = $invoiceData->total_due ?? 0;
+
+            // "Receivables" = gross invoiced amount (unchanged meaning from
+            // before) — this doesn't yet account for payments, matching how
+            // it always worked here.
+            $customer->receivables = (float) ($invoiceData->total_due ?? 0);
+
+            $customerPayments = $paymentTotals->get($customer->id, collect());
+            $totalCollections = (float) $customerPayments->firstWhere('type', 'collection')?->total;
+            $totalAdvances = (float) $customerPayments->firstWhere('type', 'advance')?->total;
+
+            // "Advances" = prepayment credit currently on file, as declared
+            // when the payment was recorded.
+            $customer->advances = $totalAdvances;
+
+            // "Balances" = true bottom-line net owed, after both collections
+            // and advances (can go negative if the customer has paid more
+            // than they've been invoiced for).
+            $customer->balance = $customer->receivables - $totalCollections - $totalAdvances;
         }
 
         return view('admin.customers', compact('customers'));
+    }
+
+    /**
+     * Record a payment/collection against a customer's running balance.
+     */
+    public function storePayment(Request $request, Customer $customer)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:' . implode(',', array_keys(CustomerPayment::TYPES)),
+            'amount' => 'required|numeric|min:0.01',
+            'payment_date' => 'required|date',
+            'payment_method' => 'nullable|in:' . implode(',', array_keys(CustomerPayment::PAYMENT_METHODS)),
+            'remarks' => 'nullable|string|max:255',
+        ]);
+
+        $customer->payments()->create([
+            'type' => $validated['type'],
+            'amount' => $validated['amount'],
+            'payment_date' => $validated['payment_date'],
+            'payment_method' => $validated['payment_method'] ?? null,
+            'remarks' => $validated['remarks'] ?? null,
+            'prepared_by' => auth()->id(),
+        ]);
+
+        Alert::success('Success', 'Payment recorded successfully');
+        return redirect()->route('customers.index');
     }
 
     /**
