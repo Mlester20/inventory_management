@@ -164,7 +164,7 @@
 
         <!-- View Customer Modal -->
         <div class="modal fade" id="viewCustomerModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog" role="document">
+            <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Customer Details</h5>
@@ -222,6 +222,40 @@
                                 <p id="view_delivery_address" class="text-muted"></p>
                             </div>
                         </div>
+
+                        <hr>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="text-muted small d-block">Advances</label>
+                                <p id="view_advances" class="fw-semibold mb-0"></p>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="text-muted small d-block">Balance</label>
+                                <p id="view_balance" class="fw-semibold mb-0"></p>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="text-muted small d-block">Receivables</label>
+                                <p id="view_receivables" class="fw-semibold mb-0"></p>
+                            </div>
+                        </div>
+
+                        <label><strong>Recent Payments</strong> <span class="text-muted small">(latest 5)</span></label>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Method</th>
+                                        <th class="text-end">Amount</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="view_payments_body">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="modal-footer">
@@ -234,6 +268,80 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Record Payment Modal -->
+        <div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+
+                <form id="recordPaymentForm" method="POST">
+                    @csrf
+
+                    <div class="modal-content">
+
+                        <div class="modal-header">
+                            <h5 class="modal-title">Record Payment — <span id="payment_customer_name"></span></h5>
+                            <button
+                                type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal"
+                            ></button>
+                        </div>
+
+                        <div class="modal-body">
+                            <p class="text-muted small">Current balance: <span id="payment_current_balance" class="fw-semibold"></span></p>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_type" class="form-label">Type</label>
+                                    <select name="type" id="payment_type" class="form-select" required>
+                                        @foreach (\App\Models\CustomerPayment::TYPES as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_amount" class="form-label">Amount</label>
+                                    <input type="number" step="0.01" min="0.01" name="amount" id="payment_amount" class="form-control" placeholder="e.g., 1500.00" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_date" class="form-label">Payment Date</label>
+                                    <input type="date" name="payment_date" id="payment_date" class="form-control" value="{{ now()->toDateString() }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_method" class="form-label">Payment Method</label>
+                                    <select name="payment_method" id="payment_method" class="form-select">
+                                        <option value="">-- Select Method --</option>
+                                        @foreach (\App\Models\CustomerPayment::PAYMENT_METHODS as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payment_remarks" class="form-label">Remarks</label>
+                                <input type="text" name="remarks" id="payment_remarks" class="form-control" placeholder="e.g., OR #00123">
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal"
+                            >
+                                Close
+                            </button>
+
+                            <button type="submit" class="btn btn-primary">
+                                Save Payment
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -414,62 +522,92 @@
                             <td class="text-end">{{ $customer->sales_orders_count }}</td>
                             <td class="text-end">{{ $customer->sales_invoices_count }}</td>
                             <td class="text-end">{{ $customer->delivery_receipts_count }}</td>
-                            <td class="text-end text-muted" title="No advances/payments ledger exists in this app yet">—</td>
-                            <td class="text-end text-muted" title="No accounts-receivable ledger exists in this app yet">—</td>
+                            <td class="text-end">{{ $customer->advances > 0 ? number_format($customer->advances, 2) : '—' }}</td>
+                            <td class="text-end {{ $customer->balance > 0 ? 'text-danger' : '' }}">{{ number_format($customer->balance, 2) }}</td>
                             <td class="text-end">{{ number_format($customer->receivables, 2) }}</td>
                             <td>
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-info view-btn"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#viewCustomerModal"
-                                    data-id="{{ $customer->id }}"
-                                    data-name="{{ $customer->customer_name }}"
-                                    data-type="{{ $customer->customer_type }}"
-                                    data-contact="{{ $customer->contact_person }}"
-                                    data-contact-number="{{ $customer->contact_number }}"
-                                    data-email="{{ $customer->email }}"
-                                    data-address="{{ $customer->delivery_address }}"
-                                    data-price-level="{{ \App\Models\Customer::PRICE_LEVELS[$customer->price_level] ?? $customer->price_level }}"
-                                    data-vat-type="{{ $customer->vat_type }}"
-                                >
-                                    View
-                                </button>
-
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-warning edit-btn"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#updateCustomerModal"
-                                    data-id="{{ $customer->id }}"
-                                    data-name="{{ $customer->customer_name }}"
-                                    data-type="{{ $customer->customer_type }}"
-                                    data-contact="{{ $customer->contact_person }}"
-                                    data-contact-number="{{ $customer->contact_number }}"
-                                    data-email="{{ $customer->email }}"
-                                    data-address="{{ $customer->delivery_address }}"
-                                    data-price-level="{{ $customer->price_level }}"
-                                    data-vat-type="{{ $customer->vat_type }}"
-                                >
-                                    Edit
-                                </button>
-
-                                <form
-                                    action="{{ route('customers.destroy', $customer) }}"
-                                    method="POST"
-                                    class="d-inline"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button
-                                        type="submit"
-                                        class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Are you sure you want to delete this customer?')"
-                                    >
-                                        Delete
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
-                                </form>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <button
+                                            type="button"
+                                            class="dropdown-item payment-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#recordPaymentModal"
+                                            data-id="{{ $customer->id }}"
+                                            data-name="{{ $customer->customer_name }}"
+                                            data-balance="{{ number_format($customer->balance, 2) }}"
+                                        >
+                                            <i class="bx bx-money me-1"></i> Payment
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="dropdown-item view-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#viewCustomerModal"
+                                            data-id="{{ $customer->id }}"
+                                            data-name="{{ $customer->customer_name }}"
+                                            data-type="{{ $customer->customer_type }}"
+                                            data-contact="{{ $customer->contact_person }}"
+                                            data-contact-number="{{ $customer->contact_number }}"
+                                            data-email="{{ $customer->email }}"
+                                            data-address="{{ $customer->delivery_address }}"
+                                            data-price-level="{{ \App\Models\Customer::PRICE_LEVELS[$customer->price_level] ?? $customer->price_level }}"
+                                            data-vat-type="{{ $customer->vat_type }}"
+                                            data-advances="{{ number_format($customer->advances, 2) }}"
+                                            data-balance="{{ number_format($customer->balance, 2) }}"
+                                            data-receivables="{{ number_format($customer->receivables, 2) }}"
+                                            data-payments='{{ $customer->payments->map(fn ($p) => [
+                                                "date" => $p->payment_date->format("M d, Y"),
+                                                "type" => \App\Models\CustomerPayment::TYPES[$p->type] ?? $p->type,
+                                                "method" => $p->payment_method ?? "—",
+                                                "amount" => number_format($p->amount, 2),
+                                                "remarks" => $p->remarks ?? "—",
+                                            ])->toJson() }}'
+                                        >
+                                            <i class="bx bx-show me-1"></i> View
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="dropdown-item edit-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#updateCustomerModal"
+                                            data-id="{{ $customer->id }}"
+                                            data-name="{{ $customer->customer_name }}"
+                                            data-type="{{ $customer->customer_type }}"
+                                            data-contact="{{ $customer->contact_person }}"
+                                            data-contact-number="{{ $customer->contact_number }}"
+                                            data-email="{{ $customer->email }}"
+                                            data-address="{{ $customer->delivery_address }}"
+                                            data-price-level="{{ $customer->price_level }}"
+                                            data-vat-type="{{ $customer->vat_type }}"
+                                        >
+                                            <i class="bx bx-edit-alt me-1"></i> Edit
+                                        </button>
+
+                                        <div class="dropdown-divider"></div>
+
+                                        <form
+                                            action="{{ route('customers.destroy', $customer) }}"
+                                            method="POST"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button
+                                                type="submit"
+                                                class="dropdown-item text-danger"
+                                                onclick="return confirm('Are you sure you want to delete this customer?')"
+                                            >
+                                                <i class="bx bx-trash me-1"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -499,10 +637,58 @@
             document.getElementById('view_contact_person').textContent = this.getAttribute('data-contact') || 'N/A';
             document.getElementById('view_contact_number').textContent = this.getAttribute('data-contact-number') || 'N/A';
             document.getElementById('view_email').textContent = this.getAttribute('data-email') || 'N/A';
-            document.getElementById('view_address').textContent = this.getAttribute('data-address') || 'N/A';
+            document.getElementById('view_delivery_address').textContent = this.getAttribute('data-address') || 'N/A';
             document.getElementById('view_price_level').textContent = this.getAttribute('data-price-level') || 'N/A';
             document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type') || 'N/A';
+
+            document.getElementById('view_advances').textContent = '₱' + (this.getAttribute('data-advances') || '0.00');
+            document.getElementById('view_balance').textContent = '₱' + (this.getAttribute('data-balance') || '0.00');
+            document.getElementById('view_receivables').textContent = '₱' + (this.getAttribute('data-receivables') || '0.00');
+
+            const paymentsBody = document.getElementById('view_payments_body');
+            paymentsBody.innerHTML = '';
+            let payments = [];
+            try {
+                payments = JSON.parse(this.getAttribute('data-payments') || '[]');
+            } catch (e) {
+                payments = [];
+            }
+
+            if (payments.length === 0) {
+                paymentsBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No payments recorded yet.</td></tr>';
+            } else {
+                payments.forEach(payment => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${payment.date}</td>
+                        <td>${payment.type}</td>
+                        <td>${payment.method}</td>
+                        <td class="text-end">₱${payment.amount}</td>
+                        <td>${payment.remarks}</td>
+                    `;
+                    paymentsBody.appendChild(row);
+                });
+            }
         });
+    });
+
+    // Handle payment button click to populate the record payment modal
+    document.querySelectorAll('.payment-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const customerId = this.getAttribute('data-id');
+            document.getElementById('payment_customer_name').textContent = this.getAttribute('data-name');
+            document.getElementById('payment_current_balance').textContent = '₱' + this.getAttribute('data-balance');
+
+            const form = document.getElementById('recordPaymentForm');
+            form.action = `/admin/customers/${customerId}/payments`;
+        });
+    });
+
+    // Reset the record payment form when the modal is hidden
+    const recordPaymentModal = document.getElementById('recordPaymentModal');
+    recordPaymentModal.addEventListener('hide.bs.modal', function() {
+        document.getElementById('recordPaymentForm').reset();
+        document.getElementById('payment_date').value = '{{ now()->toDateString() }}';
     });
 
     // Handle edit button click to populate the update modal

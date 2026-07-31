@@ -52,26 +52,33 @@
                                 </span>
                             </td>
                             <td>
-                                <a href="{{ route('sales-quotes.show', $salesQuote) }}" class="btn btn-sm btn-info">
-                                    View
-                                </a>
-                                @if(Auth::user()->role === 'admin')
-                                    <form
-                                        action="{{ route('sales-quotes.destroy', $salesQuote) }}"
-                                        method="POST"
-                                        class="d-inline"
-                                    >
-                                        @csrf
-                                        @method('DELETE')
-                                        <button
-                                            type="submit"
-                                            class="btn btn-sm btn-danger"
-                                            onclick="return confirm('Are you sure you want to delete this Sales Quote?')"
-                                        >
-                                            Delete
-                                        </button>
-                                    </form>
-                                @endif
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <a href="{{ route('sales-quotes.show', $salesQuote) }}" class="dropdown-item">
+                                            <i class="bx bx-show me-1"></i> View
+                                        </a>
+                                        @if(Auth::user()->role === 'admin')
+                                            <div class="dropdown-divider"></div>
+                                            <form
+                                                action="{{ route('sales-quotes.destroy', $salesQuote) }}"
+                                                method="POST"
+                                            >
+                                                @csrf
+                                                @method('DELETE')
+                                                <button
+                                                    type="submit"
+                                                    class="dropdown-item text-danger"
+                                                    onclick="return confirm('Are you sure you want to delete this Sales Quote?')"
+                                                >
+                                                    <i class="bx bx-trash me-1"></i> Delete
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty

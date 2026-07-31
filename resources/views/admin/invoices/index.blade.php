@@ -50,26 +50,33 @@
                             <td>₱{{ number_format($invoice->amount_due, 2) }}</td>
                             <td>{{ $invoice->created_at->format('M d, Y') }}</td>
                             <td>
-                                <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-sm btn-info">
-                                    View / Print
-                                </a>
-                                @if(Auth::user()->role === 'admin')
-                                    <form
-                                        action="{{ route('invoices.destroy', $invoice) }}"
-                                        method="POST"
-                                        class="d-inline"
-                                    >
-                                        @csrf
-                                        @method('DELETE')
-                                        <button
-                                            type="submit"
-                                            class="btn btn-sm btn-danger"
-                                            onclick="return confirm('Are you sure you want to delete this invoice?')"
-                                        >
-                                            Delete
-                                        </button>
-                                    </form>
-                                @endif
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <a href="{{ route('invoices.show', $invoice) }}" class="dropdown-item">
+                                            <i class="bx bx-show me-1"></i> View / Print
+                                        </a>
+                                        @if(Auth::user()->role === 'admin')
+                                            <div class="dropdown-divider"></div>
+                                            <form
+                                                action="{{ route('invoices.destroy', $invoice) }}"
+                                                method="POST"
+                                            >
+                                                @csrf
+                                                @method('DELETE')
+                                                <button
+                                                    type="submit"
+                                                    class="dropdown-item text-danger"
+                                                    onclick="return confirm('Are you sure you want to delete this invoice?')"
+                                                >
+                                                    <i class="bx bx-trash me-1"></i> Delete
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty

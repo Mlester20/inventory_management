@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PurchaseInvoice;
 use App\Models\Supplier;
+use App\Models\SupplierPayment;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -13,23 +15,76 @@ class SupplierController extends Controller
      */
     public function index()
     {
-        $suppliers = Supplier::withCount(['purchaseOrders', 'goodsReceipts'])
-            ->with('purchaseOrders.items')
+        $suppliers = Supplier::withCount(['purchaseOrders', 'goodsReceipts', 'purchaseInvoices'])
+            ->with([
+                'payments' => fn ($query) => $query->latest('payment_date')->limit(5),
+            ])
             ->orderBy('supplier_name')
             ->paginate(15);
 
+        // Payables are based on recorded Purchase Invoices (the supplier's
+        // actual billing document), not Goods Receipts or Purchase Orders —
+        // receiving goods isn't a liability until the supplier has actually
+        // billed for them.
+        $invoiceTotals = PurchaseInvoice::selectRaw('supplier_id, SUM(amount) as total')
+            ->groupBy('supplier_id')
+            ->get()
+            ->keyBy('supplier_id');
+
+        // Payments are recorded against a real supplier_id (see
+        // SupplierPayment), so these totals are exact. Split by type since
+        // "advance" (prepayment, not yet tied to any delivery) and "payment"
+        // (paid against an existing/invoiced balance) are declared explicitly
+        // by whoever records the payment, not inferred from the numbers.
+        $paymentTotals = SupplierPayment::selectRaw('supplier_id, type, SUM(amount) as total')
+            ->groupBy('supplier_id', 'type')
+            ->get()
+            ->groupBy('supplier_id');
+
         foreach ($suppliers as $supplier) {
-            // "Payables" proxy = total value of this supplier's purchase order
-            // lines (qty x unit_cost). There's no accounts-payable/payments
-            // ledger in this app yet, so this doesn't account for anything
-            // already paid — it's the closest available approximation, not a
-            // true running balance.
-            $supplier->payables = $supplier->purchaseOrders
-                ->flatMap(fn ($po) => $po->items)
-                ->sum(fn ($item) => $item->qty * $item->unit_cost);
+            $supplier->payables = (float) ($invoiceTotals->get($supplier->id)?->total ?? 0);
+
+            $supplierPayments = $paymentTotals->get($supplier->id, collect());
+            $totalPayments = (float) $supplierPayments->firstWhere('type', 'payment')?->total;
+            $totalAdvances = (float) $supplierPayments->firstWhere('type', 'advance')?->total;
+
+            // "Advances" = prepayment credit currently on file, as declared
+            // when the payment was recorded.
+            $supplier->advances = $totalAdvances;
+
+            // "Balances" = true bottom-line amount owed, after both payments
+            // and advances (can go negative if we've paid more than we've
+            // been invoiced for).
+            $supplier->balance = $supplier->payables - $totalPayments - $totalAdvances;
         }
 
         return view('admin.supplier', compact('suppliers'));
+    }
+
+    /**
+     * Record a payment against a supplier's running balance.
+     */
+    public function storePayment(Request $request, Supplier $supplier)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:' . implode(',', array_keys(SupplierPayment::TYPES)),
+            'amount' => 'required|numeric|min:0.01',
+            'payment_date' => 'required|date',
+            'payment_method' => 'nullable|in:' . implode(',', array_keys(SupplierPayment::PAYMENT_METHODS)),
+            'remarks' => 'nullable|string|max:255',
+        ]);
+
+        $supplier->payments()->create([
+            'type' => $validated['type'],
+            'amount' => $validated['amount'],
+            'payment_date' => $validated['payment_date'],
+            'payment_method' => $validated['payment_method'] ?? null,
+            'remarks' => $validated['remarks'] ?? null,
+            'prepared_by' => auth()->id(),
+        ]);
+
+        Alert::success('Success', 'Payment recorded successfully');
+        return redirect()->route('suppliers.index');
     }
 
     /**

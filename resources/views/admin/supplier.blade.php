@@ -139,7 +139,7 @@
 
         <!-- View Supplier Modal -->
         <div class="modal fade" id="viewSupplierModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog" role="document">
+            <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Supplier Details</h5>
@@ -187,6 +187,40 @@
                                 <p id="view_delivery_address" class="text-muted"></p>
                             </div>
                         </div>
+
+                        <hr>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="text-muted small d-block">Advances</label>
+                                <p id="view_advances" class="fw-semibold mb-0"></p>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="text-muted small d-block">Balance</label>
+                                <p id="view_balance" class="fw-semibold mb-0"></p>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="text-muted small d-block">Payables</label>
+                                <p id="view_payables" class="fw-semibold mb-0"></p>
+                            </div>
+                        </div>
+
+                        <label><strong>Recent Payments</strong> <span class="text-muted small">(latest 5)</span></label>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Method</th>
+                                        <th class="text-end">Amount</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="view_payments_body">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="modal-footer">
@@ -199,6 +233,80 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Record Payment Modal -->
+        <div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+
+                <form id="recordPaymentForm" method="POST">
+                    @csrf
+
+                    <div class="modal-content">
+
+                        <div class="modal-header">
+                            <h5 class="modal-title">Record Payment — <span id="payment_supplier_name"></span></h5>
+                            <button
+                                type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal"
+                            ></button>
+                        </div>
+
+                        <div class="modal-body">
+                            <p class="text-muted small">Current balance: <span id="payment_current_balance" class="fw-semibold"></span></p>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_type" class="form-label">Type</label>
+                                    <select name="type" id="payment_type" class="form-select" required>
+                                        @foreach (\App\Models\SupplierPayment::TYPES as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_amount" class="form-label">Amount</label>
+                                    <input type="number" step="0.01" min="0.01" name="amount" id="payment_amount" class="form-control" placeholder="e.g., 1500.00" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_date" class="form-label">Payment Date</label>
+                                    <input type="date" name="payment_date" id="payment_date" class="form-control" value="{{ now()->toDateString() }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_method" class="form-label">Payment Method</label>
+                                    <select name="payment_method" id="payment_method" class="form-select">
+                                        <option value="">-- Select Method --</option>
+                                        @foreach (\App\Models\SupplierPayment::PAYMENT_METHODS as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payment_remarks" class="form-label">Remarks</label>
+                                <input type="text" name="remarks" id="payment_remarks" class="form-control" placeholder="e.g., OR #00123">
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button
+                                type="button"
+                                class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal"
+                            >
+                                Close
+                            </button>
+
+                            <button type="submit" class="btn btn-primary">
+                                Save Payment
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -338,6 +446,7 @@
                         <th class="text-end">Purchase Orders</th>
                         <th class="text-end">Purchase Invoices</th>
                         <th class="text-end">Goods Receipts</th>
+                        <th class="text-end">Advances</th>
                         <th class="text-end">Balances</th>
                         <th class="text-end">Payables (PHP)</th>
                         <th>Actions</th>
@@ -349,64 +458,99 @@
                             <td>{{ $supplier->id }}</td>
                             <td>{{ $supplier->supplier_name }}</td>
                             <td class="text-end">{{ $supplier->purchase_orders_count }}</td>
-                            <td class="text-end text-muted" title="No Purchase Invoice module exists in this app yet">—</td>
+                            <td class="text-end">
+                                <a href="{{ route('purchase-invoices.index', ['search' => $supplier->supplier_name]) }}">
+                                    {{ $supplier->purchase_invoices_count }}
+                                </a>
+                            </td>
                             <td class="text-end">{{ $supplier->goods_receipts_count }}</td>
-                            <td class="text-end text-muted" title="No accounts-payable ledger exists in this app yet">—</td>
+                            <td class="text-end">{{ $supplier->advances > 0 ? number_format($supplier->advances, 2) : '—' }}</td>
+                            <td class="text-end {{ $supplier->balance > 0 ? 'text-danger' : '' }}">{{ number_format($supplier->balance, 2) }}</td>
                             <td class="text-end">{{ number_format($supplier->payables, 2) }}</td>
                             <td>
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-info view-btn"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#viewSupplierModal"
-                                    data-id="{{ $supplier->id }}"
-                                    data-name="{{ $supplier->supplier_name }}"
-                                    data-contact="{{ $supplier->contact_person }}"
-                                    data-contact-number="{{ $supplier->contact_number }}"
-                                    data-email="{{ $supplier->email }}"
-                                    data-address="{{ $supplier->delivery_address }}"
-                                    data-vat-type="{{ $supplier->vat_type }}"
-                                >
-                                    View
-                                </button>
-
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-warning edit-btn"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#updateSupplierModal"
-                                    data-id="{{ $supplier->id }}"
-                                    data-name="{{ $supplier->supplier_name }}"
-                                    data-contact="{{ $supplier->contact_person }}"
-                                    data-contact-number="{{ $supplier->contact_number }}"
-                                    data-email="{{ $supplier->email }}"
-                                    data-address="{{ $supplier->delivery_address }}"
-                                    data-vat-type="{{ $supplier->vat_type }}"
-                                >
-                                    Edit
-                                </button>
-
-                                <form
-                                    action="{{ route('suppliers.destroy', $supplier) }}"
-                                    method="POST"
-                                    class="d-inline"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button
-                                        type="submit"
-                                        class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Are you sure you want to delete this supplier?')"
-                                    >
-                                        Delete
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
-                                </form>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <button
+                                            type="button"
+                                            class="dropdown-item payment-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#recordPaymentModal"
+                                            data-id="{{ $supplier->id }}"
+                                            data-name="{{ $supplier->supplier_name }}"
+                                            data-balance="{{ number_format($supplier->balance, 2) }}"
+                                        >
+                                            <i class="bx bx-money me-1"></i> Payment
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="dropdown-item view-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#viewSupplierModal"
+                                            data-id="{{ $supplier->id }}"
+                                            data-name="{{ $supplier->supplier_name }}"
+                                            data-contact="{{ $supplier->contact_person }}"
+                                            data-contact-number="{{ $supplier->contact_number }}"
+                                            data-email="{{ $supplier->email }}"
+                                            data-address="{{ $supplier->delivery_address }}"
+                                            data-vat-type="{{ $supplier->vat_type }}"
+                                            data-advances="{{ number_format($supplier->advances, 2) }}"
+                                            data-balance="{{ number_format($supplier->balance, 2) }}"
+                                            data-payables="{{ number_format($supplier->payables, 2) }}"
+                                            data-payments='{{ $supplier->payments->map(fn ($p) => [
+                                                "date" => $p->payment_date->format("M d, Y"),
+                                                "type" => \App\Models\SupplierPayment::TYPES[$p->type] ?? $p->type,
+                                                "method" => $p->payment_method ?? "—",
+                                                "amount" => number_format($p->amount, 2),
+                                                "remarks" => $p->remarks ?? "—",
+                                            ])->toJson() }}'
+                                        >
+                                            <i class="bx bx-show me-1"></i> View
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="dropdown-item edit-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#updateSupplierModal"
+                                            data-id="{{ $supplier->id }}"
+                                            data-name="{{ $supplier->supplier_name }}"
+                                            data-contact="{{ $supplier->contact_person }}"
+                                            data-contact-number="{{ $supplier->contact_number }}"
+                                            data-email="{{ $supplier->email }}"
+                                            data-address="{{ $supplier->delivery_address }}"
+                                            data-vat-type="{{ $supplier->vat_type }}"
+                                        >
+                                            <i class="bx bx-edit-alt me-1"></i> Edit
+                                        </button>
+
+                                        <div class="dropdown-divider"></div>
+
+                                        <form
+                                            action="{{ route('suppliers.destroy', $supplier) }}"
+                                            method="POST"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button
+                                                type="submit"
+                                                class="dropdown-item text-danger"
+                                                onclick="return confirm('Are you sure you want to delete this supplier?')"
+                                            >
+                                                <i class="bx bx-trash me-1"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">No suppliers yet.</td>
+                            <td colspan="9" class="text-center text-muted py-4">No suppliers yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -430,9 +574,57 @@
             document.getElementById('view_contact_person').textContent = this.getAttribute('data-contact');
             document.getElementById('view_contact_number').textContent = this.getAttribute('data-contact-number');
             document.getElementById('view_email').textContent = this.getAttribute('data-email');
-            document.getElementById('view_address').textContent = this.getAttribute('data-address');
+            document.getElementById('view_delivery_address').textContent = this.getAttribute('data-address');
             document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type');
+
+            document.getElementById('view_advances').textContent = '₱' + (this.getAttribute('data-advances') || '0.00');
+            document.getElementById('view_balance').textContent = '₱' + (this.getAttribute('data-balance') || '0.00');
+            document.getElementById('view_payables').textContent = '₱' + (this.getAttribute('data-payables') || '0.00');
+
+            const paymentsBody = document.getElementById('view_payments_body');
+            paymentsBody.innerHTML = '';
+            let payments = [];
+            try {
+                payments = JSON.parse(this.getAttribute('data-payments') || '[]');
+            } catch (e) {
+                payments = [];
+            }
+
+            if (payments.length === 0) {
+                paymentsBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No payments recorded yet.</td></tr>';
+            } else {
+                payments.forEach(payment => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${payment.date}</td>
+                        <td>${payment.type}</td>
+                        <td>${payment.method}</td>
+                        <td class="text-end">₱${payment.amount}</td>
+                        <td>${payment.remarks}</td>
+                    `;
+                    paymentsBody.appendChild(row);
+                });
+            }
         });
+    });
+
+    // Handle payment button click to populate the record payment modal
+    document.querySelectorAll('.payment-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const supplierId = this.getAttribute('data-id');
+            document.getElementById('payment_supplier_name').textContent = this.getAttribute('data-name');
+            document.getElementById('payment_current_balance').textContent = '₱' + this.getAttribute('data-balance');
+
+            const form = document.getElementById('recordPaymentForm');
+            form.action = `/admin/suppliers/${supplierId}/payments`;
+        });
+    });
+
+    // Reset the record payment form when the modal is hidden
+    const recordPaymentModal = document.getElementById('recordPaymentModal');
+    recordPaymentModal.addEventListener('hide.bs.modal', function() {
+        document.getElementById('recordPaymentForm').reset();
+        document.getElementById('payment_date').value = '{{ now()->toDateString() }}';
     });
 
     // Handle edit button click to populate the update modal

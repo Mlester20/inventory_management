@@ -41,8 +41,37 @@ class UserController extends Controller
     public function destroy(string $id)
     {
         $user = User::findOrFail($id);
+
+        if ($user->role === 'admin') {
+            Alert::error('Cannot delete', 'Admin accounts cannot be deleted.');
+            return redirect()->route('users.index');
+        }
+
         $user->delete();
         Alert::success('Success', 'User deleted successfully');
+        return redirect()->route('users.index');
+    }
+
+    /**
+     * Suspend or reactivate a user account. Admin accounts and your own
+     * account can't be suspended, for the same reason admin accounts can't
+     * be deleted — the system must never be left with no usable admin.
+     */
+    public function toggleStatus(User $user)
+    {
+        if ($user->role === 'admin') {
+            Alert::error('Not allowed', 'Admin accounts cannot be suspended.');
+            return redirect()->route('users.index');
+        }
+
+        if ($user->id === auth()->id()) {
+            Alert::error('Not allowed', 'You cannot suspend your own account.');
+            return redirect()->route('users.index');
+        }
+
+        $user->update(['is_active' => ! $user->is_active]);
+
+        Alert::success('Success', $user->is_active ? 'User reactivated successfully' : 'User suspended successfully');
         return redirect()->route('users.index');
     }
 }

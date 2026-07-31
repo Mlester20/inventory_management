@@ -33,6 +33,7 @@ use App\Http\Controllers\SalesQuoteController;
 use App\Http\Controllers\DeliveryReceiptController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\GoodsReceiptController;
+use App\Http\Controllers\Admin\PurchaseInvoiceController;
 use App\Http\Controllers\Api\ItemController as ApiItemController;
 use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
 use App\Http\Controllers\Api\GenericNameController as ApiGenericNameController;
@@ -138,7 +139,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/categories', CategoryController::class);
     Route::resource('admin/generic-names', GenericNameController::class)->only(['store', 'update', 'destroy']);
     Route::resource('admin/suppliers', SupplierController::class);
+    Route::post('admin/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
     Route::resource('admin/customers', CustomerController::class);
+    Route::post('admin/customers/{customer}/payments', [CustomerController::class, 'storePayment'])->name('customers.payments.store');
 
     // Products & Inventory module — a single tabbed screen (General Item /
     // Products / Lot-Serial & Expiry / Product History); see
@@ -151,6 +154,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/inventory-adjustments', InventoryAdjustmentController::class)->only(['index', 'create', 'store', 'show']);
 
     Route::resource('admin/users', UserController::class);
+    Route::post('admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::resource('admin/purchases', PurchaseController::class);    
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::resource('admin/return-items', ReturnItemController::class);
@@ -159,6 +163,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/expense-categories', ExpenseCategoryController::class)->only(['store', 'destroy']);
     Route::resource('admin/purchase-orders', PurchaseOrderController::class);
     Route::resource('admin/goods-receipts', GoodsReceiptController::class)->except(['destroy']);
+    Route::resource('admin/purchase-invoices', PurchaseInvoiceController::class);
 
     // Invoices, Sales Orders, and Delivery Receipts are usable by both admin
     // and regular users (see the 'auth'-only group below) — deleting them
