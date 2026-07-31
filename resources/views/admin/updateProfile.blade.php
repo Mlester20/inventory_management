@@ -3,43 +3,172 @@
 @section('title', 'Update Profile')
 
 @section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h4 class="mb-1">Update Your Profile</h4>
-            <p class="text-muted">Update your personal information and password</p>
-        </div>
-    </div>
+<h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Account Settings /</span> Profile</h4>
 
-    <div class="row">
-        <div class="col-xxl-4 col-md-6">
-            <!-- Profile Card -->
+<div class="row">
+    <div class="col-md-12">
+        <form action="{{ route('admin.profile.update') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            @method('PUT')
+
             <div class="card mb-4">
-                <div class="card-body text-center">
-                    <img
-                        src="{{ $user->profile_picture_url }}"
-                        alt="{{ $user->name }}"
-                        class="rounded-circle mb-3"
-                        style="width: 100px; height: 100px; object-fit: cover;"
-                    >
-                    <div class="mb-3">
-                        <p class="mb-2">
-                            <strong>{{ $user->name }}</strong>
-                        </p>
-                        <p class="text-muted small">{{ $user->email }}</p>
-                        <span class="badge bg-label-info">{{ ucfirst($user->role) }}</span>
+                <h5 class="card-header">Profile Details</h5>
+                <!-- Avatar Upload -->
+                <div class="card-body">
+                    <div class="d-flex align-items-start align-items-sm-center gap-4">
+                        <img
+                            src="{{ $user->profile_picture_url }}"
+                            alt="{{ $user->name }}"
+                            class="d-block rounded-circle"
+                            id="uploadedAvatar"
+                            style="width: 100px; height: 100px; object-fit: cover;"
+                        >
+                        <div class="button-wrapper">
+                            <label for="profile_picture" class="btn btn-primary me-2 mb-2" tabindex="0">
+                                <span class="d-none d-sm-block">Upload new photo</span>
+                                <i class="bx bx-upload d-block d-sm-none"></i>
+                                <input
+                                    type="file"
+                                    name="profile_picture"
+                                    id="profile_picture"
+                                    class="account-file-input"
+                                    hidden
+                                    accept="image/png,image/jpeg,image/webp"
+                                >
+                            </label>
+                            <button type="button" class="btn btn-outline-secondary account-image-reset mb-2">
+                                <i class="bx bx-reset d-block d-sm-none"></i>
+                                <span class="d-none d-sm-block">Reset</span>
+                            </button>
+
+                            <p class="text-muted mb-0">Allowed JPG, PNG or WEBP. Max size of 2MB.</p>
+                            @error('profile_picture')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
-                    <p class="small text-muted mb-0">Account created at {{ $user->created_at->format('M d, Y') }}</p>
+                </div>
+                <hr class="my-0">
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Name Field -->
+                        <div class="mb-3 col-md-6">
+                            <label for="name" class="form-label">Full Name</label>
+                            <input
+                                type="text"
+                                name="name"
+                                id="name"
+                                class="form-control @error('name') is-invalid @enderror"
+                                value="{{ old('name', $user->name) }}"
+                                autofocus
+                                required
+                            >
+                            @error('name')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <!-- Email Field -->
+                        <div class="mb-3 col-md-6">
+                            <label for="email" class="form-label">E-mail</label>
+                            <input
+                                type="email"
+                                name="email"
+                                id="email"
+                                class="form-control @error('email') is-invalid @enderror"
+                                value="{{ old('email', $user->email) }}"
+                                required
+                            >
+                            @error('email')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <!-- Role Display (Read-only) -->
+                        <div class="mb-3 col-md-6">
+                            <label for="role" class="form-label">Role</label>
+                            <input
+                                type="text"
+                                id="role"
+                                class="form-control"
+                                value="{{ ucfirst($user->role) }}"
+                                disabled
+                            >
+                            <small class="text-muted d-block mt-1">
+                                <i class="bx bx-info-circle"></i> Your role cannot be changed. Contact the system administrator if you need assistance.
+                            </small>
+                        </div>
+
+                        <!-- Member Since -->
+                        <div class="mb-3 col-md-6">
+                            <label class="form-label">Member Since</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                value="{{ $user->created_at->format('M d, Y') }}"
+                                disabled
+                            >
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Password Requirements -->
             <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">Password Requirements</h6>
-                </div>
+                <h5 class="card-header">Change Password</h5>
                 <div class="card-body">
-                    <ul class="list-unstyled">
+                    <p class="small text-muted mb-3">
+                        Leave the password fields empty if you don't want to change it. Otherwise, enter your current password for confirmation.
+                    </p>
+
+                    <div class="row">
+                        <!-- Current Password (Confirmation) -->
+                        <div class="mb-3 col-md-6">
+                            <label class="form-label" for="current_password">Current Password <span class="text-danger">*</span></label>
+                            <input
+                                type="password"
+                                name="current_password"
+                                id="current_password"
+                                class="form-control @error('current_password') is-invalid @enderror"
+                                placeholder="Enter your current password"
+                                required
+                            >
+                            @error('current_password')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <!-- New Password -->
+                        <div class="mb-3 col-md-6">
+                            <label class="form-label" for="new_password">New Password</label>
+                            <input
+                                type="password"
+                                name="new_password"
+                                id="new_password"
+                                class="form-control @error('new_password') is-invalid @enderror"
+                                placeholder="Enter new password (optional)"
+                                minlength="8"
+                            >
+                            @error('new_password')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted d-block mt-1">Minimum 8 characters</small>
+                        </div>
+
+                        <!-- Confirm New Password -->
+                        <div class="mb-3 col-md-6">
+                            <label class="form-label" for="new_password_confirmation">Confirm New Password</label>
+                            <input
+                                type="password"
+                                name="new_password_confirmation"
+                                id="new_password_confirmation"
+                                class="form-control"
+                                placeholder="Confirm new password"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Password Requirements -->
+                    <ul class="list-unstyled mb-3">
                         <li class="mb-2">
                             <i class="bx bxs-check-circle text-success"></i> At least 8 characters long
                         </li>
@@ -53,189 +182,38 @@
                             <i class="bx bxs-check-circle text-success"></i> Password confirmation must match exactly
                         </li>
                     </ul>
-                </div>
-            </div>
-        </div>
 
-        <div class="col-xxl-8 col-md-6">
-            <!-- Update Profile Form -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Account Information</h5>
-                </div>
-                <div class="card-body">
-                    <form action="{{ route('admin.profile.update') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @method('PUT')
-
-                        <!-- Profile Picture Field -->
-                        <div class="mb-4">
-                            <label for="profile_picture" class="form-label">Profile Picture</label>
-                            <div class="d-flex align-items-center gap-3 mb-2">
-                                <img
-                                    src="{{ $user->profile_picture_url }}"
-                                    alt="Current profile picture"
-                                    class="rounded-circle"
-                                    style="width: 60px; height: 60px; object-fit: cover;"
-                                >
-                                <input
-                                    type="file"
-                                    name="profile_picture"
-                                    id="profile_picture"
-                                    class="form-control @error('profile_picture') is-invalid @enderror"
-                                    accept="image/png,image/jpeg,image/webp"
-                                >
-                            </div>
-                            <div class="form-text">Uploading a new picture replaces the current one. JPG, PNG or WEBP, up to 2MB.</div>
-                            @error('profile_picture')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Name Field -->
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Full Name</label>
-                            <input 
-                                type="text" 
-                                name="name" 
-                                id="name" 
-                                class="form-control @error('name') is-invalid @enderror" 
-                                value="{{ old('name', $user->name) }}"
-                                required
-                            >
-                            @error('name')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Email Field -->
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email Address</label>
-                            <input 
-                                type="email" 
-                                name="email" 
-                                id="email" 
-                                class="form-control @error('email') is-invalid @enderror" 
-                                value="{{ old('email', $user->email) }}"
-                                required
-                            >
-                            @error('email')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Role Display (Read-only) -->
-                        <div class="mb-4">
-                            <label for="role" class="form-label">Role</label>
-                            <input 
-                                type="text" 
-                                id="role" 
-                                class="form-control" 
-                                value="{{ ucfirst($user->role) }}"
-                                disabled
-                            >
-                            <small class="text-muted d-block mt-2">
-                                <i class="bx bx-info-circle"></i> Your role cannot be changed. Contact the system administrator if you need assistance.
-                            </small>
-                        </div>
-
-                        <hr class="my-4">
-
-                        <!-- Password Section Header -->
-                        <h6 class="mb-3">Change Password</h6>
-                        <p class="small text-muted mb-3">
-                            Leave empty if you don't want to change your password. Otherwise, enter your current password for confirmation.
+                    <!-- Alert Box -->
+                    <div class="alert alert-warning mb-4" role="alert">
+                        <h6 class="alert-heading mb-2">
+                            <i class="bx bx-error-circle"></i> Important Security Notice
+                        </h6>
+                        <p class="mb-0">
+                            Your current password is required to confirm any changes. This helps protect your account from unauthorized modifications.
                         </p>
+                    </div>
 
-                        <!-- Current Password (Confirmation) -->
-                        <div class="mb-3">
-                            <label for="current_password" class="form-label">Current Password <span class="text-danger">*</span></label>
-                            <input 
-                                type="password" 
-                                name="current_password" 
-                                id="current_password" 
-                                class="form-control @error('current_password') is-invalid @enderror" 
-                                placeholder="Enter your current password"
-                                required
-                            >
-                            @error('current_password')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                            <small class="text-muted d-block mt-2">
-                                <i class="bx bx-lock"></i> Required for security verification
-                            </small>
-                        </div>
-
-                        <!-- New Password -->
-                        <div class="mb-3">
-                            <label for="new_password" class="form-label">New Password</label>
-                            <input 
-                                type="password" 
-                                name="new_password" 
-                                id="new_password" 
-                                class="form-control @error('new_password') is-invalid @enderror" 
-                                placeholder="Enter new password (optional)"
-                                minlength="8"
-                            >
-                            @error('new_password')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                            <small class="text-muted d-block mt-2">Minimum 8 characters</small>
-                        </div>
-
-                        <!-- Confirm New Password -->
-                        <div class="mb-4">
-                            <label for="new_password_confirmation" class="form-label">Confirm New Password</label>
-                            <input 
-                                type="password" 
-                                name="new_password_confirmation" 
-                                id="new_password_confirmation" 
-                                class="form-control" 
-                                placeholder="Confirm new password"
-                            >
-                            <small class="text-muted d-block mt-2">
-                                <i class="bx bx-check-circle"></i> Must match the new password above
-                            </small>
-                        </div>
-
-                        <!-- Alert Box -->
-                        <div class="alert alert-warning mb-4" role="alert">
-                            <h6 class="alert-heading mb-2">
-                                <i class="bx bx-error-circle"></i> Important Security Notice
-                            </h6>
-                            <p class="mb-0">
-                                Your current password is required to confirm any changes. This helps protect your account from unauthorized modifications.
-                            </p>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bx bx-save"></i> Save Changes
-                            </button>
-                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-secondary">
-                                <i class="bx bx-arrow-back"></i> Cancel
-                            </a>
-                        </div>
-                    </form>
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bx bx-save"></i> Save Changes
+                        </button>
+                        <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="bx bx-arrow-back"></i> Cancel
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 @endsection
 
 @section('scripts')
+<script src="{{ asset('assets/js/pages-account-settings-account.js') }}"></script>
 <script>
-    // Show/hide password functionality
+    // Validate password confirmation in real-time
     document.addEventListener('DOMContentLoaded', function() {
-        const passwordFields = [
-            { field: 'current_password', toggleId: 'toggleCurrentPassword' },
-            { field: 'new_password', toggleId: 'toggleNewPassword' },
-            { field: 'new_password_confirmation', toggleId: 'toggleConfirmPassword' }
-        ];
-
-        // Validate password confirmation in real-time
         const newPasswordField = document.getElementById('new_password');
         const confirmPasswordField = document.getElementById('new_password_confirmation');
 
