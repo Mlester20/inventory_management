@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\InventoryAdjustment;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\ProductBatch;
 use Illuminate\Support\Facades\DB;
@@ -39,18 +40,20 @@ class InventoryAdjustmentService
             foreach ($data['lines'] as $line) {
                 $product = Product::findOrFail($line['product_id']);
                 $qty = (int) $line['qty'];
+                $location = ! empty($line['location_id']) ? Location::findOrFail($line['location_id']) : Location::warehouse();
 
                 $batch = $this->resolveBatch($product, $line);
 
                 if ($direction === 'in') {
-                    $this->stockService->restock($batch, $qty, $line['remarks'] ?? "Inventory Adjustment {$adjustmentNo}", $userId, $adjustment);
+                    $this->stockService->restock($batch, $qty, $location, $line['remarks'] ?? "Inventory Adjustment {$adjustmentNo}", $userId, $adjustment);
                 } else {
-                    $this->stockService->deduct($batch, $qty, $line['remarks'] ?? "Inventory Adjustment {$adjustmentNo}", $userId, $adjustment);
+                    $this->stockService->deduct($batch, $qty, $location, $line['remarks'] ?? "Inventory Adjustment {$adjustmentNo}", $userId, $adjustment);
                 }
 
                 $adjustment->lines()->create([
                     'product_id' => $product->id,
                     'product_batch_id' => $batch->id,
+                    'location_id' => $location->id,
                     'batch_no' => $batch->batch_no,
                     'expiration_date' => $batch->expiration_date,
                     'qty' => $qty,
@@ -85,8 +88,6 @@ class InventoryAdjustmentService
         return $product->batches()->create([
             'batch_no' => $batchNo,
             'expiration_date' => $line['expiration_date'] ?? null,
-            'qty' => 0,
-            'reserved_qty' => 0,
         ]);
     }
 

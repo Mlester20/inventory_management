@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\GenericName;
+use App\Models\Location;
+use App\Models\LocationStock;
 use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\Supplier;
@@ -29,6 +31,8 @@ class InventoryItemsController extends Controller
         $categories = Category::orderBy('category_name')->get();
         $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
         $suppliers = Supplier::orderBy('supplier_name')->get();
+        $warehouseId = Location::warehouse()->id;
+        $posId = Location::pos()->id;
 
         $assignedTaxIds = Product::whereNotNull('tax_id')->pluck('tax_id')->unique();
         $taxes = Taxes::where('is_active', true)
@@ -54,10 +58,11 @@ class InventoryItemsController extends Controller
                 ->withQueryString();
 
             foreach ($generalItems as $genericName) {
-                $genericName->on_hand_qty = (int) ProductBatch::query()
+                $genericName->on_hand_qty = (int) LocationStock::query()
+                    ->join('product_batches', 'product_batches.id', '=', 'location_stocks.product_batch_id')
                     ->join('products', 'products.id', '=', 'product_batches.product_id')
                     ->where('products.generic_name_id', $genericName->id)
-                    ->sum('product_batches.qty');
+                    ->sum('location_stocks.qty');
             }
 
             $nextGenericCode = str_pad((string) (GenericName::max('id') + 1), 5, '0', STR_PAD_LEFT);
@@ -65,8 +70,9 @@ class InventoryItemsController extends Controller
 
         if ($tab === 'products') {
             $products = Product::with(['genericName', 'category'])
-                ->withSum('batches', 'qty')
-                ->withSum('batches as reserved_sum', 'reserved_qty')
+                ->withSum(['locationStocks as warehouse_qty' => fn ($q) => $q->where('location_id', $warehouseId)], 'qty')
+                ->withSum(['locationStocks as pos_qty' => fn ($q) => $q->where('location_id', $posId)], 'qty')
+                ->withSum('locationStocks as total_qty', 'qty')
                 ->when($search, function ($q) use ($search) {
                     $q->where('item_name', 'like', "%{$search}%")
                         ->orWhere('brand_name', 'like', "%{$search}%")
@@ -79,7 +85,14 @@ class InventoryItemsController extends Controller
             $nextProductCode = str_pad((string) (Product::max('id') + 1), 5, '0', STR_PAD_LEFT);
         }
 
+        $showZero = false;
+
         if ($tab === 'batches') {
+            $showZero = $request->boolean('show_zero');
+
+            // Batches fully depleted (disposed of, sold out, etc.) are
+            // hidden by default to keep this tab focused on active stock —
+            // the toggle exposes the full history including zero-qty rows.
             $batchQuery = fn () => ProductBatch::query()
                 ->whereHas('product', function ($q) use ($search) {
                     if ($search) {
@@ -87,10 +100,13 @@ class InventoryItemsController extends Controller
                             ->orWhere('brand_name', 'like', "%{$search}%")
                             ->orWhere('code', 'like', "%{$search}%");
                     }
+                })
+                ->when(! $showZero, function ($q) {
+                    $q->whereHas('locationStocks', fn ($q2) => $q2->where('qty', '>', 0));
                 });
 
             $batches = $batchQuery()
-                ->with('product.category')
+                ->with(['product.category', 'locationStocks'])
                 ->orderBy('product_id')
                 ->orderBy('expiration_date')
                 ->paginate(15)
@@ -98,10 +114,12 @@ class InventoryItemsController extends Controller
 
             // Grand totals across every matching batch, not just the current
             // page, so the footer row stays accurate under pagination.
-            $batchTotals = $batchQuery()->selectRaw('
-                COALESCE(SUM(qty), 0) as qty,
-                COALESCE(SUM(reserved_qty), 0) as reserved_qty
-            ')->first();
+            $matchingBatchIds = $batchQuery()->pluck('product_batches.id');
+            $batchTotals = (object) [
+                'warehouse_qty' => (int) LocationStock::whereIn('product_batch_id', $matchingBatchIds)->where('location_id', $warehouseId)->sum('qty'),
+                'pos_qty' => (int) LocationStock::whereIn('product_batch_id', $matchingBatchIds)->where('location_id', $posId)->sum('qty'),
+                'total_qty' => (int) LocationStock::whereIn('product_batch_id', $matchingBatchIds)->sum('qty'),
+            ];
         }
 
         if ($tab === 'history') {
@@ -137,7 +155,7 @@ class InventoryItemsController extends Controller
         return view('admin.inventory-items.index', compact(
             'tab', 'search', 'categories', 'genericNames', 'suppliers', 'taxes',
             'generalItems', 'products', 'batches', 'batchTotals', 'historyProduct', 'history',
-            'nextGenericCode', 'nextProductCode'
+            'nextGenericCode', 'nextProductCode', 'warehouseId', 'posId', 'showZero'
         ));
     }
 }

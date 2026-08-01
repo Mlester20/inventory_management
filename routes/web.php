@@ -34,6 +34,8 @@ use App\Http\Controllers\DeliveryReceiptController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\GoodsReceiptController;
 use App\Http\Controllers\Admin\PurchaseInvoiceController;
+use App\Http\Controllers\Admin\StockTransferController;
+use App\Http\Controllers\Admin\StockDisposalController;
 use App\Http\Controllers\Api\ItemController as ApiItemController;
 use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
 use App\Http\Controllers\Api\GenericNameController as ApiGenericNameController;
@@ -164,6 +166,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/purchase-orders', PurchaseOrderController::class);
     Route::resource('admin/goods-receipts', GoodsReceiptController::class)->except(['destroy']);
     Route::resource('admin/purchase-invoices', PurchaseInvoiceController::class);
+    Route::resource('admin/stock-transfers', StockTransferController::class)->only(['index', 'create', 'store', 'show']);
+    Route::resource('admin/stock-disposals', StockDisposalController::class)->only(['index', 'create', 'store', 'show']);
 
     // Invoices, Sales Orders, and Delivery Receipts are usable by both admin
     // and regular users (see the 'auth'-only group below) — deleting them

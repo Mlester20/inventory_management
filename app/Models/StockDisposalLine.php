@@ -5,26 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class InventoryAdjustmentLine extends Model
+class StockDisposalLine extends Model
 {
     protected $fillable = [
-        'inventory_adjustment_id', 'product_id', 'product_batch_id', 'location_id',
-        'batch_no', 'expiration_date', 'qty', 'remarks',
+        'stock_disposal_id',
+        'product_batch_id',
+        'location_id',
+        'qty',
     ];
 
     protected $casts = [
         'qty' => 'integer',
-        'expiration_date' => 'date',
     ];
 
-    public function inventoryAdjustment(): BelongsTo
+    public function stockDisposal(): BelongsTo
     {
-        return $this->belongsTo(InventoryAdjustment::class);
-    }
-
-    public function product(): BelongsTo
-    {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(StockDisposal::class);
     }
 
     public function productBatch(): BelongsTo

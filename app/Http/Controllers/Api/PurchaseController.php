@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Location;
 use App\Models\Purchase;
 use App\Models\Product;
 use App\Services\StockService;
@@ -51,6 +52,7 @@ class PurchaseController extends Controller
             \DB::transaction(function () use ($validated, &$purchaseCount, $transactionId, &$totalAmount, &$changeAmount, $amountTendered) {
                 $stockService = new StockService();
                 $userId = auth()->id();
+                $posLocation = Location::pos();
 
                 foreach ($validated['items'] as $cartItem) {
                     $product = Product::findOrFail($cartItem['product_id']);
@@ -59,6 +61,7 @@ class PurchaseController extends Controller
                     $movements = $stockService->deductFefo(
                         $product,
                         $qty,
+                        $posLocation,
                         "POS Purchase (TXN: {$transactionId})",
                         $userId
                     );

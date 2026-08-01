@@ -10,6 +10,7 @@ class StockMovement extends Model
 {
     protected $fillable = [
         'product_batch_id',
+        'location_id',
         'user_id',
         'quantity',
         'type',
@@ -30,6 +31,14 @@ class StockMovement extends Model
     public function productBatch(): BelongsTo
     {
         return $this->belongsTo(ProductBatch::class);
+    }
+
+    /**
+     * The location this movement affected (Warehouse, POS, ...).
+     */
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     /**

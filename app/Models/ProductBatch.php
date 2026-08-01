@@ -12,12 +12,10 @@ class ProductBatch extends Model
     use HasFactory;
 
     protected $fillable = [
-        'product_id', 'batch_no', 'expiration_date', 'qty', 'reserved_qty',
+        'product_id', 'batch_no', 'expiration_date',
     ];
 
     protected $casts = [
-        'qty' => 'integer',
-        'reserved_qty' => 'integer',
         'expiration_date' => 'date',
     ];
 
@@ -41,18 +39,50 @@ class ProductBatch extends Model
         return $this->stockMovements()->where('type', 'out');
     }
 
-    public function getAvailableQtyAttribute(): int
+    public function locationStocks(): HasMany
     {
-        return $this->qty - $this->reserved_qty;
+        return $this->hasMany(LocationStock::class);
     }
 
     /**
-     * Batches with stock on hand, nearest-expiring first (nulls last),
-     * for FEFO (first-expired-first-out) auto-selection at POS/Invoice checkout.
+     * This batch's qty at a specific location. Uses the eager-loaded
+     * locationStocks collection when available (avoids N+1 in list views);
+     * falls back to a query otherwise.
      */
-    public function scopeAvailableFefo($query)
+    public function qtyAtLocation(int $locationId): int
     {
-        return $query->where('qty', '>', 0)
+        if ($this->relationLoaded('locationStocks')) {
+            return (int) ($this->locationStocks->firstWhere('location_id', $locationId)->qty ?? 0);
+        }
+
+        return (int) $this->locationStocks()->where('location_id', $locationId)->value('qty');
+    }
+
+    /**
+     * This batch's total qty across every location.
+     */
+    public function getTotalQtyAttribute(): int
+    {
+        if ($this->relationLoaded('locationStocks')) {
+            return (int) $this->locationStocks->sum('qty');
+        }
+
+        return (int) $this->locationStocks()->sum('qty');
+    }
+
+    /**
+     * Batches with stock on hand at the given location, nearest-expiring
+     * first (nulls last), for FEFO (first-expired-first-out) auto-selection
+     * at POS/Invoice checkout.
+     */
+    public function scopeAvailableFefo($query, int $locationId)
+    {
+        return $query->whereHas('locationStocks', function ($q) use ($locationId) {
+                $q->where('location_id', $locationId)->where('qty', '>', 0);
+            })
+            ->with(['locationStocks' => function ($q) use ($locationId) {
+                $q->where('location_id', $locationId);
+            }])
             ->orderByRaw('expiration_date IS NULL, expiration_date ASC');
     }
 }

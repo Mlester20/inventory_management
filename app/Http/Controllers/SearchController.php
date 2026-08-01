@@ -29,7 +29,7 @@ class SearchController extends Controller
             }
 
             // Search for products
-            $items = Product::withSum('batches', 'qty')
+            $items = Product::withSum('locationStocks', 'qty')
                 ->where('item_name', 'LIKE', "%{$query}%")
                 ->orWhere('description', 'LIKE', "%{$query}%")
                 ->limit(5)
@@ -39,7 +39,7 @@ class SearchController extends Controller
                         'type' => 'item',
                         'id' => $item->id,
                         'title' => $item->item_name,
-                        'subtitle' => 'Stock: ' . (int) ($item->batches_sum_qty ?? 0) . ' | ₱' . number_format($item->unit_price, 2),
+                        'subtitle' => 'Stock: ' . (int) ($item->location_stocks_sum_qty ?? 0) . ' | ₱' . number_format($item->unit_price, 2),
                         'url' => route('admin.items.show', $item->id),
                         'icon' => 'bx-package'
                     ];

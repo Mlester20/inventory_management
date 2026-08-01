@@ -240,17 +240,18 @@
                                 <th>Price 1</th>
                                 <th>Price 2</th>
                                 <th>Price 3</th>
-                                <th>Qty</th>
-                                <th>Reserved</th>
-                                <th>Available</th>
+                                <th>Warehouse</th>
+                                <th>POS</th>
+                                <th>Total</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($products as $product)
                                 @php
-                                    $qty = (int) ($product->batches_sum_qty ?? 0);
-                                    $reserved = (int) ($product->reserved_sum ?? 0);
+                                    $warehouseQty = (int) ($product->warehouse_qty ?? 0);
+                                    $posQty = (int) ($product->pos_qty ?? 0);
+                                    $totalQty = (int) ($product->total_qty ?? 0);
                                 @endphp
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
@@ -264,11 +265,11 @@
                                     <td>{{ number_format($product->price_1 ?? 0, 2) }}</td>
                                     <td>{{ number_format($product->price_2 ?? 0, 2) }}</td>
                                     <td>{{ number_format($product->price_3 ?? 0, 2) }}</td>
+                                    <td>{{ $warehouseQty }}</td>
+                                    <td>{{ $posQty }}</td>
                                     <td>
-                                        <a href="{{ route('inventory-items.index', ['tab' => 'batches', 'search' => $product->item_name]) }}">{{ $qty }}</a>
+                                        <a href="{{ route('inventory-items.index', ['tab' => 'batches', 'search' => $product->item_name]) }}">{{ $totalQty }}</a>
                                     </td>
-                                    <td>{{ $reserved }}</td>
-                                    <td>{{ $qty - $reserved }}</td>
                                     <td>
                                         <div class="dropdown">
                                             <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
@@ -342,7 +343,16 @@
 
         {{-- ============================= LOT/SERIAL & EXPIRY TAB ============================= --}}
         @if($tab === 'batches')
-            <a href="{{ route('inventory-adjustments.create') }}" class="btn btn-primary mb-3">Adjust Inventory</a>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <a href="{{ route('inventory-adjustments.create') }}" class="btn btn-primary">Adjust Inventory</a>
+                <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'batches', 'show_zero' => $showZero ? 0 : 1])) }}" class="btn btn-outline-secondary btn-sm">
+                    @if($showZero)
+                        <i class="bx bx-hide"></i> Hide zero-qty batches
+                    @else
+                        <i class="bx bx-show"></i> Show zero-qty batches
+                    @endif
+                </a>
+            </div>
 
             <div class="card">
                 <div class="table-responsive nowrap">
@@ -355,9 +365,9 @@
                                 <th>Item Description</th>
                                 <th>Lot/Batch/Serial</th>
                                 <th>Expiry</th>
-                                <th>Qty</th>
-                                <th>Reserved</th>
-                                <th>Available</th>
+                                <th>Warehouse</th>
+                                <th>POS</th>
+                                <th>Total</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -370,9 +380,9 @@
                                     <td>{{ $batch->product->item_name }}</td>
                                     <td>{{ $batch->batch_no ?? '—' }}</td>
                                     <td>{{ $batch->expiration_date?->format('Y-m-d') ?? '—' }}</td>
-                                    <td>{{ $batch->qty }}</td>
-                                    <td>{{ $batch->reserved_qty }}</td>
-                                    <td>{{ $batch->available_qty }}</td>
+                                    <td>{{ $batch->qtyAtLocation($warehouseId) }}</td>
+                                    <td>{{ $batch->qtyAtLocation($posId) }}</td>
+                                    <td>{{ $batch->total_qty }}</td>
                                     <td>
                                         <a href="{{ route('inventory-items.index', ['tab' => 'history', 'product_id' => $batch->product_id]) }}" class="btn btn-sm btn-outline-secondary" title="View Product History">
                                             <i class="bx bx-history"></i>
@@ -387,9 +397,9 @@
                             <tfoot>
                                 <tr class="fw-bold">
                                     <td colspan="6" class="text-end">Grand Total</td>
-                                    <td>{{ $batchTotals->qty }}</td>
-                                    <td>{{ $batchTotals->reserved_qty }}</td>
-                                    <td>{{ $batchTotals->qty - $batchTotals->reserved_qty }}</td>
+                                    <td>{{ $batchTotals->warehouse_qty }}</td>
+                                    <td>{{ $batchTotals->pos_qty }}</td>
+                                    <td>{{ $batchTotals->total_qty }}</td>
                                     <td></td>
                                 </tr>
                             </tfoot>
@@ -427,15 +437,16 @@
                                 <th>Item Description</th>
                                 <th>Lot/Batch/Serial</th>
                                 <th>Expiry</th>
+                                <th>Location</th>
                                 <th>Qty</th>
                                 <th>Balance</th>
                             </tr>
                         </thead>
                         <tbody>
                             @if(!$historyProduct)
-                                <tr><td colspan="9" class="text-center text-muted py-4">Search for a product above to view its history.</td></tr>
+                                <tr><td colspan="10" class="text-center text-muted py-4">Search for a product above to view its history.</td></tr>
                             @elseif($history->isEmpty())
-                                <tr><td colspan="9" class="text-center text-muted py-4">No movement history for {{ $historyProduct->item_name }} yet.</td></tr>
+                                <tr><td colspan="10" class="text-center text-muted py-4">No movement history for {{ $historyProduct->item_name }} yet.</td></tr>
                             @else
                                 @foreach ($history as $movement)
                                     @php
@@ -445,6 +456,8 @@
                                             $source instanceof \App\Models\DeliveryReceipt => 'Delivery Receipt',
                                             $source instanceof \App\Models\InventoryAdjustment => 'Inventory Adjustment',
                                             $source instanceof \App\Models\Invoice => 'Invoice',
+                                            $source instanceof \App\Models\StockTransfer => 'Stock Transfer',
+                                            $source instanceof \App\Models\StockDisposal => 'Stock Disposal',
                                             default => $movement->type === 'in' ? 'Stock In' : 'Stock Out',
                                         };
                                         $customer = $source instanceof \App\Models\DeliveryReceipt ? $source->customer?->customer_name : null;
@@ -458,6 +471,7 @@
                                         <td>{{ $historyProduct->item_name }}</td>
                                         <td>{{ $movement->productBatch->batch_no ?? '—' }}</td>
                                         <td>{{ $movement->productBatch->expiration_date?->format('Y-m-d') ?? '—' }}</td>
+                                        <td>{{ $movement->location->name ?? '—' }}</td>
                                         <td>{{ $movement->quantity }}</td>
                                         <td>{{ $movement->running_balance }}</td>
                                     </tr>

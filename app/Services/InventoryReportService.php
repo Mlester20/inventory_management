@@ -9,12 +9,14 @@ use Illuminate\Database\Eloquent\Collection;
 class InventoryReportService
 {
     /**
-     * Current stock per product (summed across its batches), with computed
-     * total value and low-stock flag.
+     * Current stock per product (summed across every location), with
+     * computed total value and low-stock flag. Low stock is evaluated
+     * against the total across all locations — POS running low while the
+     * Warehouse is full just means a transfer is needed, not a reorder.
      */
     public function getInventorySummary(?int $categoryId = null, ?int $supplierId = null, bool $lowStockOnly = false): Collection
     {
-        $query = Product::with(['category', 'supplier'])->withSum('batches', 'qty');
+        $query = Product::with(['category', 'supplier'])->withSum('locationStocks', 'qty');
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
@@ -27,7 +29,7 @@ class InventoryReportService
         $products = $query->orderBy('item_name')->get();
 
         $products->each(function (Product $product) {
-            $qty = (int) ($product->batches_sum_qty ?? 0);
+            $qty = (int) ($product->location_stocks_sum_qty ?? 0);
             $product->on_hand_qty = $qty;
             $product->total_value = $qty * $product->unit_price;
             $product->is_low_stock = $qty <= $product->low_stock_threshold;
@@ -50,22 +52,26 @@ class InventoryReportService
 
     /**
      * Movement ledger for a single product, rolled up across every one of
-     * its batches, most recent first, with a running balance. The running
-     * balance is always computed from the product's full movement history
-     * (so it stays anchored to the product's current total quantity) even
-     * when the displayed rows are limited to a date range.
+     * its batches and every location, most recent first, with a running
+     * balance. The balance is the product's total across all locations —
+     * a Stock Transfer's paired out/in rows net to zero on this total, but
+     * each row's own Location column shows exactly which location it
+     * affected. The running balance is always computed from the product's
+     * full movement history (so it stays anchored to the product's current
+     * total quantity) even when the displayed rows are limited to a date
+     * range.
      */
     public function getProductHistory(int $productId, ?string $startDate = null, ?string $endDate = null): Collection
     {
         $product = Product::findOrFail($productId);
         $batchIds = $product->batches()->pluck('id');
 
-        $movements = StockMovement::with(['user', 'productBatch', 'source'])
+        $movements = StockMovement::with(['user', 'productBatch', 'source', 'location'])
             ->whereIn('product_batch_id', $batchIds)
             ->orderBy('created_at')
             ->get();
 
-        $currentTotal = (int) $product->batches()->sum('qty');
+        $currentTotal = (int) $product->locationStocks()->sum('qty');
         $runningBalance = $currentTotal - $movements->sum('quantity');
 
         foreach ($movements as $movement) {

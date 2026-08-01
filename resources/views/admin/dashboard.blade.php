@@ -278,7 +278,7 @@
                         <div class="d-flex justify-content-between align-items-center py-2 {{ !$loop->last ? 'border-bottom' : '' }}">
                             <div>
                                 <div class="fw-semibold">{{ $batch->product->item_name ?? 'N/A' }}</div>
-                                <div class="text-muted small">Batch {{ $batch->batch_no ?? '—' }} · Qty {{ $batch->qty }}</div>
+                                <div class="text-muted small">Batch {{ $batch->batch_no ?? '—' }} · Qty {{ $batch->total_qty }}</div>
                             </div>
                             <span class="badge bg-danger">{{ $batch->expiration_date->format('M d, Y') }}</span>
                         </div>

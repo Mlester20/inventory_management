@@ -98,9 +98,15 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Line Items</h6>
-                    <button type="button" class="btn btn-sm btn-primary" id="addRowBtn">
-                        <i class="bx bx-plus"></i> Add Item
-                    </button>
+                    <div class="d-flex gap-2 align-items-center">
+                        <input type="number" id="generateLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="50" placeholder="# lines">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="generateLinesBtn">
+                            <i class="bx bx-list-plus"></i> Generate
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" id="addRowBtn">
+                            <i class="bx bx-plus"></i> Add Item
+                        </button>
+                    </div>
                 </div>
 
                 <div id="lineItemsBody"></div>
@@ -251,6 +257,35 @@
     }
 
     document.getElementById('addRowBtn').addEventListener('click', addRow);
+
+    // "Generate N Lines" — reuses the exact same addRow() the Add Item
+    // button calls, just N times in a row, so a batch-generated line is
+    // identical to a manually-added one (same indexing, same events bound).
+    const MAX_GENERATE_LINES = 50;
+
+    function generateLines() {
+        const input = document.getElementById('generateLinesInput');
+        const requested = parseInt(input.value, 10);
+
+        if (!requested || requested <= 0) {
+            return;
+        }
+
+        const count = Math.min(requested, MAX_GENERATE_LINES);
+        for (let i = 0; i < count; i++) {
+            addRow();
+        }
+
+        input.value = '';
+    }
+
+    document.getElementById('generateLinesBtn').addEventListener('click', generateLines);
+    document.getElementById('generateLinesInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            generateLines();
+        }
+    });
 
     // Re-suggest prices for all rows when the customer (and thus customer type) changes
     document.getElementById('customer_id').addEventListener('change', function () {

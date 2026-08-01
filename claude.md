@@ -1,9 +1,4 @@
 # Prompt: Implement Location-Based Stock (Warehouse → POS Transfer) — Laravel 12 + Blade
-
-Copy everything below into Claude / Claude Code, inside your project root.
-
----
-
 ## Task
 
 This is a **new module**: multi-location stock tracking. Right now, stock (`qty` on `product_batches`) is

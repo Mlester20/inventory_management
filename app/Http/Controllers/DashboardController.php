@@ -21,16 +21,23 @@ class DashboardController extends Controller
     {
         // --- Stock Summary ---
         $totalItems = Product::count();
-        $totalStock = (int) \DB::table('product_batches')->sum('qty');
+        $totalStock = (int) \DB::table('location_stocks')->sum('qty');
 
-        // Products with computed on-hand quantity, for low-stock/table use.
+        // Products with computed on-hand quantity (total across every
+        // location), for low-stock/table use.
         $productsWithQty = Product::with('category', 'supplier')
-            ->withSum('batches', 'qty')
-            ->orderByRaw('COALESCE((select sum(qty) from product_batches where product_batches.product_id = products.id), 0) asc')
+            ->withSum('locationStocks', 'qty')
+            ->orderByRaw('COALESCE((
+                select sum(ls.qty) from location_stocks ls
+                inner join product_batches pb on pb.id = ls.product_batch_id
+                where pb.product_id = products.id
+            ), 0) asc')
             ->get()
-            ->each(fn (Product $product) => $product->on_hand_qty = (int) ($product->batches_sum_qty ?? 0));
+            ->each(fn (Product $product) => $product->on_hand_qty = (int) ($product->location_stocks_sum_qty ?? 0));
 
-        // Low stock: products where on-hand qty <= low_stock_threshold
+        // Low stock: products where on-hand qty (total across all locations)
+        // <= low_stock_threshold — POS running low while the Warehouse is
+        // full just means a transfer is needed, not a reorder.
         $lowStockItems = $productsWithQty->filter(fn (Product $product) => $product->on_hand_qty <= $product->low_stock_threshold)->values();
         $lowStockCount = $lowStockItems->count();
 

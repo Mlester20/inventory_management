@@ -5,8 +5,8 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\DeliveryReceipt;
 use App\Models\DeliveryReceiptItem;
-use App\Models\GenericName;
 use App\Models\Invoice;
+use App\Models\Location;
 use App\Models\ProductBatch;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
@@ -18,19 +18,6 @@ use Illuminate\Validation\ValidationException;
 class DeliveryReceiptService
 {
     public function __construct(protected StockService $stockService) {}
-
-    /**
-     * In-stock batches (qty > 0), across every brand/product, under a given
-     * Generic Name. Powers the "Available Product?" batch picker.
-     */
-    public function getAvailableItemsForGenericName(GenericName $genericName): Collection
-    {
-        return ProductBatch::query()
-            ->where('qty', '>', 0)
-            ->whereHas('product', fn ($q) => $q->where('generic_name_id', $genericName->id))
-            ->with(['product.supplier'])
-            ->get();
-    }
 
     /**
      * Sales Order lines that still have a remaining (undelivered) balance.
@@ -66,15 +53,17 @@ class DeliveryReceiptService
                 'prepared_by' => $data['prepared_by'] ?? null,
             ]);
 
+            $warehouse = Location::warehouse();
             $affectedSalesOrders = [];
 
             foreach ($data['items'] as $line) {
                 $batch = ProductBatch::with('product')->findOrFail($line['product_batch_id']);
                 $qty = (int) $line['qty'];
+                $availableAtWarehouse = $batch->qtyAtLocation($warehouse->id);
 
-                if ($batch->qty < $qty) {
+                if ($availableAtWarehouse < $qty) {
                     throw ValidationException::withMessages([
-                        'items' => "Insufficient stock for {$batch->product->item_name}. Available: {$batch->qty}",
+                        'items' => "Insufficient stock for {$batch->product->item_name}. Available: {$availableAtWarehouse}",
                     ]);
                 }
 
@@ -89,7 +78,7 @@ class DeliveryReceiptService
                     }
                 }
 
-                $this->stockService->deduct($batch, $qty, "Delivery Receipt {$drNo}", $userId, $deliveryReceipt);
+                $this->stockService->deduct($batch, $qty, $warehouse, "Delivery Receipt {$drNo}", $userId, $deliveryReceipt);
 
                 $deliveryReceipt->items()->create([
                     'sales_order_item_id' => $salesOrderItem?->id,

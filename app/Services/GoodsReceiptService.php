@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\GoodsReceipt;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\PurchaseOrder;
@@ -68,7 +69,7 @@ class GoodsReceiptService
 
                 $batch = $this->resolveBatch($product, $line);
 
-                $this->stockService->restock($batch, $qty, "Goods Receipt {$grNo}", $userId, $goodsReceipt);
+                $this->stockService->restock($batch, $qty, Location::warehouse(), "Goods Receipt {$grNo}", $userId, $goodsReceipt);
 
                 $product->update(['unit_cost' => $line['unit_cost']]);
 
@@ -113,8 +114,6 @@ class GoodsReceiptService
         return $product->batches()->create([
             'batch_no' => $batchNo,
             'expiration_date' => $line['expiration_date'] ?? null,
-            'qty' => 0,
-            'reserved_qty' => 0,
         ]);
     }
 

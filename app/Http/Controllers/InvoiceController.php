@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\Taxes;
 use App\Models\User;
@@ -41,7 +42,14 @@ class InvoiceController extends Controller
      */
     public function create()
     {
-        $products = Product::with('tax')->withSum('batches', 'qty')->orderBy('item_name')->get();
+        // Invoice checkout deducts via FEFO at the POS location (same
+        // immediate-sale semantics as the POS screen, just issued from the
+        // admin/back-office side) — availability shown here must match.
+        $posLocationId = Location::pos()->id;
+
+        $products = Product::with('tax')
+            ->withSum(['locationStocks as pos_qty' => fn ($q) => $q->where('location_id', $posLocationId)], 'qty')
+            ->orderBy('item_name')->get();
         $salesNo = $this->generateSalesNo();
         $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
         $users = User::orderBy('name')->get();
@@ -51,7 +59,7 @@ class InvoiceController extends Controller
                 'id' => $product->id,
                 'name' => $product->item_name,
                 'price' => (float) $product->unit_price,
-                'quantity' => (int) ($product->batches_sum_qty ?? 0),
+                'quantity' => (int) ($product->pos_qty ?? 0),
                 'unit' => 'pc',
                 'taxable' => $product->tax_id !== null,
             ];
@@ -92,6 +100,7 @@ class InvoiceController extends Controller
             $invoice = DB::transaction(function () use ($validated, $activeVatRate) {
                 $stockService = new StockService();
                 $userId = Auth::id();
+                $posLocation = Location::pos();
 
                 $vatSales = 0;
                 $vatexSales = 0;
@@ -103,7 +112,7 @@ class InvoiceController extends Controller
                     $product = Product::findOrFail($line['item_id']);
                     $qty = (int) $line['qty'];
 
-                    $available = (int) $product->batches()->sum('qty');
+                    $available = $product->quantityAtLocation($posLocation->id);
                     if ($available < $qty) {
                         throw ValidationException::withMessages([
                             'items' => "Insufficient stock for {$product->item_name}. Available: {$available}",
@@ -185,7 +194,7 @@ class InvoiceController extends Controller
                 ]);
 
                 foreach ($saleLines as $line) {
-                    $movements = $stockService->deductFefo($line['product'], $line['qty'], 'Invoice ' . $salesNo, $userId, $invoice);
+                    $movements = $stockService->deductFefo($line['product'], $line['qty'], $posLocation, 'Invoice ' . $salesNo, $userId, $invoice);
 
                     foreach ($movements as $movement) {
                         $movementQty = abs($movement->quantity);

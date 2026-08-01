@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Location;
 use App\Models\ReturnItem;
 use App\Models\Product;
 use App\Services\StockService;
@@ -133,10 +134,12 @@ class ReturnItemController extends Controller
 
             // Use transaction to ensure atomicity
             \DB::transaction(function () use ($returnItem) {
-                // Restock the batch using StockService
+                // Restock the batch using StockService — returns go back
+                // into POS stock, the same location they were sold from.
                 $this->stockService->restock(
                     $returnItem->productBatch,
                     $returnItem->quantity,
+                    Location::pos(),
                     "Return item approved - Return ID: {$returnItem->id}, Reason: {$returnItem->reason}",
                     auth()->id()
                 );

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Product extends Model
 {
@@ -88,14 +89,36 @@ class Product extends Model
         return $this->hasMany(ProductBatch::class);
     }
 
+    /**
+     * All location_stocks rows across every batch of this product — the
+     * single relation nearly every quantity read below sums or filters.
+     */
+    public function locationStocks(): HasManyThrough
+    {
+        return $this->hasManyThrough(LocationStock::class, ProductBatch::class);
+    }
+
+    /**
+     * Total on-hand qty across every location (Warehouse + POS + any
+     * future location) — unchanged meaning from before locations existed.
+     */
     public function getQuantityAttribute(): int
     {
-        return (int) $this->batches()->sum('qty');
+        return (int) $this->locationStocks()->sum('qty');
+    }
+
+    /**
+     * On-hand qty at a specific location only (e.g. Location::pos()->id for
+     * what's actually sellable at POS).
+     */
+    public function quantityAtLocation(int $locationId): int
+    {
+        return (int) $this->locationStocks()->where('location_id', $locationId)->sum('qty');
     }
 
     public function getReservedQtyAttribute(): int
     {
-        return (int) $this->batches()->sum('reserved_qty');
+        return (int) $this->locationStocks()->sum('reserved_qty');
     }
 
     public function getAvailableQtyAttribute(): int
@@ -108,17 +131,26 @@ class Product extends Model
         return $this->quantity <= $this->low_stock_threshold;
     }
 
+    /**
+     * Low stock is evaluated against total on-hand qty across all locations
+     * — POS running low while the Warehouse is full just means a transfer
+     * is needed, not a reorder from the supplier.
+     */
     public function scopeLowStock($query)
     {
         return $query->whereRaw(
-            '(select coalesce(sum(qty), 0) from product_batches where product_batches.product_id = products.id) <= products.low_stock_threshold'
+            '(select coalesce(sum(ls.qty), 0) from location_stocks ls
+                inner join product_batches pb on pb.id = ls.product_batch_id
+                where pb.product_id = products.id) <= products.low_stock_threshold'
         );
     }
 
     public function scopeOutOfStock($query)
     {
         return $query->whereRaw(
-            '(select coalesce(sum(qty), 0) from product_batches where product_batches.product_id = products.id) <= 0'
+            '(select coalesce(sum(ls.qty), 0) from location_stocks ls
+                inner join product_batches pb on pb.id = ls.product_batch_id
+                where pb.product_id = products.id) <= 0'
         );
     }
 }

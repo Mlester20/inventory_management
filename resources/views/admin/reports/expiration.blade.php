@@ -149,6 +149,7 @@
                                 <th>Expiration Date</th>
                                 <th>Days Remaining</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -162,7 +163,7 @@
                                 <td>{{ $item->product->category->category_name ?? 'N/A' }}</td>
                                 <td>{{ $item->product->supplier->supplier_name ?? 'N/A' }}</td>
                                 <td>{{ $item->batch_no ?? '-' }}</td>
-                                <td class="text-end">{{ $item->qty }}</td>
+                                <td class="text-end">{{ $item->total_qty }}</td>
                                 <td>{{ $item->expiration_date->format('M d, Y') }}</td>
                                 <td>
                                     @if ($item->days_remaining < 0)
@@ -175,6 +176,15 @@
                                     <span class="badge bg-{{ $statusColors[$item->status] }} {{ $item->status === 'warning' ? 'text-dark' : '' }}">
                                         {{ $statusLabels[$item->status] }}
                                     </span>
+                                </td>
+                                <td>
+                                    @if ($item->status === 'expired')
+                                        <a href="{{ route('stock-disposals.create', ['product_batch_id' => $item->id]) }}" class="btn btn-sm btn-outline-danger">
+                                            <i class="bx bx-trash"></i> Dispose
+                                        </a>
+                                    @else
+                                        <span class="text-muted small">—</span>
+                                    @endif
                                 </td>
                             </tr>
                 @if ($loop->last)

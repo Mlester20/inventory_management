@@ -101,9 +101,15 @@
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">Generic Items</h6>
-                        <button type="button" class="btn btn-sm btn-primary" id="addAoRowBtn">
-                            <i class="bx bx-plus"></i> Add Generic
-                        </button>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="number" id="generateAoLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="50" placeholder="# lines">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="generateAoLinesBtn">
+                                <i class="bx bx-list-plus"></i> Generate
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" id="addAoRowBtn">
+                                <i class="bx bx-plus"></i> Add Generic
+                            </button>
+                        </div>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-sm align-middle">
@@ -417,6 +423,35 @@
     }
 
     document.getElementById('addAoRowBtn').addEventListener('click', addAoRow);
+
+    // "Generate N Lines" — reuses the exact same addAoRow() the Add Generic
+    // button calls, just N times in a row, so a batch-generated line is
+    // identical to a manually-added one (same indexing, same events bound).
+    const MAX_GENERATE_AO_LINES = 50;
+
+    function generateAoLines() {
+        const input = document.getElementById('generateAoLinesInput');
+        const requested = parseInt(input.value, 10);
+
+        if (!requested || requested <= 0) {
+            return;
+        }
+
+        const count = Math.min(requested, MAX_GENERATE_AO_LINES);
+        for (let i = 0; i < count; i++) {
+            addAoRow();
+        }
+
+        input.value = '';
+    }
+
+    document.getElementById('generateAoLinesBtn').addEventListener('click', generateAoLines);
+    document.getElementById('generateAoLinesInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            generateAoLines();
+        }
+    });
 
     // ---------- Purchase Order tab ----------
 

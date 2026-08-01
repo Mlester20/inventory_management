@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\InventoryAdjustment;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\InventoryAdjustmentService;
@@ -33,6 +34,7 @@ class InventoryAdjustmentController extends Controller
     {
         $products = Product::with(['genericName', 'batches'])->orderBy('item_name')->get();
         $users = User::orderBy('name')->get();
+        $locations = Location::orderBy('name')->get();
         $preselectedProductId = $request->query('product_id');
 
         $productsForJs = $products->map(fn (Product $p) => [
@@ -46,7 +48,7 @@ class InventoryAdjustmentController extends Controller
             ])->values(),
         ])->values();
 
-        return view('admin.inventory-adjustments.create', compact('products', 'users', 'preselectedProductId', 'productsForJs'));
+        return view('admin.inventory-adjustments.create', compact('products', 'users', 'locations', 'preselectedProductId', 'productsForJs'));
     }
 
     public function store(Request $request)
@@ -60,6 +62,7 @@ class InventoryAdjustmentController extends Controller
             'lines' => 'required|array|min:1',
             'lines.*.product_id' => 'required|exists:products,id',
             'lines.*.product_batch_id' => 'nullable|exists:product_batches,id',
+            'lines.*.location_id' => 'nullable|exists:locations,id',
             'lines.*.batch_no' => 'nullable|string|max:100',
             'lines.*.expiration_date' => 'nullable|date',
             'lines.*.qty' => 'required|integer|min:1',
@@ -74,7 +77,7 @@ class InventoryAdjustmentController extends Controller
 
     public function show(InventoryAdjustment $inventoryAdjustment)
     {
-        $inventoryAdjustment->load('preparedBy', 'lines.product', 'lines.productBatch');
+        $inventoryAdjustment->load('preparedBy', 'lines.product', 'lines.productBatch', 'lines.location');
 
         return view('admin.inventory-adjustments.show', compact('inventoryAdjustment'));
     }

@@ -34,6 +34,7 @@
                         <th>Item Description</th>
                         <th>Lot/Batch No.</th>
                         <th>Expiry Date</th>
+                        <th>Location</th>
                         <th>Qty</th>
                         <th>Remarks</th>
                     </tr>
@@ -44,6 +45,7 @@
                             <td>{{ $line->product->item_name }}</td>
                             <td>{{ $line->batch_no ?? '—' }}</td>
                             <td>{{ $line->expiration_date?->format('Y-m-d') ?? '—' }}</td>
+                            <td>{{ $line->location->name ?? '—' }}</td>
                             <td>{{ $line->qty }}</td>
                             <td>{{ $line->remarks ?? '—' }}</td>
                         </tr>

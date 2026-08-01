@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Location;
 use App\Models\Purchase;
 use App\Models\Product;
 use App\Services\StockService;
@@ -48,6 +49,7 @@ class PurchaseController extends Controller
                     $movements = $stockService->deductFefo(
                         $product,
                         $qty,
+                        Location::pos(),
                         "Purchase by user (TXN: {$transactionId})",
                         $userId
                     );

@@ -17,9 +17,11 @@ class ProductExpirationReportService
      */
     protected function baseQuery(?int $categoryId = null, ?int $supplierId = null): Builder
     {
-        $query = ProductBatch::with(['product.category', 'product.supplier'])
+        // "In stock" here means anywhere (Warehouse or POS) — an expiring
+        // batch is a concern regardless of which location it's sitting in.
+        $query = ProductBatch::with(['product.category', 'product.supplier', 'locationStocks'])
             ->whereNotNull('expiration_date')
-            ->where('qty', '>', 0);
+            ->whereHas('locationStocks', fn ($q) => $q->where('qty', '>', 0));
 
         if ($categoryId) {
             $query->whereHas('product', fn ($q) => $q->where('category_id', $categoryId));

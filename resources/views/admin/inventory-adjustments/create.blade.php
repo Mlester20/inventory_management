@@ -53,9 +53,15 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Line Items</h6>
-                    <button type="button" class="btn btn-sm btn-primary" id="addRowBtn">
-                        <i class="bx bx-plus"></i> Add Line
-                    </button>
+                    <div class="d-flex gap-2 align-items-center">
+                        <input type="number" id="generateLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="50" placeholder="# lines">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="generateLinesBtn">
+                            <i class="bx bx-list-plus"></i> Generate
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" id="addRowBtn">
+                            <i class="bx bx-plus"></i> Add Line
+                        </button>
+                    </div>
                 </div>
 
                 <div id="lineItemsBody"></div>
@@ -77,6 +83,7 @@
 @section('scripts')
 <script>
     const PRODUCTS = @json($productsForJs);
+    const LOCATIONS = @json($locations->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'is_default' => $l->is_default]));
 
     const preselectedProductId = @json($preselectedProductId);
     let rowIndex = 0;
@@ -115,7 +122,7 @@
                 </button>
             </div>
             <div class="row g-2">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label small mb-1">Item Description</label>
                     <input type="text" class="form-control product-search-input" list="product-list-${index}"
                         placeholder="Search item..." autocomplete="off" required>
@@ -133,6 +140,12 @@
                     <input type="date" name="lines[${index}][expiration_date]" class="form-control expiry-input">
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label small mb-1">Location</label>
+                    <select name="lines[${index}][location_id]" class="form-select">
+                        ${LOCATIONS.map(loc => `<option value="${loc.id}" ${loc.is_default ? 'selected' : ''}>${loc.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="col-md-1">
                     <label class="form-label small mb-1">Qty</label>
                     <input type="number" name="lines[${index}][qty]" class="form-control qty-input" min="1" value="1" required>
                 </div>
@@ -203,6 +216,35 @@
     }
 
     document.getElementById('addRowBtn').addEventListener('click', () => addRow());
+
+    // "Generate N Lines" — reuses the exact same addRow() the Add Line
+    // button calls, just N times in a row, so a batch-generated line is
+    // identical to a manually-added one (same indexing, same events bound).
+    const MAX_GENERATE_LINES = 50;
+
+    function generateLines() {
+        const input = document.getElementById('generateLinesInput');
+        const requested = parseInt(input.value, 10);
+
+        if (!requested || requested <= 0) {
+            return;
+        }
+
+        const count = Math.min(requested, MAX_GENERATE_LINES);
+        for (let i = 0; i < count; i++) {
+            addRow();
+        }
+
+        input.value = '';
+    }
+
+    document.getElementById('generateLinesBtn').addEventListener('click', generateLines);
+    document.getElementById('generateLinesInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            generateLines();
+        }
+    });
 
     // Start with one row, pre-selecting the product if launched from the
     // Lot/Serial & Expiry tab's "Adjust Inventory" button.

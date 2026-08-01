@@ -47,15 +47,15 @@ class SalesQuoteController extends Controller
     {
         $customers = Customer::orderBy('customer_name')->get();
         $genericNames = GenericName::with(['category', 'products' => function ($query) {
-            $query->withSum('batches', 'qty');
+            $query->withSum('locationStocks', 'qty');
         }])->orderBy('generic_name')->get();
         $users = User::orderBy('name')->get();
 
         $genericNamesForJs = $genericNames->map(function ($genericName) {
             // Pricing is suggested from whichever brand under this generic
-            // currently has stock (first in-stock product); the cashier can
-            // still override the price per line.
-            $firstProduct = $genericName->products->first(fn (Product $product) => ($product->batches_sum_qty ?? 0) > 0)
+            // currently has stock anywhere (first in-stock product); the
+            // cashier can still override the price per line.
+            $firstProduct = $genericName->products->first(fn (Product $product) => ($product->location_stocks_sum_qty ?? 0) > 0)
                 ?? $genericName->products->first();
 
             return [
