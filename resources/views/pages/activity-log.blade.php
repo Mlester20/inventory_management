@@ -18,6 +18,7 @@
                         <thead>
                             <tr>
                                 <th>#</th>
+                                <th>Module</th>
                                 <th>Action</th>
                                 <th>Description</th>
                                 <th>IP Address</th>
@@ -26,7 +27,7 @@
                         </thead>
                         <tbody id="activityLogTableBody">
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
+                                <td colspan="6" class="text-center text-muted py-4">
                                     <i class="bx bx-loader bx-spin fs-1"></i>
                                     <p>Loading activity log...</p>
                                 </td>
@@ -85,7 +86,7 @@
             if (activities.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">
+                        <td colspan="6" class="text-center text-muted py-4">
                             <i class="bx bx-inbox fs-1"></i>
                             <p>No activity logs found</p>
                         </td>
@@ -97,6 +98,9 @@
             tableBody.innerHTML = activities.map((activity, index) => `
                 <tr>
                     <td>${index + 1}</td>
+                    <td>
+                        ${activity.module ? `<span class="badge bg-label-secondary">${escapeHtml(activity.module)}</span>` : '<span class="text-muted">—</span>'}
+                    </td>
                     <td>
                         <span class="badge bg-primary">${escapeHtml(activity.action)}</span>
                     </td>
