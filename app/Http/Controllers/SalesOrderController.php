@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\GenericName;
 use App\Models\Product;
@@ -95,6 +96,13 @@ class SalesOrderController extends Controller
 
         $salesOrder = $this->salesOrderService->createSalesOrder($validated);
 
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'created',
+            loggable: $salesOrder,
+            description: "Created Sales Order {$salesOrder->so_no}",
+        );
+
         Alert::success('Success', 'Sales Order created successfully');
         return redirect()->route('sales-orders.show', $salesOrder);
     }
@@ -137,7 +145,15 @@ class SalesOrderController extends Controller
             return redirect()->route('sales-orders.index');
         }
 
+        $soNo = $salesOrder->so_no;
         $salesOrder->delete();
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'deleted',
+            loggable: $salesOrder,
+            description: "Deleted Sales Order {$soNo}",
+        );
 
         Alert::success('Success', 'Sales Order deleted successfully');
         return redirect()->route('sales-orders.index');

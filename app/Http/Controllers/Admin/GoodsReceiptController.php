@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\GoodsReceipt;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
@@ -96,6 +97,13 @@ class GoodsReceiptController extends Controller
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         }
+
+        ActivityLog::record(
+            module: 'GoodsReceipt',
+            action: 'created',
+            loggable: $goodsReceipt,
+            description: "Created Goods Receipt {$goodsReceipt->gr_no}",
+        );
 
         Alert::success('Success', 'Goods Receipt created successfully');
         return redirect()->route('goods-receipts.show', $goodsReceipt);

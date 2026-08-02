@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
@@ -96,6 +97,13 @@ class PurchaseInvoiceController extends Controller
             'prepared_by' => $validated['prepared_by'] ?? auth()->id(),
         ]);
 
+        ActivityLog::record(
+            module: 'PurchaseInvoice',
+            action: 'created',
+            loggable: $purchaseInvoice,
+            description: "Recorded Purchase Invoice {$purchaseInvoice->invoice_no} (amount: {$purchaseInvoice->amount})",
+        );
+
         Alert::success('Success', 'Purchase Invoice recorded successfully');
         return redirect()->route('purchase-invoices.show', $purchaseInvoice);
     }
@@ -133,7 +141,15 @@ class PurchaseInvoiceController extends Controller
      */
     public function destroy(PurchaseInvoice $purchaseInvoice)
     {
+        $invoiceNo = $purchaseInvoice->invoice_no;
         $purchaseInvoice->delete();
+
+        ActivityLog::record(
+            module: 'PurchaseInvoice',
+            action: 'deleted',
+            loggable: $purchaseInvoice,
+            description: "Deleted Purchase Invoice {$invoiceNo}",
+        );
 
         Alert::success('Success', 'Purchase Invoice deleted successfully');
         return redirect()->route('purchase-invoices.index');

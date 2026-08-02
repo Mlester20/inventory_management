@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\GenericName;
 use App\Models\Product;
@@ -94,6 +95,13 @@ class SalesQuoteController extends Controller
 
         $salesQuote = $this->salesQuoteService->createSalesQuote($validated);
 
+        ActivityLog::record(
+            module: 'SalesQuote',
+            action: 'created',
+            loggable: $salesQuote,
+            description: "Created Sales Quote {$salesQuote->quote_no}",
+        );
+
         Alert::success('Success', 'Sales Quote created successfully');
         return redirect()->route('sales-quotes.show', $salesQuote);
     }
@@ -124,6 +132,14 @@ class SalesQuoteController extends Controller
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
         }
+
+        ActivityLog::record(
+            module: 'SalesQuote',
+            action: 'converted_to_sales_order',
+            loggable: $salesQuote,
+            description: "Converted Sales Quote {$salesQuote->quote_no} to Sales Order {$salesOrder->so_no}",
+            metadata: ['sales_order_id' => $salesOrder->id],
+        );
 
         Alert::success('Success', 'Sales Quote converted to Sales Order successfully');
         return redirect()->route('sales-orders.show', $salesOrder);
@@ -157,7 +173,15 @@ class SalesQuoteController extends Controller
             return redirect()->route('sales-quotes.index');
         }
 
+        $quoteNo = $salesQuote->quote_no;
         $salesQuote->delete();
+
+        ActivityLog::record(
+            module: 'SalesQuote',
+            action: 'deleted',
+            loggable: $salesQuote,
+            description: "Deleted Sales Quote {$quoteNo}",
+        );
 
         Alert::success('Success', 'Sales Quote deleted successfully');
         return redirect()->route('sales-quotes.index');

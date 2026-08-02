@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\InventoryAdjustment;
 use App\Models\Location;
 use App\Models\Product;
@@ -70,6 +71,13 @@ class InventoryAdjustmentController extends Controller
         ]);
 
         $adjustment = $this->inventoryAdjustmentService->createAdjustment($validated, auth()->id());
+
+        ActivityLog::record(
+            module: 'InventoryAdjustment',
+            action: 'created',
+            loggable: $adjustment,
+            description: "Created Inventory Adjustment {$adjustment->adjustment_no} (" . (InventoryAdjustment::TYPES[$adjustment->adjustment_type] ?? $adjustment->adjustment_type) . ')',
+        );
 
         Alert::success('Success', 'Inventory Adjustment created successfully');
         return redirect()->route('inventory-adjustments.show', $adjustment);

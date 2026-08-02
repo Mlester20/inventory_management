@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
@@ -75,6 +76,13 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder = $this->purchaseOrderService->createPurchaseOrder($validated);
 
+        ActivityLog::record(
+            module: 'PurchaseOrder',
+            action: 'created',
+            loggable: $purchaseOrder,
+            description: "Created Purchase Order {$purchaseOrder->po_no}",
+        );
+
         Alert::success('Success', 'Purchase Order created successfully');
         return redirect()->route('purchase-orders.show', $purchaseOrder);
     }
@@ -117,7 +125,15 @@ class PurchaseOrderController extends Controller
             return redirect()->route('purchase-orders.index');
         }
 
+        $poNo = $purchaseOrder->po_no;
         $purchaseOrder->delete();
+
+        ActivityLog::record(
+            module: 'PurchaseOrder',
+            action: 'deleted',
+            loggable: $purchaseOrder,
+            description: "Deleted Purchase Order {$poNo}",
+        );
 
         Alert::success('Success', 'Purchase Order deleted successfully');
         return redirect()->route('purchase-orders.index');

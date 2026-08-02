@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\User;
@@ -36,7 +37,14 @@ class ExpenseController extends Controller
             'prepared_by' => 'nullable|exists:users,id',
         ]);
 
-        Expense::create($validated);
+        $expense = Expense::create($validated);
+
+        ActivityLog::record(
+            module: 'Expense',
+            action: 'created',
+            loggable: $expense,
+            description: "Recorded expense of {$expense->amount} ({$expense->category->name})",
+        );
 
         Alert::success('Success', 'Expense recorded successfully');
         return redirect()->route('expenses.index');
@@ -56,7 +64,20 @@ class ExpenseController extends Controller
             'prepared_by' => 'nullable|exists:users,id',
         ]);
 
+        $original = $expense->getOriginal();
         $expense->update($validated);
+
+        $changes = $expense->getChanges();
+        ActivityLog::record(
+            module: 'Expense',
+            action: 'updated',
+            loggable: $expense,
+            description: "Updated expense of {$expense->amount}",
+            metadata: [
+                'before' => collect($changes)->keys()->mapWithKeys(fn ($key) => [$key => $original[$key] ?? null])->toArray(),
+                'after' => $changes,
+            ],
+        );
 
         Alert::success('Success', 'Expense updated successfully');
         return redirect()->route('expenses.index');
@@ -67,7 +88,15 @@ class ExpenseController extends Controller
      */
     public function destroy(Expense $expense)
     {
+        $amount = $expense->amount;
         $expense->delete();
+
+        ActivityLog::record(
+            module: 'Expense',
+            action: 'deleted',
+            loggable: $expense,
+            description: "Deleted expense of {$amount}",
+        );
 
         Alert::success('Success', 'Expense deleted successfully');
         return redirect()->route('expenses.index');

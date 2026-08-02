@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\StockDisposal;
@@ -92,6 +93,13 @@ class StockDisposalController extends Controller
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         }
+
+        ActivityLog::record(
+            module: 'StockDisposal',
+            action: 'created',
+            loggable: $stockDisposal,
+            description: "Created Stock Disposal {$stockDisposal->reference} (reason: {$stockDisposal->reason})",
+        );
 
         Alert::success('Success', 'Stock Disposal recorded successfully');
         return redirect()->route('stock-disposals.show', $stockDisposal);

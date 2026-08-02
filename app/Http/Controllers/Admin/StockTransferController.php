@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\GenericName;
 use App\Models\Location;
 use App\Models\StockTransfer;
@@ -74,6 +75,13 @@ class StockTransferController extends Controller
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         }
+
+        ActivityLog::record(
+            module: 'StockTransfer',
+            action: 'created',
+            loggable: $stockTransfer,
+            description: "Created Stock Transfer {$stockTransfer->reference} ({$stockTransfer->fromLocation->name} → {$stockTransfer->toLocation->name})",
+        );
 
         Alert::success('Success', 'Stock Transfer created successfully');
         return redirect()->route('stock-transfers.show', $stockTransfer);

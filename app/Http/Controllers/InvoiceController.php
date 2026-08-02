@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Invoice;
 use App\Models\Location;
 use App\Models\Product;
@@ -222,6 +223,17 @@ class InvoiceController extends Controller
             return back()->withErrors($e->errors())->withInput();
         }
 
+        // Direct Invoice creation deducts from the POS location (see
+        // SCHEMA_NOTES.md) — same immediate-sale semantics as the POS
+        // screen, just issued from the admin/back-office side.
+        ActivityLog::record(
+            module: 'Invoice',
+            action: 'created',
+            loggable: $invoice,
+            description: "Created Invoice {$invoice->sales_no} for {$invoice->customer_name} (amount due: {$invoice->amount_due})",
+            source: ActivityLog::SOURCE_POS,
+        );
+
         Alert::success('Success', 'Invoice created successfully');
         return redirect()->route('invoices.show', $invoice);
     }
@@ -264,7 +276,15 @@ class InvoiceController extends Controller
             return redirect()->route('invoices.index');
         }
 
+        $salesNo = $invoice->sales_no;
         $invoice->delete();
+
+        ActivityLog::record(
+            module: 'Invoice',
+            action: 'deleted',
+            loggable: $invoice,
+            description: "Deleted Invoice {$salesNo}",
+        );
 
         Alert::success('Success', 'Invoice deleted successfully');
         return redirect()->route('invoices.index');

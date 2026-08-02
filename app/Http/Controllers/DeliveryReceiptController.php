@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\DeliveryReceipt;
 use App\Models\GenericName;
@@ -98,6 +99,13 @@ class DeliveryReceiptController extends Controller
             return back()->withErrors($e->errors())->withInput();
         }
 
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'created',
+            loggable: $deliveryReceipt,
+            description: "Created Delivery Receipt {$deliveryReceipt->dr_no}",
+        );
+
         Alert::success('Success', 'Delivery Receipt created successfully');
         return redirect()->route('delivery-receipts.show', $deliveryReceipt);
     }
@@ -133,6 +141,14 @@ class DeliveryReceiptController extends Controller
             return back()->withErrors($e->errors());
         }
 
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'invoice_created',
+            loggable: $deliveryReceipt,
+            description: "Created Invoice {$invoice->sales_no} from Delivery Receipt {$deliveryReceipt->dr_no}",
+            metadata: ['invoice_id' => $invoice->id, 'line_ids' => $validated['line_ids']],
+        );
+
         Alert::success('Success', 'Invoice created successfully');
         return redirect()->route('invoices.show', $invoice);
     }
@@ -142,7 +158,16 @@ class DeliveryReceiptController extends Controller
      */
     public function markDelivered(DeliveryReceipt $deliveryReceipt)
     {
+        $previousStatus = $deliveryReceipt->status;
         $deliveryReceipt->update(['status' => 'delivered']);
+
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'marked_delivered',
+            loggable: $deliveryReceipt,
+            description: "Marked Delivery Receipt {$deliveryReceipt->dr_no} as delivered",
+            metadata: ['before' => ['status' => $previousStatus], 'after' => ['status' => 'delivered']],
+        );
 
         Alert::success('Success', 'Delivery Receipt marked as delivered');
         return redirect()->route('delivery-receipts.show', $deliveryReceipt);

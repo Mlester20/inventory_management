@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Location;
 use App\Models\ReturnItem;
 use App\Models\Product;
@@ -66,6 +67,13 @@ class ReturnItemController extends Controller
 
         $returnItem = ReturnItem::create($validated);
 
+        ActivityLog::record(
+            module: 'ReturnItem',
+            action: 'created',
+            loggable: $returnItem,
+            description: "Created return item request (qty: {$returnItem->quantity}, reason: {$returnItem->reason})",
+        );
+
         // Return JSON for API requests
         if ($request->expectsJson()) {
             return response()->json([
@@ -104,7 +112,20 @@ class ReturnItemController extends Controller
             'reason' => 'sometimes|string|max:255',
         ]);
 
+        $original = $returnItem->getOriginal();
         $returnItem->update($validated);
+
+        $changes = $returnItem->getChanges();
+        ActivityLog::record(
+            module: 'ReturnItem',
+            action: 'updated',
+            loggable: $returnItem,
+            description: "Updated return item #{$returnItem->id}",
+            metadata: [
+                'before' => collect($changes)->keys()->mapWithKeys(fn ($key) => [$key => $original[$key] ?? null])->toArray(),
+                'after' => $changes,
+            ],
+        );
 
         return redirect()->route('admin.return-items')
             ->with('success', 'Return item updated successfully.');
@@ -115,7 +136,15 @@ class ReturnItemController extends Controller
      */
     public function destroy(ReturnItem $returnItem)
     {
+        $returnItemId = $returnItem->id;
         $returnItem->delete();
+
+        ActivityLog::record(
+            module: 'ReturnItem',
+            action: 'deleted',
+            loggable: $returnItem,
+            description: "Deleted return item #{$returnItemId}",
+        );
 
         return redirect()->route('admin.return-items')
             ->with('success', 'Return item deleted successfully.');
@@ -148,6 +177,13 @@ class ReturnItemController extends Controller
                 $returnItem->update(['status' => 'approved']);
             });
 
+            ActivityLog::record(
+                module: 'ReturnItem',
+                action: 'approved',
+                loggable: $returnItem,
+                description: "Approved return item #{$returnItem->id} and restocked {$returnItem->quantity} units to POS",
+            );
+
             return back()->with('success', 'Return item approved successfully and stock updated.');
         } catch (\Exception $e) {
             return back()->with('error', 'Error approving return item: ' . $e->getMessage());
@@ -176,6 +212,13 @@ class ReturnItemController extends Controller
                 'status' => 'rejected',
                 'reason' => $returnItem->reason . ' | Rejected: ' . $rejectionReason,
             ]);
+
+            ActivityLog::record(
+                module: 'ReturnItem',
+                action: 'rejected',
+                loggable: $returnItem,
+                description: "Rejected return item #{$returnItem->id}" . ($rejectionReason !== 'No reason provided' ? " ({$rejectionReason})" : ''),
+            );
 
             return back()->with('success', 'Return item rejected successfully.');
         } catch (\Exception $e) {
