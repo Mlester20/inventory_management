@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
@@ -113,6 +114,15 @@ class NewPasswordController extends Controller
 
         DB::table('password_reset_tokens')->where('email', $email)->delete();
         RateLimiter::clear($this->throttleKey($email, $request));
+
+        // No authenticated actor here either (public flow, same as the
+        // request step) — left unattributed; loggable identifies the account.
+        ActivityLog::record(
+            module: 'Auth',
+            action: 'password_reset_completed',
+            loggable: $user,
+            description: "Password reset completed for {$user->email}",
+        );
 
         Alert::success('Password Reset', 'Your password has been reset successfully. Please sign in.');
         return redirect()->route('auth');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\ActivityLog;
 use App\Models\User;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -28,12 +29,23 @@ class UserController extends Controller
             'role' => 'required',
             'password' => 'required|min:6',
         ]);
-        User::create([
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'role' => $request->role,
             'password' => bcrypt($request->password),
         ]);
+
+        // Never log the plaintext password — description/metadata deliberately
+        // omit it entirely (not even in metadata), per the refactor's
+        // constraint against logging sensitive data.
+        ActivityLog::record(
+            module: 'User',
+            action: 'created',
+            loggable: $user,
+            description: "Created user account {$user->name} ({$user->email}) with role {$user->role}",
+        );
+
         Alert::success('Success', 'User created successfully');
         return redirect()->route('users.index');
     }
@@ -47,7 +59,16 @@ class UserController extends Controller
             return redirect()->route('users.index');
         }
 
+        $userLabel = "{$user->name} ({$user->email})";
         $user->delete();
+
+        ActivityLog::record(
+            module: 'User',
+            action: 'deleted',
+            loggable: $user,
+            description: "Deleted user account {$userLabel}",
+        );
+
         Alert::success('Success', 'User deleted successfully');
         return redirect()->route('users.index');
     }
@@ -70,6 +91,13 @@ class UserController extends Controller
         }
 
         $user->update(['is_active' => ! $user->is_active]);
+
+        ActivityLog::record(
+            module: 'User',
+            action: $user->is_active ? 'reactivated' : 'suspended',
+            loggable: $user,
+            description: ($user->is_active ? 'Reactivated' : 'Suspended') . " user account {$user->name}",
+        );
 
         Alert::success('Success', $user->is_active ? 'User reactivated successfully' : 'User suspended successfully');
         return redirect()->route('users.index');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ResetPasswordMail;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -89,5 +90,14 @@ class PasswordResetLinkController extends Controller
         );
 
         Mail::to($user->email)->send(new ResetPasswordMail($code, $user));
+
+        // No authenticated actor here (public, unauthenticated flow) — left
+        // unattributed (user_id null); loggable identifies which account.
+        ActivityLog::record(
+            module: 'Auth',
+            action: 'password_reset_requested',
+            loggable: $user,
+            description: "Password reset code requested for {$user->email}",
+        );
     }
 }
