@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Location;
 use App\Models\Purchase;
 use App\Models\Product;
@@ -94,6 +95,20 @@ class PurchaseController extends Controller
                     'change_amount' => $changeAmount,
                 ]);
             });
+
+            ActivityLog::record(
+                module: 'POS',
+                action: 'sale_completed',
+                description: "Completed POS sale (TXN: {$transactionId}) — {$purchaseCount} line(s), ₱{$totalAmount}",
+                metadata: [
+                    'transaction_id' => $transactionId,
+                    'line_count' => $purchaseCount,
+                    'total_amount' => $totalAmount,
+                    'amount_tendered' => $amountTendered,
+                    'change_amount' => $changeAmount,
+                ],
+                source: ActivityLog::SOURCE_POS,
+            );
 
             return response()->json([
                 'success' => true,

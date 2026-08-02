@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Location;
 use App\Models\Purchase;
 use App\Models\Product;
@@ -37,8 +38,9 @@ class PurchaseController extends Controller
         try {
             $purchaseCount = 0;
             $transactionId = uniqid('TXN-');
+            $totalAmount = 0;
 
-            \DB::transaction(function () use ($validated, &$purchaseCount, $transactionId) {
+            \DB::transaction(function () use ($validated, &$purchaseCount, $transactionId, &$totalAmount) {
                 $stockService = new StockService();
                 $userId = auth()->id();
 
@@ -56,20 +58,34 @@ class PurchaseController extends Controller
 
                     foreach ($movements as $movement) {
                         $movementQty = abs($movement->quantity);
+                        $lineTotal = round($cartItem['unit_price'] * $movementQty, 2);
 
                         Purchase::create([
                             'product_batch_id' => $movement->product_batch_id,
                             'user_id' => $userId,
                             'quantity_sold' => $movementQty,
                             'unit_price' => $cartItem['unit_price'],
-                            'total_price' => round($cartItem['unit_price'] * $movementQty, 2),
+                            'total_price' => $lineTotal,
                             'purchase_date' => now(),
                         ]);
 
                         $purchaseCount++;
+                        $totalAmount += $lineTotal;
                     }
                 }
             });
+
+            ActivityLog::record(
+                module: 'POS',
+                action: 'sale_completed',
+                description: "Completed direct sale via admin Purchases screen (TXN: {$transactionId}) — {$purchaseCount} line(s), ₱{$totalAmount}",
+                metadata: [
+                    'transaction_id' => $transactionId,
+                    'line_count' => $purchaseCount,
+                    'total_amount' => $totalAmount,
+                ],
+                source: ActivityLog::SOURCE_ADMIN,
+            );
 
             return response()->json([
                 'success' => true,
@@ -112,7 +128,17 @@ class PurchaseController extends Controller
      */
     public function destroy(Purchase $purchase)
     {
+        $purchaseId = $purchase->id;
+        $transactionId = $purchase->transaction_id;
         $purchase->delete();
+
+        ActivityLog::record(
+            module: 'POS',
+            action: 'deleted',
+            loggable: $purchase,
+            description: "Deleted purchase line #{$purchaseId} (TXN: {$transactionId})",
+        );
+
         Alert::success('Success', 'Purchase deleted successfully');
         return redirect()->route('purchases.index');
     }
