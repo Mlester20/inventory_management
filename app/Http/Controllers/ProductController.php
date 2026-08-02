@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\GenericName;
 use App\Models\Supplier;
@@ -58,7 +59,14 @@ class ProductController extends Controller
             ? $request->file('image')->store('products', 'public')
             : null;
 
-        Product::create($validated + ['image' => $imagePath]);
+        $product = Product::create($validated + ['image' => $imagePath]);
+
+        ActivityLog::record(
+            module: 'Product',
+            action: 'created',
+            loggable: $product,
+            description: "Created product {$product->item_name}",
+        );
 
         Alert::success('Success', 'Product created successfully');
         return redirect()->route('inventory-items.index', ['tab' => 'products']);
@@ -79,7 +87,20 @@ class ProductController extends Controller
             $imagePath = $request->file('image')->store('products', 'public');
         }
 
+        $original = $product->getOriginal();
         $product->update($validated + ['image' => $imagePath]);
+
+        $changes = $product->getChanges();
+        ActivityLog::record(
+            module: 'Product',
+            action: 'updated',
+            loggable: $product,
+            description: "Updated product {$product->item_name}",
+            metadata: [
+                'before' => collect($changes)->keys()->mapWithKeys(fn ($key) => [$key => $original[$key] ?? null])->toArray(),
+                'after' => $changes,
+            ],
+        );
 
         Alert::success('Success', 'Product updated successfully');
         return redirect()->route('inventory-items.index', ['tab' => 'products']);
@@ -90,7 +111,16 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        $productName = $product->item_name;
         $product->delete();
+
+        ActivityLog::record(
+            module: 'Product',
+            action: 'deleted',
+            loggable: $product,
+            description: "Deleted product {$productName}",
+        );
+
         Alert::success('Success', 'Product deleted successfully');
         return redirect()->route('inventory-items.index', ['tab' => 'products']);
     }

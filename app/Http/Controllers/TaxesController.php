@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Taxes;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -28,11 +29,18 @@ class TaxesController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        Taxes::create([
+        $tax = Taxes::create([
             'name' => $request->tax_name,
             'rate' => $request->rate,
             'is_active' => $request->is_active
         ]);
+
+        ActivityLog::record(
+            module: 'Taxes',
+            action: 'created',
+            loggable: $tax,
+            description: "Created tax {$tax->name} ({$tax->rate}%)",
+        );
 
         Alert::success('Success', 'Tax created successfully');
         return redirect()->route('taxes.index');
@@ -49,11 +57,24 @@ class TaxesController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
+        $original = $tax->getOriginal();
         $tax->update([
             'name' => $request->tax_name,
             'rate' => $request->rate,
             'is_active' => $request->is_active,
         ]);
+
+        $changes = $tax->getChanges();
+        ActivityLog::record(
+            module: 'Taxes',
+            action: 'updated',
+            loggable: $tax,
+            description: "Updated tax {$tax->name}",
+            metadata: [
+                'before' => collect($changes)->keys()->mapWithKeys(fn ($key) => [$key => $original[$key] ?? null])->toArray(),
+                'after' => $changes,
+            ],
+        );
 
         Alert::success('Success', 'Tax updated successfully');
         return redirect()->route('taxes.index');
@@ -64,7 +85,16 @@ class TaxesController extends Controller
      */
     public function destroy(Taxes $tax)
     {
+        $taxName = $tax->name;
         $tax->delete();
+
+        ActivityLog::record(
+            module: 'Taxes',
+            action: 'deleted',
+            loggable: $tax,
+            description: "Deleted tax {$taxName}",
+        );
+
         Alert::success('success', 'Tax Deleted Successfully!');
         return redirect()->route('taxes.index');
     }

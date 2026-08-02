@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\GenericName;
 use Illuminate\Http\Request;
@@ -34,13 +35,20 @@ class GenericNameController extends Controller
             'vat_type' => 'required|in:' . implode(',', array_keys(GenericName::VAT_TYPES)),
         ]);
 
-        GenericName::create([
+        $genericName = GenericName::create([
             'code' => $request->code,
             'generic_name' => $request->generic_name,
             'category_id' => $request->category_id,
             'unit' => $request->unit,
             'vat_type' => $request->vat_type,
         ]);
+
+        ActivityLog::record(
+            module: 'GenericName',
+            action: 'created',
+            loggable: $genericName,
+            description: "Created generic item {$genericName->generic_name}",
+        );
 
         Alert::success('Success', 'Generic item created successfully');
         return redirect()->route('inventory-items.index', ['tab' => 'general']);
@@ -59,6 +67,7 @@ class GenericNameController extends Controller
             'vat_type' => 'required|in:' . implode(',', array_keys(GenericName::VAT_TYPES)),
         ]);
 
+        $original = $genericName->getOriginal();
         $genericName->update([
             'code' => $request->code,
             'generic_name' => $request->generic_name,
@@ -66,6 +75,18 @@ class GenericNameController extends Controller
             'unit' => $request->unit,
             'vat_type' => $request->vat_type,
         ]);
+
+        $changes = $genericName->getChanges();
+        ActivityLog::record(
+            module: 'GenericName',
+            action: 'updated',
+            loggable: $genericName,
+            description: "Updated generic item {$genericName->generic_name}",
+            metadata: [
+                'before' => collect($changes)->keys()->mapWithKeys(fn ($key) => [$key => $original[$key] ?? null])->toArray(),
+                'after' => $changes,
+            ],
+        );
 
         Alert::success('Success', 'Generic item updated successfully');
         return redirect()->route('inventory-items.index', ['tab' => 'general']);
@@ -76,7 +97,16 @@ class GenericNameController extends Controller
      */
     public function destroy(GenericName $genericName)
     {
+        $genericNameLabel = $genericName->generic_name;
         $genericName->delete();
+
+        ActivityLog::record(
+            module: 'GenericName',
+            action: 'deleted',
+            loggable: $genericName,
+            description: "Deleted generic item {$genericNameLabel}",
+        );
+
         Alert::success('Success', 'Generic item deleted successfully');
         return redirect()->route('inventory-items.index', ['tab' => 'general']);
     }

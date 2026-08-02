@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 use Illuminate\Http\Request;
@@ -77,7 +78,7 @@ class CustomerController extends Controller
             'remarks' => 'nullable|string|max:255',
         ]);
 
-        $customer->payments()->create([
+        $payment = $customer->payments()->create([
             'type' => $validated['type'],
             'amount' => $validated['amount'],
             'payment_date' => $validated['payment_date'],
@@ -85,6 +86,13 @@ class CustomerController extends Controller
             'remarks' => $validated['remarks'] ?? null,
             'prepared_by' => auth()->id(),
         ]);
+
+        ActivityLog::record(
+            module: 'Customer',
+            action: 'payment_recorded',
+            loggable: $payment,
+            description: "Recorded {$validated['type']} of {$validated['amount']} for customer {$customer->customer_name}",
+        );
 
         Alert::success('Success', 'Payment recorded successfully');
         return redirect()->route('customers.index');
@@ -117,6 +125,13 @@ class CustomerController extends Controller
             'vat_type' => $request->vat_type,
         ]);
 
+        ActivityLog::record(
+            module: 'Customer',
+            action: 'created',
+            loggable: $customer,
+            description: "Created customer {$customer->customer_name}",
+        );
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -145,6 +160,7 @@ class CustomerController extends Controller
             'vat_type' => 'required|in:' . implode(',', array_keys(Customer::VAT_TYPES)),
         ]);
         //update the customer
+        $original = $customer->getOriginal();
         $customer->update([
             'customer_name' => $request->customer_name,
             'delivery_address' => $request->delivery_address,
@@ -155,6 +171,19 @@ class CustomerController extends Controller
             'price_level' => $request->price_level,
             'vat_type' => $request->vat_type,
         ]);
+
+        $changes = $customer->getChanges();
+        ActivityLog::record(
+            module: 'Customer',
+            action: 'updated',
+            loggable: $customer,
+            description: "Updated customer {$customer->customer_name}",
+            metadata: [
+                'before' => collect($changes)->keys()->mapWithKeys(fn ($key) => [$key => $original[$key] ?? null])->toArray(),
+                'after' => $changes,
+            ],
+        );
+
         //redirect to the customers page
         Alert::success('Success', 'Customer updated successfully');
         return redirect()->route('customers.index');
@@ -165,8 +194,18 @@ class CustomerController extends Controller
      */
     public function destroy(Customer $customer)
     {
+        $customerName = $customer->customer_name;
+
         //delete the customer
         $customer->delete();
+
+        ActivityLog::record(
+            module: 'Customer',
+            action: 'deleted',
+            loggable: $customer,
+            description: "Deleted customer {$customerName}",
+        );
+
         Alert::success('Success', 'Customer deleted successfully');
         return redirect()->route('customers.index');
     }

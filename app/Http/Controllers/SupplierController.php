@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\PurchaseInvoice;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
@@ -74,7 +75,7 @@ class SupplierController extends Controller
             'remarks' => 'nullable|string|max:255',
         ]);
 
-        $supplier->payments()->create([
+        $payment = $supplier->payments()->create([
             'type' => $validated['type'],
             'amount' => $validated['amount'],
             'payment_date' => $validated['payment_date'],
@@ -82,6 +83,13 @@ class SupplierController extends Controller
             'remarks' => $validated['remarks'] ?? null,
             'prepared_by' => auth()->id(),
         ]);
+
+        ActivityLog::record(
+            module: 'Supplier',
+            action: 'payment_recorded',
+            loggable: $payment,
+            description: "Recorded {$validated['type']} of {$validated['amount']} for supplier {$supplier->supplier_name}",
+        );
 
         Alert::success('Success', 'Payment recorded successfully');
         return redirect()->route('suppliers.index');
@@ -101,7 +109,7 @@ class SupplierController extends Controller
             'delivery_address' => 'required',
             'vat_type' => 'required|in:' . implode(',', array_keys(Supplier::VAT_TYPES)),
         ]);
-        Supplier::create([
+        $supplier = Supplier::create([
             'supplier_name' => $request->supplier_name,
             'contact_person' => $request->contact_person,
             'email' => $request->email,
@@ -109,6 +117,14 @@ class SupplierController extends Controller
             'delivery_address' => $request->delivery_address,
             'vat_type' => $request->vat_type,
         ]);
+
+        ActivityLog::record(
+            module: 'Supplier',
+            action: 'created',
+            loggable: $supplier,
+            description: "Created supplier {$supplier->supplier_name}",
+        );
+
         Alert::success('Success', 'Supplier created successfully');
         return redirect()->route('suppliers.index');
     }
@@ -128,6 +144,7 @@ class SupplierController extends Controller
             'vat_type' => 'required|in:' . implode(',', array_keys(Supplier::VAT_TYPES)),
         ]);
         //update the supplier
+        $original = $supplier->getOriginal();
         $supplier->update([
             'supplier_name' => $request->supplier_name,
             'contact_person' => $request->contact_person,
@@ -136,6 +153,19 @@ class SupplierController extends Controller
             'delivery_address' => $request->delivery_address,
             'vat_type' => $request->vat_type,
         ]);
+
+        $changes = $supplier->getChanges();
+        ActivityLog::record(
+            module: 'Supplier',
+            action: 'updated',
+            loggable: $supplier,
+            description: "Updated supplier {$supplier->supplier_name}",
+            metadata: [
+                'before' => collect($changes)->keys()->mapWithKeys(fn ($key) => [$key => $original[$key] ?? null])->toArray(),
+                'after' => $changes,
+            ],
+        );
+
         //redirect to the suppliers page
         Alert::success('Success', 'Supplier updated successfully');
         return redirect()->route('suppliers.index');
@@ -146,8 +176,18 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
+        $supplierName = $supplier->supplier_name;
+
         //delete the supplier
         $supplier->delete();
+
+        ActivityLog::record(
+            module: 'Supplier',
+            action: 'deleted',
+            loggable: $supplier,
+            description: "Deleted supplier {$supplierName}",
+        );
+
         Alert::success('Success', 'Supplier deleted successfully');
         return redirect()->route('suppliers.index');
     }

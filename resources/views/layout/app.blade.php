@@ -449,6 +449,12 @@
                 <div data-i18n="Expense Report">Expense Report</div>
               </a>
             </li>
+            <li class="menu-item">
+              <a href="{{ route('activity-logs.index') }}" class="menu-link {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
+                <i class="menu-icon tf-icons bx bx-history"></i>
+                <div data-i18n="Activity Log">Activity Log</div>
+              </a>
+            </li>
 
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>
@@ -539,13 +545,6 @@
                         <span class="align-middle">My Profile</span>
                       </a>
                     </li>
-                    <li>
-                      <a class="dropdown-item" href="{{ route('activity-logs.index') }}">
-                        <i class="bx bx-cog me-2"></i>
-                        <span class="align-middle">Activies Log</span>
-                      </a>
-                    </li>
-
                     <li>
                       <div class="dropdown-divider"></div>
                     </li>

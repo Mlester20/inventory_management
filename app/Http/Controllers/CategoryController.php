@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -29,9 +30,16 @@ class CategoryController extends Controller
             'category_name' => 'required|unique:categories,category_name',
         ]);
 
-        Category::create([
+        $category = Category::create([
             'category_name' => $request->category_name,
         ]);
+
+        ActivityLog::record(
+            module: 'Category',
+            action: 'created',
+            loggable: $category,
+            description: "Created category {$category->category_name}",
+        );
 
         Alert::success('Success', 'Category created successfully');
         return redirect()->route('categories.index');
@@ -46,9 +54,22 @@ class CategoryController extends Controller
             'category_name' => 'required|unique:categories,category_name,' . $category->id,
         ]);
 
+        $original = $category->getOriginal();
         $category->update([
             'category_name' => $request->category_name,
         ]);
+
+        $changes = $category->getChanges();
+        ActivityLog::record(
+            module: 'Category',
+            action: 'updated',
+            loggable: $category,
+            description: "Updated category {$category->category_name}",
+            metadata: [
+                'before' => collect($changes)->keys()->mapWithKeys(fn ($key) => [$key => $original[$key] ?? null])->toArray(),
+                'after' => $changes,
+            ],
+        );
 
         Alert::success('Success', 'Category updated successfully');
         return redirect()->route('categories.index');
@@ -64,7 +85,16 @@ class CategoryController extends Controller
             return redirect()->route('categories.index');
         }
 
+        $categoryName = $category->category_name;
         $category->delete();
+
+        ActivityLog::record(
+            module: 'Category',
+            action: 'deleted',
+            loggable: $category,
+            description: "Deleted category {$categoryName}",
+        );
+
         Alert::success('Success', 'Category deleted successfully');
         return redirect()->route('categories.index');
     }

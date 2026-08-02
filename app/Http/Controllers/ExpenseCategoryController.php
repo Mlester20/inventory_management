@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\ExpenseCategory;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -18,9 +19,16 @@ class ExpenseCategoryController extends Controller
             'name' => 'required|string|unique:expense_categories,name',
         ]);
 
-        ExpenseCategory::create([
+        $expenseCategory = ExpenseCategory::create([
             'name' => $request->name,
         ]);
+
+        ActivityLog::record(
+            module: 'ExpenseCategory',
+            action: 'created',
+            loggable: $expenseCategory,
+            description: "Created expense category {$expenseCategory->name}",
+        );
 
         Alert::success('Success', 'Expense category created successfully');
         return redirect()->route('expenses.index');
@@ -31,12 +39,21 @@ class ExpenseCategoryController extends Controller
      */
     public function destroy(ExpenseCategory $expenseCategory)
     {
+        $expenseCategoryName = $expenseCategory->name;
+
         try {
             $expenseCategory->delete();
         } catch (QueryException $e) {
             Alert::error('Cannot delete', 'This category still has expenses recorded against it and cannot be deleted.');
             return redirect()->route('expenses.index');
         }
+
+        ActivityLog::record(
+            module: 'ExpenseCategory',
+            action: 'deleted',
+            loggable: $expenseCategory,
+            description: "Deleted expense category {$expenseCategoryName}",
+        );
 
         Alert::success('Success', 'Expense category deleted successfully');
         return redirect()->route('expenses.index');
