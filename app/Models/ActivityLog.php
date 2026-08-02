@@ -4,9 +4,26 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
 
 class ActivityLog extends Model
 {
+    public const SOURCE_ADMIN = 'admin';
+    public const SOURCE_POS = 'pos';
+    public const SOURCE_SYSTEM = 'system';
+
+    /**
+     * Metadata keys that are never persisted even if a caller passes them —
+     * a safety net alongside the convention of not passing sensitive data,
+     * per the refactor's constraint against logging plaintext secrets.
+     */
+    private const REDACTED_METADATA_KEYS = [
+        'password', 'password_confirmation', 'current_password',
+        'remember_token', 'token', 'secret', 'api_key',
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -14,9 +31,18 @@ class ActivityLog extends Model
      */
     protected $fillable = [
         'user_id',
+        'module',
         'action',
+        'source',
         'description',
+        'loggable_type',
+        'loggable_id',
+        'metadata',
         'ip_address',
+    ];
+
+    protected $casts = [
+        'metadata' => 'array',
     ];
 
     /**
@@ -28,55 +54,68 @@ class ActivityLog extends Model
     }
 
     /**
-     * Log a user activity.
-     * 
-     * @param int $userId
-     * @param string $action
-     * @param string|null $description
-     * @param string|null $ipAddress
-     * @return self
+     * The record this activity was performed on, if any (e.g. the Customer
+     * that was created/updated, the DeliveryReceipt that was saved).
      */
-    public static function logActivity(int $userId, string $action, ?string $description = null, ?string $ipAddress = null): self
+    public function loggable(): MorphTo
     {
-        return self::create([
-            'user_id' => $userId,
+        return $this->morphTo();
+    }
+
+    /**
+     * The single entry point every module should call to write an activity
+     * log entry — see docs/activity-log-refactor/SCHEMA_NOTES.md for the
+     * full usage guide. Centralizing here (rather than scattering raw
+     * ActivityLog::create() calls with inconsistent fields across
+     * controllers) is what keeps every module's logs consistently shaped.
+     *
+     * @param string $module e.g. "Customer", "DeliveryReceipt", "Auth" — the controlled vocabulary lives in SCHEMA_NOTES.md
+     * @param string $action e.g. "created", "updated", "deleted", "login" — see SCHEMA_NOTES.md
+     * @param \Illuminate\Database\Eloquent\Model|null $loggable The affected record, if any
+     * @param string|null $description Human-readable summary, e.g. "Created customer Green Cross Pharmacy"
+     * @param array|null $metadata Structured context (e.g. ['before' => [...], 'after' => [...]] on an update) — never sensitive data
+     * @param string $source self::SOURCE_ADMIN (default), self::SOURCE_POS, or self::SOURCE_SYSTEM
+     * @param int|null $userId Defaults to the currently authenticated user
+     */
+    public static function record(
+        string $module,
+        string $action,
+        ?Model $loggable = null,
+        ?string $description = null,
+        ?array $metadata = null,
+        string $source = self::SOURCE_ADMIN,
+        ?int $userId = null,
+    ): self {
+        return static::create([
+            'user_id' => $userId ?? Auth::id(),
+            'module' => $module,
             'action' => $action,
+            'source' => $source,
             'description' => $description,
-            'ip_address' => $ipAddress,
+            'loggable_type' => $loggable?->getMorphClass(),
+            'loggable_id' => $loggable?->getKey(),
+            'metadata' => static::redactSensitiveKeys($metadata),
+            'ip_address' => Request::ip(),
         ]);
     }
 
     /**
-     * Log user login activity (works for all users including admins).
-     * 
-     * @param int $userId
-     * @param string|null $ipAddress
-     * @return self
+     * Strip common sensitive key names from metadata before it's persisted
+     * — a safety net on top of the convention that callers should never
+     * pass these in the first place.
      */
-    public static function logLogin(int $userId, ?string $ipAddress = null): self
+    private static function redactSensitiveKeys(?array $metadata): ?array
     {
-        return self::logActivity(
-            $userId,
-            'login',
-            'User logged in',
-            $ipAddress
-        );
-    }
+        if (! $metadata) {
+            return $metadata;
+        }
 
-    /**
-     * Log user logout activity (works for all users including admins).
-     * 
-     * @param int $userId
-     * @param string|null $ipAddress
-     * @return self
-     */
-    public static function logLogout(int $userId, ?string $ipAddress = null): self
-    {
-        return self::logActivity(
-            $userId,
-            'logout',
-            'User logged out',
-            $ipAddress
-        );
+        array_walk_recursive($metadata, function (&$value, $key) {
+            if (in_array(strtolower((string) $key), self::REDACTED_METADATA_KEYS, true)) {
+                $value = '[REDACTED]';
+            }
+        });
+
+        return $metadata;
     }
 }
