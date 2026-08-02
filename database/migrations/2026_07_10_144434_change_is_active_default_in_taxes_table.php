@@ -1,7 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -10,7 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE taxes ALTER is_active SET DEFAULT 0');
+        Schema::table('taxes', function (Blueprint $table) {
+            $table->boolean('is_active')->default(false)->change();
+        });
     }
 
     /**
@@ -18,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE taxes ALTER is_active SET DEFAULT 1');
+        Schema::table('taxes', function (Blueprint $table) {
+            $table->boolean('is_active')->default(true)->change();
+        });
     }
 };
