@@ -1,4 +1,4 @@
-@extends('layout.app')
+@extends(Auth::user()->role === 'admin' ? 'layout.app' : 'layout.user')
 
 @section('title', 'Customers')
 
@@ -226,17 +226,21 @@
                         <hr>
 
                         <div class="row mb-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="text-muted small d-block">Advances</label>
                                 <p id="view_advances" class="fw-semibold mb-0"></p>
                             </div>
-                            <div class="col-md-4">
-                                <label class="text-muted small d-block">Balance</label>
+                            <div class="col-md-3">
+                                <label class="text-muted small d-block">Balances</label>
                                 <p id="view_balance" class="fw-semibold mb-0"></p>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="text-muted small d-block">Receivables</label>
                                 <p id="view_receivables" class="fw-semibold mb-0"></p>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="text-muted small d-block">Available Credit</label>
+                                <p id="view_available_credit" class="fw-semibold mb-0 text-success"></p>
                             </div>
                         </div>
 
@@ -522,8 +526,8 @@
                             <td class="text-end">{{ $customer->sales_orders_count }}</td>
                             <td class="text-end">{{ $customer->sales_invoices_count }}</td>
                             <td class="text-end">{{ $customer->delivery_receipts_count }}</td>
-                            <td class="text-end">{{ $customer->advances > 0 ? number_format($customer->advances, 2) : '—' }}</td>
-                            <td class="text-end {{ $customer->balance > 0 ? 'text-danger' : '' }}">{{ number_format($customer->balance, 2) }}</td>
+                            <td class="text-end">{{ $customer->advances_count > 0 ? $customer->advances_count : '—' }}</td>
+                            <td class="text-end {{ $customer->balances_count > 0 ? 'text-danger' : '' }}">{{ $customer->balances_count }}</td>
                             <td class="text-end">{{ number_format($customer->receivables, 2) }}</td>
                             <td>
                                 <div class="dropdown">
@@ -538,7 +542,7 @@
                                             data-bs-target="#recordPaymentModal"
                                             data-id="{{ $customer->id }}"
                                             data-name="{{ $customer->customer_name }}"
-                                            data-balance="{{ number_format($customer->balance, 2) }}"
+                                            data-balance="{{ number_format($customer->receivables, 2) }}"
                                         >
                                             <i class="bx bx-money me-1"></i> Payment
                                         </button>
@@ -557,9 +561,10 @@
                                             data-address="{{ $customer->delivery_address }}"
                                             data-price-level="{{ \App\Models\Customer::PRICE_LEVELS[$customer->price_level] ?? $customer->price_level }}"
                                             data-vat-type="{{ $customer->vat_type }}"
-                                            data-advances="{{ number_format($customer->advances, 2) }}"
-                                            data-balance="{{ number_format($customer->balance, 2) }}"
+                                            data-advances="{{ $customer->advances_count }}"
+                                            data-balance="{{ $customer->balances_count }}"
                                             data-receivables="{{ number_format($customer->receivables, 2) }}"
+                                            data-available-credit="{{ number_format($customer->available_credit, 2) }}"
                                             data-payments='{{ $customer->payments->map(fn ($p) => [
                                                 "date" => $p->payment_date->format("M d, Y"),
                                                 "type" => \App\Models\CustomerPayment::TYPES[$p->type] ?? $p->type,
@@ -641,9 +646,10 @@
             document.getElementById('view_price_level').textContent = this.getAttribute('data-price-level') || 'N/A';
             document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type') || 'N/A';
 
-            document.getElementById('view_advances').textContent = '₱' + (this.getAttribute('data-advances') || '0.00');
-            document.getElementById('view_balance').textContent = '₱' + (this.getAttribute('data-balance') || '0.00');
+            document.getElementById('view_advances').textContent = this.getAttribute('data-advances') || '0';
+            document.getElementById('view_balance').textContent = this.getAttribute('data-balance') || '0';
             document.getElementById('view_receivables').textContent = '₱' + (this.getAttribute('data-receivables') || '0.00');
+            document.getElementById('view_available_credit').textContent = '₱' + (this.getAttribute('data-available-credit') || '0.00');
 
             const paymentsBody = document.getElementById('view_payments_body');
             paymentsBody.innerHTML = '';

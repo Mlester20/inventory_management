@@ -33,15 +33,43 @@
                     </td>
                     <td>
                         @if($returnItem->status === 'pending')
-                            <form method="POST" action="{{ route('return-items.approve', $returnItem->id) }}" style="display: inline;">
-                                @csrf
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Are you sure you want to approve this return?');">
-                                    Approve
-                                </button>
-                            </form>
+                            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approveModal{{ $returnItem->id }}">
+                                Approve
+                            </button>
                             <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal{{ $returnItem->id }}">
                                 Reject
                             </button>
+
+                            <!-- Approve Modal -->
+                            <div class="modal fade" id="approveModal{{ $returnItem->id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Approve Return Item #{{ $returnItem->id }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form method="POST" action="{{ route('return-items.approve', $returnItem->id) }}">
+                                            @csrf
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label for="customer_id{{ $returnItem->id }}" class="form-label">Customer (optional)</label>
+                                                    <select class="form-select" id="customer_id{{ $returnItem->id }}" name="customer_id">
+                                                        <option value="">— No customer / no credit —</option>
+                                                        @foreach($customers as $customer)
+                                                            <option value="{{ $customer->id }}">{{ $customer->customer_name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    <div class="form-text">If a customer is selected, an advance credit will be recorded on their account for this return's value.</div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-success">Approve</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Reject Modal -->
                             <div class="modal fade" id="rejectModal{{ $returnItem->id }}" tabindex="-1">

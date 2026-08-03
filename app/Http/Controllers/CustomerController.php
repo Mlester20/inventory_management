@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
+use App\Models\Invoice;
+use App\Services\CustomerPaymentService;
 use Illuminate\Http\Request;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -12,63 +14,57 @@ class CustomerController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * Advances = count of this customer's Advance Order Delivery Receipts.
+     * Balances = count of this customer's invoices still carrying an
+     * outstanding balance. Receivables = the real peso amount still owed,
+     * summed across those unpaid invoices — accurate now that invoices carry
+     * a real customer_id (previously a free-text customer_name match).
+     * Invoices left unlinked by the backfill (no exact name match) are
+     * excluded here — expected, see the backfill migration.
      */
     public function index()
     {
-        $customers = Customer::withCount(['salesOrders', 'deliveryReceipts'])
+        $customers = Customer::withCount([
+                'salesOrders',
+                'deliveryReceipts',
+                'deliveryReceipts as advances_count' => fn ($query) => $query->where('transaction_type', 'advance_order'),
+                'invoices as sales_invoices_count',
+                'invoices as balances_count' => fn ($query) => $query->whereColumn('amount_paid', '<', 'amount_due'),
+            ])
             ->with(['payments' => fn ($query) => $query->latest('payment_date')->limit(5)])
             ->orderBy('customer_name')
             ->paginate(15);
 
-        // Invoices aren't linked to a customer_id (invoices.customer_name is
-        // free text — see the earlier Sales Per Customer report), so this is
-        // a best-effort name match, same caveat as that report.
-        $invoiceCounts = \App\Models\Invoice::selectRaw('customer_name, COUNT(*) as count, SUM(amount_due) as total_due')
-            ->groupBy('customer_name')
-            ->get()
-            ->keyBy('customer_name');
+        $receivables = Invoice::whereNotNull('customer_id')
+            ->whereColumn('amount_paid', '<', 'amount_due')
+            ->selectRaw('customer_id, SUM(amount_due - amount_paid) as total')
+            ->groupBy('customer_id')
+            ->pluck('total', 'customer_id');
 
-        // Payments are recorded against a real customer_id (see
-        // CustomerPayment), unlike invoices — so these totals are exact, not
-        // a name-match proxy. Split by type since "advance" (prepayment,
-        // not yet tied to any invoice) and "collection" (paid against an
-        // existing balance) are declared explicitly by whoever records the
-        // payment, not inferred from the numbers.
-        $paymentTotals = CustomerPayment::selectRaw('customer_id, type, SUM(amount) as total')
-            ->groupBy('customer_id', 'type')
-            ->get()
-            ->groupBy('customer_id');
+        // Available credit = unconsumed 'advance' CustomerPayment amounts —
+        // what's left to auto-apply against this customer's next invoice
+        // (see CustomerPaymentService::applyAvailableCredit()).
+        $availableCredit = CustomerPayment::where('type', 'advance')
+            ->whereColumn('consumed_amount', '<', 'amount')
+            ->selectRaw('customer_id, SUM(amount - consumed_amount) as total')
+            ->groupBy('customer_id')
+            ->pluck('total', 'customer_id');
 
         foreach ($customers as $customer) {
-            $invoiceData = $invoiceCounts->get($customer->customer_name);
-            $customer->sales_invoices_count = $invoiceData->count ?? 0;
-
-            // "Receivables" = gross invoiced amount (unchanged meaning from
-            // before) — this doesn't yet account for payments, matching how
-            // it always worked here.
-            $customer->receivables = (float) ($invoiceData->total_due ?? 0);
-
-            $customerPayments = $paymentTotals->get($customer->id, collect());
-            $totalCollections = (float) $customerPayments->firstWhere('type', 'collection')?->total;
-            $totalAdvances = (float) $customerPayments->firstWhere('type', 'advance')?->total;
-
-            // "Advances" = prepayment credit currently on file, as declared
-            // when the payment was recorded.
-            $customer->advances = $totalAdvances;
-
-            // "Balances" = true bottom-line net owed, after both collections
-            // and advances (can go negative if the customer has paid more
-            // than they've been invoiced for).
-            $customer->balance = $customer->receivables - $totalCollections - $totalAdvances;
+            $customer->receivables = (float) ($receivables->get($customer->id) ?? 0);
+            $customer->available_credit = (float) ($availableCredit->get($customer->id) ?? 0);
         }
 
         return view('admin.customers', compact('customers'));
     }
 
     /**
-     * Record a payment/collection against a customer's running balance.
+     * Record a payment/collection against a customer's running balance. A
+     * 'collection' payment is FIFO-applied against the customer's oldest
+     * unpaid invoices by CustomerPaymentService — see that class.
      */
-    public function storePayment(Request $request, Customer $customer)
+    public function storePayment(Request $request, Customer $customer, CustomerPaymentService $customerPaymentService)
     {
         $validated = $request->validate([
             'type' => 'required|in:' . implode(',', array_keys(CustomerPayment::TYPES)),
@@ -78,14 +74,7 @@ class CustomerController extends Controller
             'remarks' => 'nullable|string|max:255',
         ]);
 
-        $payment = $customer->payments()->create([
-            'type' => $validated['type'],
-            'amount' => $validated['amount'],
-            'payment_date' => $validated['payment_date'],
-            'payment_method' => $validated['payment_method'] ?? null,
-            'remarks' => $validated['remarks'] ?? null,
-            'prepared_by' => auth()->id(),
-        ]);
+        $payment = $customerPaymentService->recordPayment($customer, $validated, auth()->id());
 
         ActivityLog::record(
             module: 'Customer',

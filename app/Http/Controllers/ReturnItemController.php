@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Customer;
 use App\Models\Location;
 use App\Models\ReturnItem;
 use App\Models\Product;
+use App\Services\ReturnItemService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 
@@ -13,7 +15,7 @@ class ReturnItemController extends Controller
 {
     protected $stockService;
 
-    public function __construct(StockService $stockService)
+    public function __construct(StockService $stockService, protected ReturnItemService $returnItemService)
     {
         $this->stockService = $stockService;
     }
@@ -38,7 +40,8 @@ class ReturnItemController extends Controller
         // Admin view - all return items
         $returnItems = ReturnItem::with('productBatch.product')->latest()->paginate(15);
         $products = Product::with('batches')->orderBy('item_name')->get();
-        return view('admin.return-items', compact('returnItems', 'products'));
+        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name']);
+        return view('admin.return-items', compact('returnItems', 'products', 'customers'));
     }
 
     /**
@@ -56,6 +59,7 @@ class ReturnItemController extends Controller
     {
         $validated = $request->validate([
             'product_batch_id' => 'required|exists:product_batches,id',
+            'customer_id' => 'nullable|exists:customers,id',
             'quantity' => 'required|integer|min:1',
             'return_date' => 'required|date',
             'reason' => 'required|string|max:255',
@@ -155,27 +159,21 @@ class ReturnItemController extends Controller
      */
     public function approve(Request $request, ReturnItem $returnItem)
     {
+        $validated = $request->validate([
+            'customer_id' => 'nullable|exists:customers,id',
+        ]);
+
         try {
             // Only approve if status is pending
             if ($returnItem->status !== 'pending') {
                 return back()->with('error', 'Only pending return items can be approved.');
             }
 
-            // Use transaction to ensure atomicity
-            \DB::transaction(function () use ($returnItem) {
-                // Restock the batch using StockService — returns go back
-                // into POS stock, the same location they were sold from.
-                $this->stockService->restock(
-                    $returnItem->productBatch,
-                    $returnItem->quantity,
-                    Location::pos(),
-                    "Return item approved - Return ID: {$returnItem->id}, Reason: {$returnItem->reason}",
-                    auth()->id()
-                );
+            if (!empty($validated['customer_id'])) {
+                $returnItem->customer_id = $validated['customer_id'];
+            }
 
-                // Update return item status to approved
-                $returnItem->update(['status' => 'approved']);
-            });
+            $result = $this->returnItemService->approve($returnItem, auth()->id());
 
             ActivityLog::record(
                 module: 'ReturnItem',
@@ -183,6 +181,15 @@ class ReturnItemController extends Controller
                 loggable: $returnItem,
                 description: "Approved return item #{$returnItem->id} and restocked {$returnItem->quantity} units to POS",
             );
+
+            if ($result['creditPayment']) {
+                ActivityLog::record(
+                    module: 'Customer',
+                    action: 'payment_recorded',
+                    loggable: $result['creditPayment'],
+                    description: "Recorded advance credit of {$result['creditPayment']->amount} for customer {$returnItem->customer->customer_name} from approved Return Item #{$returnItem->id}",
+                );
+            }
 
             return back()->with('success', 'Return item approved successfully and stock updated.');
         } catch (\Exception $e) {

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\Taxes;
 use App\Models\User;
+use App\Services\CustomerPaymentService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -54,6 +56,7 @@ class InvoiceController extends Controller
         $salesNo = $this->generateSalesNo();
         $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
         $users = User::orderBy('name')->get();
+        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name']);
 
         $itemsForJs = $products->map(function ($product) {
             return [
@@ -66,16 +69,17 @@ class InvoiceController extends Controller
             ];
         })->values();
 
-        return view('admin.invoices.create', compact('products', 'salesNo', 'activeVatRate', 'itemsForJs', 'users'));
+        return view('admin.invoices.create', compact('products', 'salesNo', 'activeVatRate', 'itemsForJs', 'users', 'customers'));
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, CustomerPaymentService $customerPaymentService)
     {
         $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
+            'customer_id' => 'nullable|exists:customers,id',
             'po_no' => 'nullable|string|max:255',
             'osca_no' => 'nullable|string|max:255',
             'prepared_by' => 'nullable|exists:users,id',
@@ -98,7 +102,7 @@ class InvoiceController extends Controller
         $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
 
         try {
-            $invoice = DB::transaction(function () use ($validated, $activeVatRate) {
+            $invoice = DB::transaction(function () use ($validated, $activeVatRate, $customerPaymentService) {
                 $stockService = new StockService();
                 $userId = Auth::id();
                 $posLocation = Location::pos();
@@ -176,6 +180,7 @@ class InvoiceController extends Controller
 
                 $invoice = Invoice::create([
                     'customer_name' => $validated['customer_name'],
+                    'customer_id' => $validated['customer_id'] ?? null,
                     'po_no' => $validated['po_no'] ?? null,
                     'osca_no' => $oscaNo,
                     'sales_no' => $salesNo,
@@ -216,6 +221,8 @@ class InvoiceController extends Controller
                         ]);
                     }
                 }
+
+                $customerPaymentService->applyAvailableCredit($invoice);
 
                 return $invoice;
             });

@@ -26,10 +26,18 @@
                             type="text"
                             name="customer_name"
                             id="customer_name"
+                            list="customerNamesList"
+                            autocomplete="off"
                             class="form-control @error('customer_name') is-invalid @enderror"
                             value="{{ old('customer_name') }}"
                             required
                         >
+                        <datalist id="customerNamesList">
+                            @foreach($customers as $customer)
+                                <option value="{{ $customer->customer_name }}"></option>
+                            @endforeach
+                        </datalist>
+                        <input type="hidden" name="customer_id" id="customer_id">
                         @error('customer_name')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
@@ -207,6 +215,21 @@
     const ITEMS = @json($itemsForJs);
 
     const ACTIVE_VAT_RATE = {{ $activeVatRate }};
+
+    const CUSTOMERS = @json($customers->map(fn ($c) => ['id' => $c->id, 'name' => $c->customer_name])->values());
+
+    // customer_id is only ever set on an exact name match — a half-typed or
+    // unmatched name (a genuine walk-in with no Customer record) leaves it
+    // null, same as the historical customer_name-only rows.
+    function syncCustomerId() {
+        const input = document.getElementById('customer_name');
+        const hidden = document.getElementById('customer_id');
+        const match = CUSTOMERS.find(c => c.name === input.value);
+        hidden.value = match ? match.id : '';
+    }
+
+    document.getElementById('customer_name').addEventListener('input', syncCustomerId);
+    document.addEventListener('DOMContentLoaded', syncCustomerId);
 
     let rowIndex = 0;
 
