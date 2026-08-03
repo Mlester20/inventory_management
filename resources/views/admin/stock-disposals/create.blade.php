@@ -54,7 +54,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Items to Dispose</h6>
                     <div class="d-flex gap-2 align-items-center">
-                        <input type="number" id="generateLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="50" placeholder="# lines">
+                        <input type="number" id="generateLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="100" placeholder="# lines">
                         <button type="button" class="btn btn-sm btn-outline-primary" id="generateLinesBtn">
                             <i class="bx bx-list-plus"></i> Generate
                         </button>
@@ -245,7 +245,7 @@
 
     // "Generate N Lines" — reuses the exact same addRow() the Add Line
     // button calls, just N times in a row.
-    const MAX_GENERATE_LINES = 50;
+    const MAX_GENERATE_LINES = 100;
 
     function generateLines() {
         const input = document.getElementById('generateLinesInput');
