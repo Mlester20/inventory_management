@@ -10,6 +10,7 @@ class Invoice extends Model
 {
     protected $fillable = [
         'customer_name',
+        'customer_id',
         'po_no',
         'osca_no',
         'sales_no',
@@ -25,6 +26,7 @@ class Invoice extends Model
         'less_sc',
         'less_wt',
         'amount_due',
+        'amount_paid',
         'add_vat',
     ];
 
@@ -39,6 +41,7 @@ class Invoice extends Model
         'less_sc' => 'decimal:2',
         'less_wt' => 'decimal:2',
         'amount_due' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
         'add_vat' => 'decimal:2',
     ];
 
@@ -50,5 +53,10 @@ class Invoice extends Model
     public function preparedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'prepared_by');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 }

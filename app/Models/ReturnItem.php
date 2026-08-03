@@ -13,6 +13,7 @@ class ReturnItem extends Model
     protected $fillable = [
         'product_batch_id',
         'user_id',
+        'customer_id',
         'quantity',
         'return_date',
         'reason',
@@ -28,6 +29,11 @@ class ReturnItem extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     /**
