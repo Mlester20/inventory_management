@@ -17,7 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class DeliveryReceiptService
 {
-    public function __construct(protected StockService $stockService) {}
+    public function __construct(
+        protected StockService $stockService,
+        protected CustomerPaymentService $customerPaymentService,
+    ) {}
 
     /**
      * Sales Order lines that still have a remaining (undelivered) balance.
@@ -187,6 +190,7 @@ class DeliveryReceiptService
 
             $invoice = Invoice::create([
                 'customer_name' => $customer->customer_name,
+                'customer_id' => $customer->id,
                 'sales_no' => $this->generateSalesNo(),
                 'prepared_by' => $userId,
                 'vat_sales' => round($vatSales, 2),
@@ -205,6 +209,8 @@ class DeliveryReceiptService
             foreach ($saleRows as $row) {
                 $invoice->sales()->create($row);
             }
+
+            $this->customerPaymentService->applyAvailableCredit($invoice);
 
             return $invoice;
         });
