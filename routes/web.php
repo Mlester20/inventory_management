@@ -119,6 +119,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('admin/delivery-receipts', DeliveryReceiptController::class)->except(['destroy']);
     Route::post('admin/delivery-receipts/{deliveryReceipt}/create-invoice', [DeliveryReceiptController::class, 'createInvoice'])->name('delivery-receipts.create-invoice');
     Route::post('admin/delivery-receipts/{deliveryReceipt}/mark-delivered', [DeliveryReceiptController::class, 'markDelivered'])->name('delivery-receipts.mark-delivered');
+
+    // Customers are usable by both admin and regular users too — deleting
+    // one is the one action that stays admin-only (see below).
+    Route::resource('admin/customers', CustomerController::class)->except(['destroy']);
+    Route::post('admin/customers/{customer}/payments', [CustomerController::class, 'storePayment'])->name('customers.payments.store');
 });
 
 // Admin Routes - Protected with admin middleware 
@@ -142,8 +147,6 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/generic-names', GenericNameController::class)->only(['store', 'update', 'destroy']);
     Route::resource('admin/suppliers', SupplierController::class);
     Route::post('admin/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
-    Route::resource('admin/customers', CustomerController::class);
-    Route::post('admin/customers/{customer}/payments', [CustomerController::class, 'storePayment'])->name('customers.payments.store');
 
     // Products & Inventory module — a single tabbed screen (General Item /
     // Products / Lot-Serial & Expiry / Product History); see
@@ -169,12 +172,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/stock-transfers', StockTransferController::class)->only(['index', 'create', 'store', 'show']);
     Route::resource('admin/stock-disposals', StockDisposalController::class)->only(['index', 'create', 'store', 'show']);
 
-    // Invoices, Sales Orders, and Delivery Receipts are usable by both admin
-    // and regular users (see the 'auth'-only group below) — deleting them
-    // is the one action that stays admin-only.
+    // Invoices, Sales Orders, Delivery Receipts, and Customers are usable by
+    // both admin and regular users (see the 'auth'-only group above) —
+    // deleting them is the one action that stays admin-only.
     Route::delete('admin/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
     Route::delete('admin/sales-quotes/{sales_quote}', [SalesQuoteController::class, 'destroy'])->name('sales-quotes.destroy');
     Route::delete('admin/sales-orders/{sales_order}', [SalesOrderController::class, 'destroy'])->name('sales-orders.destroy');
+    Route::delete('admin/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
 
     // Return Items Actions
     Route::post('admin/return-items/{returnItem}/approve', [ReturnItemController::class, 'approve'])->name('return-items.approve');
