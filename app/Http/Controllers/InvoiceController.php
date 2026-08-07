@@ -61,7 +61,7 @@ class InvoiceController extends Controller
         $itemsForJs = $products->map(function ($product) {
             return [
                 'id' => $product->id,
-                'name' => $product->item_name,
+                'name' => $product->description ?: $product->item_name,
                 'price' => (float) $product->unit_price,
                 'quantity' => (int) ($product->pos_qty ?? 0),
                 'unit' => 'pc',

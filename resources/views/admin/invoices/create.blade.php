@@ -145,9 +145,6 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Line Items</h6>
-                    <button type="button" class="btn btn-sm btn-primary" id="addRowBtn">
-                        <i class="bx bx-plus"></i> Add Item
-                    </button>
                 </div>
 
                 <div id="lineItemsBody"></div>
@@ -202,6 +199,9 @@
                 </div>
 
                 <div class="mt-3">
+                    <button type="button" class="btn btn-secondary" id="addRowBtn">
+                        <i class="bx bx-plus"></i> Add Item
+                    </button>
                     <button type="submit" class="btn btn-primary">Save Invoice</button>
                     <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>

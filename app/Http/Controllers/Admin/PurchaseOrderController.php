@@ -51,7 +51,7 @@ class PurchaseOrderController extends Controller
 
         $itemsForJs = $items->map(fn (Product $item) => [
             'id' => $item->id,
-            'name' => $item->item_name,
+            'name' => $item->description ?: $item->item_name,
             'unit_cost' => (float) $item->unit_cost,
             'supplier_id' => $item->supplier_id,
         ])->values();

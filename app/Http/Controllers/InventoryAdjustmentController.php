@@ -40,7 +40,7 @@ class InventoryAdjustmentController extends Controller
 
         $productsForJs = $products->map(fn (Product $p) => [
             'id' => $p->id,
-            'name' => $p->item_name,
+            'name' => $p->description ?: $p->item_name,
             'unit' => $p->genericName->unit ?? '',
             'batches' => $p->batches->map(fn ($b) => [
                 'id' => $b->id,

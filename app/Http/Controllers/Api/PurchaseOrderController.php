@@ -22,6 +22,8 @@ class PurchaseOrderController extends Controller
                     'purchase_order_item_id' => $line->id,
                     'product_id' => $line->product_id,
                     'item_name' => $line->product->item_name,
+                    'description' => $line->product->description ?: $line->product->item_name,
+                    'generic_name_id' => $line->product->generic_name_id,
                     'qty' => $line->qty,
                     'received_qty' => $line->received_qty,
                     'remaining_qty' => $line->remaining_qty,

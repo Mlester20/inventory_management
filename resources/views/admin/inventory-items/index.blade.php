@@ -257,7 +257,7 @@
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $product->code }}</td>
                                     <td>{{ $product->category->category_name ?? 'N/A' }}</td>
-                                    <td>{{ $product->item_name }}</td>
+                                    <td>{{ $product->description ?: $product->item_name }}</td>
                                     <td>{{ $product->barcode ?? '—' }}</td>
                                     <td>{{ number_format($product->unit_cost ?? 0, 2) }}</td>
                                     <td>{{ number_format($product->unit_price, 2) }}</td>

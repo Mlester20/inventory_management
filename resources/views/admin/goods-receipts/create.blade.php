@@ -72,9 +72,12 @@
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">Received Items</h6>
-                        <button type="button" class="btn btn-sm btn-primary" id="addDirectRowBtn">
-                            <i class="bx bx-plus"></i> Add Item
-                        </button>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="number" id="generateDirectLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="100" placeholder="# lines">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="generateDirectLinesBtn">
+                                <i class="bx bx-list-plus"></i> Generate
+                            </button>
+                        </div>
                     </div>
                     <div id="directLineItemsBody"></div>
                 </div>
@@ -105,6 +108,9 @@
                 </div>
 
                 <div class="mt-3">
+                    <button type="button" class="btn btn-secondary" id="addDirectRowBtn">
+                        <i class="bx bx-plus"></i> Add Item
+                    </button>
                     <button type="submit" class="btn btn-primary">Save Goods Receipt</button>
                     <a href="{{ route('goods-receipts.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
@@ -220,6 +226,37 @@
 
     document.getElementById('addDirectRowBtn').addEventListener('click', addDirectRow);
 
+    // "Generate N Lines" — reuses the exact same addDirectRow() the Add Item
+    // button calls, just N times in a row, so a batch-generated line is
+    // identical to a manually-added one (same indexing, same events bound).
+    // Direct Receipt only — the Against Purchase Order tab's rows come from
+    // the PO's own pending lines, not manually added one at a time.
+    const MAX_GENERATE_DIRECT_LINES = 100;
+
+    function generateDirectLines() {
+        const input = document.getElementById('generateDirectLinesInput');
+        const requested = parseInt(input.value, 10);
+
+        if (!requested || requested <= 0) {
+            return;
+        }
+
+        const count = Math.min(requested, MAX_GENERATE_DIRECT_LINES);
+        for (let i = 0; i < count; i++) {
+            addDirectRow();
+        }
+
+        input.value = '';
+    }
+
+    document.getElementById('generateDirectLinesBtn').addEventListener('click', generateDirectLines);
+    document.getElementById('generateDirectLinesInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            generateDirectLines();
+        }
+    });
+
     // Refresh each row's item datalist when the supplier changes, since items
     // are filtered to that supplier's catalog. A row's current selection is
     // cleared if it no longer belongs to the newly chosen supplier.
@@ -267,19 +304,32 @@
             const index = poRowIndex++;
             const card = document.createElement('div');
             card.className = 'line-item-card border rounded p-3 mb-3';
+
+            // Brand siblings: other Products under the same Generic Item as
+            // what the PO line specified — lets the receiver record the
+            // brand actually delivered, since the supplier may not send the
+            // exact same brand the PO was raised against.
+            const brandSiblings = ITEMS.filter(i => i.generic_name_id != null && i.generic_name_id === line.generic_name_id);
+
             card.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="fw-semibold">${line.item_name}</span>
                     <span class="badge bg-warning text-dark">Remaining: ${line.remaining_qty}</span>
                 </div>
                 <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label small mb-1">Brand</label>
+                        <input type="text" class="form-control po-brand-input" list="po-brand-list-${index}"
+                            value="${line.description}" autocomplete="off">
+                        <datalist id="po-brand-list-${index}">${brandSiblings.map(i => `<option value="${i.name}"></option>`).join('')}</datalist>
+                    </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label small mb-1">Qty</label>
                         <input type="number" name="items[${index}][qty]" class="form-control qty-input" min="1" max="${line.remaining_qty}" value="${line.remaining_qty}">
                     </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label small mb-1">Unit Cost</label>
-                        <input type="number" name="items[${index}][unit_cost]" class="form-control" step="0.01" min="0" value="${parseFloat(line.unit_cost).toFixed(2)}">
+                        <input type="number" name="items[${index}][unit_cost]" class="form-control po-cost-input" step="0.01" min="0" value="${parseFloat(line.unit_cost).toFixed(2)}">
                     </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label small mb-1">Batch No.</label>
@@ -290,7 +340,7 @@
                         <input type="date" name="items[${index}][expiration_date]" class="form-control">
                     </div>
                 </div>
-                <input type="hidden" name="items[${index}][product_id]" value="${line.product_id}">
+                <input type="hidden" name="items[${index}][product_id]" value="${line.product_id}" class="po-product-id-input">
                 <input type="hidden" name="items[${index}][purchase_order_item_id]" value="${line.purchase_order_item_id}">
             `;
             body.appendChild(card);
@@ -299,6 +349,21 @@
             qtyInput.addEventListener('input', function () {
                 if (parseInt(this.value, 10) > line.remaining_qty) {
                     this.value = line.remaining_qty;
+                }
+            });
+
+            const brandInput = card.querySelector('.po-brand-input');
+            const productIdInput = card.querySelector('.po-product-id-input');
+            const costInput = card.querySelector('.po-cost-input');
+            brandInput.addEventListener('input', function () {
+                // Only re-match against this generic's siblings — a
+                // half-typed or unmatched brand leaves product_id untouched
+                // at its last valid value rather than clearing it, since
+                // this field always starts pre-filled with a valid brand.
+                const match = brandSiblings.find(i => i.name === this.value);
+                if (match) {
+                    productIdInput.value = match.id;
+                    costInput.value = match.unit_cost.toFixed(2);
                 }
             });
 

@@ -59,9 +59,10 @@ class GoodsReceiptController extends Controller
 
         $itemsForJs = $items->map(fn (Product $item) => [
             'id' => $item->id,
-            'name' => $item->item_name,
+            'name' => $item->description ?: $item->item_name,
             'unit_cost' => (float) $item->unit_cost,
             'supplier_id' => $item->supplier_id,
+            'generic_name_id' => $item->generic_name_id,
         ])->values();
 
         return view('admin.goods-receipts.create', compact(

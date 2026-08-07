@@ -79,9 +79,6 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Line Items</h6>
-                    <button type="button" class="btn btn-sm btn-primary" id="addRowBtn">
-                        <i class="bx bx-plus"></i> Add Item
-                    </button>
                 </div>
 
                 <div id="lineItemsBody"></div>
@@ -100,6 +97,9 @@
                 </div>
 
                 <div class="mt-3">
+                    <button type="button" class="btn btn-secondary" id="addRowBtn">
+                        <i class="bx bx-plus"></i> Add Item
+                    </button>
                     <button type="submit" class="btn btn-primary">Save Purchase Order</button>
                     <a href="{{ route('purchase-orders.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
@@ -121,13 +121,16 @@
     // Item is a searchable text field (native <datalist>, matching the same
     // technique already used for Generic Description pickers) instead of a
     // long <select> — the label the user types/picks is matched back to the
-    // real product_id, still scoped to the currently chosen supplier.
+    // real product_id. Not scoped to the chosen supplier — a Product's
+    // assigned supplier_id doesn't mean it can ONLY be ordered from that
+    // supplier, so the full catalog stays selectable regardless of which
+    // supplier this PO is for.
     function itemLabel(item) {
         return item.name;
     }
 
     function itemsForSupplier(supplierId) {
-        return supplierId ? ITEMS.filter(i => String(i.supplier_id) === String(supplierId)) : ITEMS;
+        return ITEMS;
     }
 
     function itemDatalistOptions() {
@@ -227,9 +230,9 @@
 
     document.getElementById('addRowBtn').addEventListener('click', addRow);
 
-    // Refresh each row's item datalist when the supplier changes, since items
-    // are filtered to that supplier's catalog. A row's current selection is
-    // cleared if it no longer belongs to the newly chosen supplier.
+    // Kept for future use if per-supplier filtering is ever reintroduced —
+    // currently a no-op refresh, since the item list no longer depends on
+    // the chosen supplier.
     document.getElementById('supplier_id').addEventListener('change', function () {
         document.querySelectorAll('#lineItemsBody .line-item-card').forEach(card => {
             const itemSearchInput = card.querySelector('.item-search-input');
