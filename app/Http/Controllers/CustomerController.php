@@ -99,7 +99,7 @@ class CustomerController extends Controller
             'contact_number' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:customers,email',
             'contact_person' => 'nullable|string|max:255',
-            'customer_type' => 'nullable|string|max:255',
+            'customer_type' => 'required|string|max:255',
             'price_level' => 'required|in:' . implode(',', array_keys(Customer::PRICE_LEVELS)),
             'vat_type' => 'required|in:' . implode(',', array_keys(Customer::VAT_TYPES)),
         ]);
@@ -144,7 +144,7 @@ class CustomerController extends Controller
             'contact_number' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:customers,email,' . $customer->id,
             'contact_person' => 'nullable|string|max:255',
-            'customer_type' => 'nullable|string|max:255',
+            'customer_type' => 'required|string|max:255',
             'price_level' => 'required|in:' . implode(',', array_keys(Customer::PRICE_LEVELS)),
             'vat_type' => 'required|in:' . implode(',', array_keys(Customer::VAT_TYPES)),
         ]);

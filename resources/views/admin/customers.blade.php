@@ -5,14 +5,16 @@
 @section('content')
     <div class="mt-3">
         <!-- Button trigger modal -->
-        <button
+        <div class="text-end">
+            <button
             type="button"
             class="btn btn-primary"
             data-bs-toggle="modal"
             data-bs-target="#customerModal"
-        >
-            New Customer
-        </button>
+            >
+                New Customer
+            </button>
+        </div>
 
         <!-- Add Customer Modal -->
         <div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
@@ -106,7 +108,8 @@
                                         name="customer_type"
                                         id="customer_type"
                                         class="form-control"
-                                        placeholder="e.g. Pharmacy, Hospital, Clinic (optional)"
+                                        placeholder="e.g. Pharmacy, Hospital, Clinic"
+                                        required
                                     >
                                 </div>
                             </div>
@@ -442,7 +445,8 @@
                                         name="customer_type"
                                         id="update_customer_type"
                                         class="form-control"
-                                        placeholder="e.g. Pharmacy, Hospital, Clinic (optional)"
+                                        placeholder="e.g. Pharmacy, Hospital, Clinic"
+                                        required
                                     >
                                 </div>
                             </div>
@@ -511,8 +515,14 @@
                         <th class="text-end">Sales Orders</th>
                         <th class="text-end">Sales Invoices</th>
                         <th class="text-end">Delivery Notes</th>
-                        <th class="text-end">Advances</th>
-                        <th class="text-end">Balances</th>
+                        <th class="text-end">
+                            Advances
+                            <i class="bx bx-info-circle text-muted" style="cursor: help;" title="Delivery Receipts made without a Purchase Order (Advance Order type)"></i>
+                        </th>
+                        <th class="text-end">
+                            Balances
+                            <i class="bx bx-info-circle text-muted" style="cursor: help;" title="Invoices this customer still owes money on"></i>
+                        </th>
                         <th class="text-end">Receivables (PHP)</th>
                         <th>Actions</th>
                     </tr>
@@ -522,13 +532,31 @@
                         <tr>
                             <td>{{ $customer->id }}</td>
                             <td>{{ $customer->customer_name }}</td>
-                            <td>{{ $customer->customer_type ?: '—' }}</td>
+                            <td>
+                                @if($customer->customer_type)
+                                    <span class="badge bg-label-secondary">{{ Str::title(str_replace('_', ' ', $customer->customer_type)) }}</span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td class="text-end">{{ $customer->sales_orders_count }}</td>
                             <td class="text-end">{{ $customer->sales_invoices_count }}</td>
                             <td class="text-end">{{ $customer->delivery_receipts_count }}</td>
-                            <td class="text-end">{{ $customer->advances_count > 0 ? $customer->advances_count : '—' }}</td>
-                            <td class="text-end {{ $customer->balances_count > 0 ? 'text-danger' : '' }}">{{ $customer->balances_count }}</td>
-                            <td class="text-end">{{ number_format($customer->receivables, 2) }}</td>
+                            <td class="text-end">
+                                @if($customer->advances_count > 0)
+                                    <span class="badge bg-label-info">{{ $customer->advances_count }}</span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                @if($customer->balances_count > 0)
+                                    <span class="badge bg-label-danger">{{ $customer->balances_count }}</span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                            <td class="text-end fw-semibold">₱{{ number_format($customer->receivables, 2) }}</td>
                             <td>
                                 <div class="dropdown">
                                     <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
