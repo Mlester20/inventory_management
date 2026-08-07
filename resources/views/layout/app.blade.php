@@ -135,81 +135,84 @@
             <li class="menu-header small text-uppercase">
               <span class="menu-header-text">Items &amp; Inventory</span>
             </li>
-            <li class="menu-item">
+            @php
+              $productsInventoryActive = request()->routeIs('inventory-items.*') || request()->routeIs('generic-names.*') || request()->routeIs('products.*') || request()->routeIs('categories.*') || request()->routeIs('inventory-adjustments.*') || request()->routeIs('stock-disposals.*');
+            @endphp
+            <li class="menu-item {{ $productsInventoryActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-box"></i>
                 <div data-i18n="Products &amp; Inventory">Products &amp; Inventory</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('inventory-items.index') }}" class="menu-link {{ request()->routeIs('inventory-items.*') || request()->routeIs('generic-names.*') || request()->routeIs('products.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('inventory-items.*') || request()->routeIs('generic-names.*') || request()->routeIs('products.*') ? 'active' : '' }}">
+                  <a href="{{ route('inventory-items.index') }}" class="menu-link">
                     <div data-i18n="Inventory Items">Inventory Items</div>
                   </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('categories.index') }}" class="menu-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('categories.*') ? 'active' : '' }}">
+                  <a href="{{ route('categories.index') }}" class="menu-link">
                     <div data-i18n="Categories">Categories</div>
                   </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('inventory-adjustments.index') }}" class="menu-link {{ request()->routeIs('inventory-adjustments.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('inventory-adjustments.*') ? 'active' : '' }}">
+                  <a href="{{ route('inventory-adjustments.index') }}" class="menu-link">
                     <div data-i18n="Inventory Adjustments">Inventory Adjustments</div>
                   </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('stock-disposals.index') }}" class="menu-link {{ request()->routeIs('stock-disposals.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('stock-disposals.*') ? 'active' : '' }}">
+                  <a href="{{ route('stock-disposals.index') }}" class="menu-link">
                     <div data-i18n="Stock Disposals">Stock Disposals</div>
                   </a>
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('suppliers.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-user"></i>
                 <div data-i18n="Suppliers">Suppliers</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('suppliers.index') }}" class="menu-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
+                  <a href="{{ route('suppliers.index') }}" class="menu-link">
                     <div data-i18n="Account">Suppliers</div>
                   </a>
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('customers.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-group"></i>
                 <div data-i18n="Customers">Customers</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('customers.index') }}" class="menu-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('customers.*') ? 'active' : '' }}">
+                  <a href="{{ route('customers.index') }}" class="menu-link">
                     <div data-i18n="Customers">Customers</div>
                   </a>
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('purchases.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-cart"></i>
                 <div data-i18n="Purchases">Purchases</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('purchases.index') }}" class="menu-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
+                  <a href="{{ route('purchases.index') }}" class="menu-link">
                     <div data-i18n="Error">Purchases</div>
                   </a>
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('return-items.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-box"></i>
                 <div data-i18n="Return Items">Return Items</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('return-items.index') }}" class="menu-link {{ request()->routeIs('return-items.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('return-items.*') ? 'active' : '' }}">
+                  <a href="{{ route('return-items.index') }}" class="menu-link">
                     <div data-i18n="Error">Return Items</div>
                   </a>
                 </li>
@@ -220,27 +223,27 @@
             <li class="menu-header small text-uppercase">
               <span class="menu-header-text">Taxes &amp; Invoice</span>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('taxes.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-calculator"></i>
                 <div data-i18n="Taxes">Taxes</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('taxes.index') }}" class="menu-link {{ request()->routeIs('taxes.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('taxes.*') ? 'active' : '' }}">
+                  <a href="{{ route('taxes.index') }}" class="menu-link">
                     <div data-i18n="Error">Manage Taxes</div>
                   </a>
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-receipt"></i>
                 <div data-i18n="Invoices">Invoices</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('invoices.index') }}" class="menu-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
+                  <a href="{{ route('invoices.index') }}" class="menu-link">
                     <div data-i18n="Error">Sales Invoices</div>
                   </a>
                 </li>
@@ -256,14 +259,14 @@
             <li class="menu-header small text-uppercase">
               <span class="menu-header-text">Sales</span>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('sales-quotes.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-file"></i>
                 <div data-i18n="Sales Quote">Sales Quote</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('sales-quotes.index') }}" class="menu-link {{ request()->routeIs('sales-quotes.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('sales-quotes.*') ? 'active' : '' }}">
+                  <a href="{{ route('sales-quotes.index') }}" class="menu-link">
                     <div data-i18n="Error">Sales Quotes</div>
                   </a>
                 </li>
@@ -274,14 +277,17 @@
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
+            @php
+              $salesOrderActive = request()->routeIs('sales-orders.*') || request()->routeIs('delivery-receipts.*');
+            @endphp
+            <li class="menu-item {{ $salesOrderActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-cart"></i>
                 <div data-i18n="Sales Order">Sales Order</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('sales-orders.index') }}" class="menu-link {{ request()->routeIs('sales-orders.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('sales-orders.*') ? 'active' : '' }}">
+                  <a href="{{ route('sales-orders.index') }}" class="menu-link">
                     <div data-i18n="Error">Sales Orders</div>
                   </a>
                 </li>
@@ -290,8 +296,8 @@
                     <div data-i18n="Error">New Sales Order</div>
                   </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('delivery-receipts.index') }}" class="menu-link {{ request()->routeIs('delivery-receipts.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('delivery-receipts.*') ? 'active' : '' }}">
+                  <a href="{{ route('delivery-receipts.index') }}" class="menu-link">
                     <div data-i18n="Error">Delivery Receipts</div>
                   </a>
                 </li>
@@ -307,14 +313,17 @@
             <li class="menu-header small text-uppercase">
               <span class="menu-header-text">Purchase</span>
             </li>
-            <li class="menu-item">
+            @php
+              $purchaseOrderActive = request()->routeIs('purchase-orders.*') || request()->routeIs('goods-receipts.*') || request()->routeIs('purchase-invoices.*');
+            @endphp
+            <li class="menu-item {{ $purchaseOrderActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-cart-alt"></i>
                 <div data-i18n="Purchase Order">Purchase Order</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('purchase-orders.index') }}" class="menu-link {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
+                  <a href="{{ route('purchase-orders.index') }}" class="menu-link">
                     <div data-i18n="Error">Purchase Orders</div>
                   </a>
                 </li>
@@ -323,8 +332,8 @@
                     <div data-i18n="Error">New Purchase Order</div>
                   </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('goods-receipts.index') }}" class="menu-link {{ request()->routeIs('goods-receipts.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('goods-receipts.*') ? 'active' : '' }}">
+                  <a href="{{ route('goods-receipts.index') }}" class="menu-link">
                     <div data-i18n="Error">Goods Receipts</div>
                   </a>
                 </li>
@@ -333,8 +342,8 @@
                     <div data-i18n="Error">New Goods Receipt</div>
                   </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('purchase-invoices.index') }}" class="menu-link {{ request()->routeIs('purchase-invoices.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('purchase-invoices.*') ? 'active' : '' }}">
+                  <a href="{{ route('purchase-invoices.index') }}" class="menu-link">
                     <div data-i18n="Error">Purchase Invoices</div>
                   </a>
                 </li>
@@ -345,14 +354,14 @@
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('stock-transfers.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-transfer-alt"></i>
                 <div data-i18n="Stock Transfer">Stock Transfer</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('stock-transfers.index') }}" class="menu-link {{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}">
+                  <a href="{{ route('stock-transfers.index') }}" class="menu-link">
                     <div data-i18n="Error">Stock Transfers</div>
                   </a>
                 </li>
@@ -389,55 +398,60 @@
                 <div data-i18n="Expiration Report">Expiration Report</div>
               </a>
             </li>
-            <li class="menu-item">
+            @php
+              $inventoryReportActive = request()->routeIs('admin.reports.inventory-summary') || request()->routeIs('admin.reports.product-history');
+              $salesReportActive = request()->routeIs('admin.reports.sales-summary') || request()->routeIs('admin.reports.sales-per-customer');
+              $purchaseReportActive = request()->routeIs('admin.reports.purchase-summary') || request()->routeIs('admin.reports.purchases-per-supplier');
+            @endphp
+            <li class="menu-item {{ $inventoryReportActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-box"></i>
                 <div data-i18n="Inventory Report">Inventory Report</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('admin.reports.inventory-summary') }}" class="menu-link {{ request()->routeIs('admin.reports.inventory-summary') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('admin.reports.inventory-summary') ? 'active' : '' }}">
+                  <a href="{{ route('admin.reports.inventory-summary') }}" class="menu-link">
                     <div data-i18n="Error">Inventory Summary</div>
                   </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('admin.reports.product-history') }}" class="menu-link {{ request()->routeIs('admin.reports.product-history') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('admin.reports.product-history') ? 'active' : '' }}">
+                  <a href="{{ route('admin.reports.product-history') }}" class="menu-link">
                     <div data-i18n="Error">Product History</div>
                   </a>
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ $salesReportActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-receipt"></i>
                 <div data-i18n="Sales Report">Sales Report</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('admin.reports.sales-summary') }}" class="menu-link {{ request()->routeIs('admin.reports.sales-summary') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('admin.reports.sales-summary') ? 'active' : '' }}">
+                  <a href="{{ route('admin.reports.sales-summary') }}" class="menu-link">
                     <div data-i18n="Error">Sales Summary</div>
                   </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('admin.reports.sales-per-customer') }}" class="menu-link {{ request()->routeIs('admin.reports.sales-per-customer') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('admin.reports.sales-per-customer') ? 'active' : '' }}">
+                  <a href="{{ route('admin.reports.sales-per-customer') }}" class="menu-link">
                     <div data-i18n="Error">Sales Per Customer</div>
                   </a>
                 </li>
               </ul>
             </li>
-            <li class="menu-item">
+            <li class="menu-item {{ $purchaseReportActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-cart-alt"></i>
                 <div data-i18n="Purchase Report">Purchase Report</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('admin.reports.purchase-summary') }}" class="menu-link {{ request()->routeIs('admin.reports.purchase-summary') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('admin.reports.purchase-summary') ? 'active' : '' }}">
+                  <a href="{{ route('admin.reports.purchase-summary') }}" class="menu-link">
                     <div data-i18n="Error">Purchase Summary</div>
                   </a>
                 </li>
-                <li class="menu-item">
-                  <a href="{{ route('admin.reports.purchases-per-supplier') }}" class="menu-link {{ request()->routeIs('admin.reports.purchases-per-supplier') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('admin.reports.purchases-per-supplier') ? 'active' : '' }}">
+                  <a href="{{ route('admin.reports.purchases-per-supplier') }}" class="menu-link">
                     <div data-i18n="Error">Purchases Per Supplier</div>
                   </a>
                 </li>
@@ -459,14 +473,14 @@
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>
             <!-- User interface -->
-            <li class="menu-item">
+            <li class="menu-item {{ request()->routeIs('users.*') ? 'active open' : '' }}">
               <a href="{{ route('users.index') }}" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-user"></i>
                 <div data-i18n="User interface">Users</div>
               </a>
               <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('users.index') }}" class="menu-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                <li class="menu-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                  <a href="{{ route('users.index') }}" class="menu-link">
                     <div data-i18n="Accordion">Users</div>
                   </a>
                 </li>
@@ -582,7 +596,7 @@
                   <script>
                     document.write(new Date().getFullYear());
                   </script>
-                  , Copyright by <a href="#" class="footer-link fw-bolder">SAIMS</a>
+                  , Copyright by <a href="#" class="footer-link fw-bolder">CFB Marketing</a>
                 </div>
               </div>
             </footer>

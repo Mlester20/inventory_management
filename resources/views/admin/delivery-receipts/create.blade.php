@@ -106,9 +106,6 @@
                             <button type="button" class="btn btn-sm btn-outline-primary" id="generateAoLinesBtn">
                                 <i class="bx bx-list-plus"></i> Generate
                             </button>
-                            <button type="button" class="btn btn-sm btn-primary" id="addAoRowBtn">
-                                <i class="bx bx-plus"></i> Add Generic
-                            </button>
                         </div>
                     </div>
                     <div class="table-responsive">
@@ -179,6 +176,9 @@
                 </div>
 
                 <div class="mt-3">
+                    <button type="button" class="btn btn-secondary" id="addAoRowBtn">
+                        <i class="bx bx-plus"></i> Add Generic
+                    </button>
                     <button type="submit" class="btn btn-primary">Save Delivery Receipt</button>
                     <a href="{{ route('delivery-receipts.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>

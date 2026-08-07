@@ -58,15 +58,15 @@
                         <button type="button" class="btn btn-sm btn-outline-primary" id="generateLinesBtn">
                             <i class="bx bx-list-plus"></i> Generate
                         </button>
-                        <button type="button" class="btn btn-sm btn-primary" id="addRowBtn">
-                            <i class="bx bx-plus"></i> Add Line
-                        </button>
                     </div>
                 </div>
 
                 <div id="lineItemsBody"></div>
 
                 <div class="mt-3">
+                    <button type="button" class="btn btn-secondary" id="addRowBtn">
+                        <i class="bx bx-plus"></i> Add Line
+                    </button>
                     <button type="submit" class="btn btn-primary">Save Stock Disposal</button>
                     <a href="{{ route('stock-disposals.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
