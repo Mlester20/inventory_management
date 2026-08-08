@@ -9,14 +9,27 @@ use Illuminate\Database\Eloquent\Collection;
 class InventoryReportService
 {
     /**
-     * Current stock per product (summed across every location), with
-     * computed total value and low-stock flag. Low stock is evaluated
-     * against the total across all locations — POS running low while the
-     * Warehouse is full just means a transfer is needed, not a reorder.
+     * Current stock per product, with computed total value and low-stock
+     * flag. Default (no $locationId) sums across every location — this is
+     * the "whole business" view used for e.g. total inventory value, where
+     * which location holds the stock doesn't matter. Pass $locationId to
+     * scope both the qty and the low-stock flag to one location instead —
+     * needed so a link from a location-scoped alert (e.g. the Admin
+     * dashboard's Warehouse-only low-stock banner, see
+     * DashboardService::getLowStockAlert()) shows the same items here that
+     * the alert claimed, rather than silently falling back to a combined
+     * total that can disagree with it (an item out at Warehouse but fine at
+     * POS is "low stock" on the alert but not on a combined-total view).
      */
-    public function getInventorySummary(?int $categoryId = null, ?int $supplierId = null, bool $lowStockOnly = false): Collection
+    public function getInventorySummary(?int $categoryId = null, ?int $supplierId = null, bool $lowStockOnly = false, ?int $locationId = null): Collection
     {
-        $query = Product::with(['category', 'supplier'])->withSum('locationStocks', 'qty');
+        $query = Product::with(['category', 'supplier']);
+
+        if ($locationId) {
+            $query->withSum(['locationStocks as location_stocks_sum_qty' => fn ($q) => $q->where('location_id', $locationId)], 'qty');
+        } else {
+            $query->withSum('locationStocks', 'qty');
+        }
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
@@ -45,9 +58,9 @@ class InventoryReportService
     /**
      * Grand total inventory value for the given filters.
      */
-    public function getGrandTotal(?int $categoryId = null, ?int $supplierId = null, bool $lowStockOnly = false): float
+    public function getGrandTotal(?int $categoryId = null, ?int $supplierId = null, bool $lowStockOnly = false, ?int $locationId = null): float
     {
-        return (float) $this->getInventorySummary($categoryId, $supplierId, $lowStockOnly)->sum('total_value');
+        return (float) $this->getInventorySummary($categoryId, $supplierId, $lowStockOnly, $locationId)->sum('total_value');
     }
 
     /**

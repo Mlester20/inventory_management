@@ -12,6 +12,15 @@
         </div>
     </div>
 
+    @if($locationName)
+        <div class="alert alert-secondary d-flex justify-content-between align-items-center mb-4" role="alert">
+            <span><i class="bx bx-map-pin me-1"></i> Showing <strong>{{ $locationName }}</strong> stock only, not the combined total across every location.</span>
+            <a href="{{ route('admin.reports.inventory-summary', array_diff_key(request()->query(), ['location_id' => ''])) }}" class="small">
+                Show combined total instead &times;
+            </a>
+        </div>
+    @endif
+
     <!-- Filter Form -->
     <div class="card mb-4">
         <div class="card-body">

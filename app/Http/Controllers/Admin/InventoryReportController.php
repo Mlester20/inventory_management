@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Services\InventoryReportService;
@@ -16,7 +17,7 @@ class InventoryReportController extends Controller
 
     /**
      * Display the inventory summary report.
-     * Accepts optional query params: category_id, supplier_id, low_stock_only
+     * Accepts optional query params: category_id, supplier_id, low_stock_only, location_id
      */
     public function summary(Request $request)
     {
@@ -24,13 +25,20 @@ class InventoryReportController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'low_stock_only' => 'nullable|boolean',
+            'location_id' => 'nullable|exists:locations,id',
         ]);
 
         $categoryId = $validated['category_id'] ?? null;
         $supplierId = $validated['supplier_id'] ?? null;
         $lowStockOnly = $request->boolean('low_stock_only');
+        // Optional: scopes qty/low-stock to one location instead of the
+        // combined total — used when linking here from a location-scoped
+        // alert (e.g. the Admin dashboard's Warehouse-only banner) so the
+        // report shows the same items the alert claimed, not a combined
+        // total that can silently disagree with it.
+        $locationId = $validated['location_id'] ?? null;
 
-        $allItems = $this->inventoryReportService->getInventorySummary($categoryId, $supplierId, $lowStockOnly);
+        $allItems = $this->inventoryReportService->getInventorySummary($categoryId, $supplierId, $lowStockOnly, $locationId);
         $grandTotal = $allItems->sum('total_value');
         $lowStockCount = $allItems->where('is_low_stock', true)->count();
 
@@ -56,6 +64,8 @@ class InventoryReportController extends Controller
             'categoryId' => $categoryId,
             'supplierId' => $supplierId,
             'lowStockOnly' => $lowStockOnly,
+            'locationId' => $locationId,
+            'locationName' => $locationId ? Location::find($locationId)?->name : null,
         ]);
     }
 
