@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Location;
 use App\Models\Purchase;
+use App\Services\DashboardService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 
 class HomeController extends Controller
 {
+    public function __construct(protected DashboardService $dashboardService) {}
+
     /**
      * The POS "Dashboard" landing page — a personal mini-dashboard for the
      * logged-in cashier (today's/this month's own sales, all-time count,
@@ -17,6 +21,12 @@ class HomeController extends Controller
     public function index()
     {
         $userId = Auth::id();
+
+        // POS-scoped: what's actually sellable right now at this location,
+        // not a combined total — a product can be low/out here even while
+        // the Warehouse is full, since that stock hasn't been transferred
+        // yet. See DashboardService::getLowStockAlert().
+        $lowStockAlert = $this->dashboardService->getLowStockAlert(Location::pos()->id, previewLimit: 3);
 
         $todayQuery = Purchase::where('user_id', $userId)->whereDate('purchase_date', Carbon::today());
         $todayCount = (clone $todayQuery)->count();
@@ -37,6 +47,7 @@ class HomeController extends Controller
             ->get();
 
         return view('pages.home', compact(
+            'lowStockAlert',
             'todayCount',
             'todayAmount',
             'monthCount',

@@ -24,6 +24,32 @@
         </div>
     </div>
 
+    <!-- Low Stock / Out of Stock Alert: POS location's own stock only, not
+         Warehouse's — see DashboardService::getLowStockAlert(). Kept concise
+         (no per-threshold detail, no link out — staff here can't reach the
+         admin-only Inventory Report) since this screen is operational, not
+         a full report. -->
+    @if($lowStockAlert['out_of_stock_count'] > 0)
+    <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bx bx-x-circle me-2 fs-5"></i>
+        <div>
+            <strong>{{ $lowStockAlert['out_of_stock_count'] }} item(s) are out of stock at POS!</strong>
+            <span class="d-block small">{{ $lowStockAlert['out_of_stock_items']->pluck('item_name')->join(', ') }}{{ $lowStockAlert['out_of_stock_count'] > $lowStockAlert['out_of_stock_items']->count() ? ', and more' : '' }}</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if($lowStockAlert['low_stock_count'] > 0)
+    <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bx bx-error-circle me-2 fs-5"></i>
+        <div>
+            <strong>{{ $lowStockAlert['low_stock_count'] }} item(s) are running low at POS!</strong>
+            <span class="d-block small">{{ $lowStockAlert['low_stock_items']->pluck('item_name')->join(', ') }}{{ $lowStockAlert['low_stock_count'] > $lowStockAlert['low_stock_items']->count() ? ', and more' : '' }}</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
     <!-- Stat Cards -->
     <div class="row">
         <div class="col-12 col-md-6 col-lg-3 mb-4">

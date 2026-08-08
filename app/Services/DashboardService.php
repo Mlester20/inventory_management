@@ -7,6 +7,7 @@ use App\Models\DeliveryReceipt;
 use App\Models\Expense;
 use App\Models\GoodsReceipt;
 use App\Models\Invoice;
+use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseOrder;
 use App\Models\Sale;
@@ -125,6 +126,52 @@ class DashboardService
             'total_value' => (float) $products->sum('total_value'),
             'low_stock_count' => $products->where('is_low_stock', true)->count(),
             'out_of_stock_count' => $products->where('on_hand_qty', '<=', 0)->count(),
+        ];
+    }
+
+    /**
+     * Low-stock / out-of-stock alert scoped to a single location — POS's
+     * own available stock, or Warehouse's, never a combined total across
+     * every location. A product can be low or out at POS while Warehouse
+     * is still full; that calls for a Stock Transfer, not a reorder, so
+     * conflating the two locations here would be actively misleading.
+     *
+     * Multi-branch scoping is still being finalized with the client — this
+     * method already takes an explicit $locationId rather than assuming
+     * Warehouse/POS, so pointing it at a future branch location later is a
+     * one-line change at each call site, not a rewrite of this method.
+     *
+     * Low stock and out of stock are mutually exclusive buckets (out of
+     * stock is qty <= 0; low stock is qty > 0 and <= threshold) since they
+     * warrant different visual treatment — a product isn't double-counted
+     * in both. The threshold comparison itself (<=) is unchanged from
+     * InventoryReportService::getInventorySummary(), just evaluated against
+     * one location's qty instead of the sum across all of them.
+     *
+     * @return array{low_stock_count: int, low_stock_items: Collection, out_of_stock_count: int, out_of_stock_items: Collection}
+     */
+    public function getLowStockAlert(int $locationId, int $previewLimit = 5): array
+    {
+        $products = Product::with('category', 'supplier')->withSum(
+            ['locationStocks as on_hand_qty' => fn ($query) => $query->where('location_id', $locationId)],
+            'qty'
+        )->get()->each(fn (Product $product) => $product->on_hand_qty = (int) ($product->on_hand_qty ?? 0));
+
+        $lowStock = $products
+            ->filter(fn (Product $product) => $product->on_hand_qty > 0 && $product->on_hand_qty <= $product->low_stock_threshold)
+            ->sortBy('on_hand_qty')
+            ->values();
+
+        $outOfStock = $products
+            ->filter(fn (Product $product) => $product->on_hand_qty <= 0)
+            ->sortBy('item_name')
+            ->values();
+
+        return [
+            'low_stock_count' => $lowStock->count(),
+            'low_stock_items' => $lowStock->take($previewLimit)->values(),
+            'out_of_stock_count' => $outOfStock->count(),
+            'out_of_stock_items' => $outOfStock->take($previewLimit)->values(),
         ];
     }
 

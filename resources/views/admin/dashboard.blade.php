@@ -12,17 +12,35 @@
         </div>
     </div>
 
-    <!-- Low Stock Alert Banner (unchanged logic/content) -->
-    @if($lowStockCount > 0)
+    <!-- Out of Stock Alert Banner: Warehouse-scoped, most critical — shown first -->
+    @if($outOfStockCount > 0)
     <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center" role="alert">
+        <i class="bx bx-x-circle me-2 fs-5"></i>
+        <div>
+            <strong>{{ $outOfStockCount }} item(s) are out of stock in the Warehouse!</strong>
+            <ul class="mb-0 mt-1">
+                @foreach($outOfStockItems as $item)
+                <li>{{ $item->item_name }}</li>
+                @endforeach
+            </ul>
+            <a href="{{ route('admin.reports.inventory-summary', ['low_stock_only' => 1, 'location_id' => $warehouseId]) }}" class="alert-link small">View full inventory report &rarr;</a>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
+    <!-- Low Stock Alert Banner: Warehouse-scoped (see DashboardService::getLowStockAlert()) -->
+    @if($lowStockCount > 0)
+    <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center" role="alert">
         <i class="bx bx-error-circle me-2 fs-5"></i>
         <div>
-            <strong>{{ $lowStockCount }} item(s) are low on stock!</strong>
+            <strong>{{ $lowStockCount }} item(s) are low on stock in the Warehouse!</strong>
             <ul class="mb-0 mt-1">
                 @foreach($lowStockItems as $item)
                 <li>{{ $item->item_name }} — Current: <strong>{{ $item->on_hand_qty }}</strong> / Threshold: <strong>{{ $item->low_stock_threshold }}</strong></li>
                 @endforeach
             </ul>
+            <a href="{{ route('admin.reports.inventory-summary', ['low_stock_only' => 1, 'location_id' => $warehouseId]) }}" class="alert-link small">View full inventory report &rarr;</a>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -127,12 +145,12 @@
         </div>
 
         <div class="col-6 col-lg-3 mb-4">
-            <div class="card dash-stat-card {{ $inventorySnapshot['out_of_stock_count'] > 0 ? 'dash-alert-card' : '' }}">
+            <div class="card dash-stat-card {{ $outOfStockCount > 0 ? 'dash-alert-card' : '' }}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="dash-stat-icon {{ $inventorySnapshot['out_of_stock_count'] > 0 ? 'dash-stat-icon-danger' : '' }}"><i class="bx bx-x-circle"></i></span>
+                        <span class="dash-stat-icon {{ $outOfStockCount > 0 ? 'dash-stat-icon-danger' : '' }}"><i class="bx bx-x-circle"></i></span>
                     </div>
-                    <h4 class="mb-0">{{ $inventorySnapshot['out_of_stock_count'] }}</h4>
+                    <h4 class="mb-0">{{ $outOfStockCount }}</h4>
                     <span class="text-muted small d-block">Out of Stock</span>
                 </div>
             </div>
@@ -196,8 +214,9 @@
     <div class="row">
         <div class="col-12 col-lg-6 mb-4">
             <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="card-title m-0">Stock Alert</h5>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title m-0">Stock Alert <small class="text-muted fw-normal">(Warehouse)</small></h5>
+                    <a href="{{ route('admin.reports.inventory-summary', ['low_stock_only' => 1, 'location_id' => $warehouseId]) }}" class="small">View all &rarr;</a>
                 </div>
                 <div class="table-responsive">
                     <table class="table">

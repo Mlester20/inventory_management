@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\StockMovement;
@@ -21,28 +22,21 @@ class DashboardController extends Controller
     {
         // --- Stock Summary ---
         $totalItems = Product::count();
-        $totalStock = (int) \DB::table('location_stocks')->sum('qty');
 
-        // Products with computed on-hand quantity (total across every
-        // location), for low-stock/table use.
-        $productsWithQty = Product::with('category', 'supplier')
-            ->withSum('locationStocks', 'qty')
-            ->orderByRaw('COALESCE((
-                select sum(ls.qty) from location_stocks ls
-                inner join product_batches pb on pb.id = ls.product_batch_id
-                where pb.product_id = products.id
-            ), 0) asc')
-            ->get()
-            ->each(fn (Product $product) => $product->on_hand_qty = (int) ($product->location_stocks_sum_qty ?? 0));
-
-        // Low stock: products where on-hand qty (total across all locations)
-        // <= low_stock_threshold — POS running low while the Warehouse is
-        // full just means a transfer is needed, not a reorder.
-        $lowStockItems = $productsWithQty->filter(fn (Product $product) => $product->on_hand_qty <= $product->low_stock_threshold)->values();
-        $lowStockCount = $lowStockItems->count();
-
-        // All products with current stock vs threshold for the stock table
-        $stockItems = $productsWithQty;
+        // Warehouse-scoped: this is the stock Admin manages day-to-day
+        // (reorder from supplier, transfer to POS) — not a combined total
+        // across every location, since POS running low doesn't mean
+        // Warehouse needs reordering. See DashboardService::getLowStockAlert().
+        // $warehouseId is also passed to the view so its "view full report"
+        // links can carry the same scoping — otherwise the linked report
+        // would fall back to a combined total that can silently disagree
+        // with what this banner just claimed.
+        $warehouseId = Location::warehouse()->id;
+        $lowStockAlert = $this->dashboardService->getLowStockAlert($warehouseId);
+        $lowStockCount = $lowStockAlert['low_stock_count'];
+        $lowStockItems = $lowStockAlert['low_stock_items'];
+        $outOfStockCount = $lowStockAlert['out_of_stock_count'];
+        $outOfStockItems = $lowStockAlert['out_of_stock_items'];
 
         // --- Purchase Summary ---
         $totalPurchases = Purchase::count();
@@ -73,10 +67,11 @@ class DashboardController extends Controller
 
         return view('admin.dashboard', compact(
             'totalItems',
-            'totalStock',
+            'warehouseId',
             'lowStockItems',
             'lowStockCount',
-            'stockItems',
+            'outOfStockItems',
+            'outOfStockCount',
             'totalPurchases',
             'totalRevenue',
             'recentPurchases',
