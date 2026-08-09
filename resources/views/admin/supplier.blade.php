@@ -191,17 +191,21 @@
                         <hr>
 
                         <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="text-muted small d-block">Advances</label>
-                                <p id="view_advances" class="fw-semibold mb-0"></p>
+                            <div class="col-md-3">
+                                <label class="text-muted small d-block">GRNI</label>
+                                <p id="view_grni" class="fw-semibold mb-0"></p>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="text-muted small d-block">Balance</label>
                                 <p id="view_balance" class="fw-semibold mb-0"></p>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="text-muted small d-block">Payables</label>
                                 <p id="view_payables" class="fw-semibold mb-0"></p>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="text-muted small d-block">Advance Payments</label>
+                                <p id="view_advance_payments" class="fw-semibold mb-0 text-success"></p>
                             </div>
                         </div>
 
@@ -446,7 +450,10 @@
                         <th class="text-end">Purchase Orders</th>
                         <th class="text-end">Purchase Invoices</th>
                         <th class="text-end">Goods Receipts</th>
-                        <th class="text-end">Advances</th>
+                        <th class="text-end">
+                            GRNI
+                            <i class="bx bx-info-circle text-muted" style="cursor: help;" title="Goods Received Not Invoiced — Goods Receipts already in the Warehouse with no Purchase Invoice yet"></i>
+                        </th>
                         <th class="text-end">Balances</th>
                         <th class="text-end">Payables (PHP)</th>
                         <th>Actions</th>
@@ -464,7 +471,13 @@
                                 </a>
                             </td>
                             <td class="text-end">{{ $supplier->goods_receipts_count }}</td>
-                            <td class="text-end">{{ $supplier->advances > 0 ? number_format($supplier->advances, 2) : '—' }}</td>
+                            <td class="text-end">
+                                @if($supplier->grni_count > 0)
+                                    <span class="badge bg-label-info">{{ $supplier->grni_count }}</span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td class="text-end {{ $supplier->balance > 0 ? 'text-danger' : '' }}">{{ number_format($supplier->balance, 2) }}</td>
                             <td class="text-end">{{ number_format($supplier->payables, 2) }}</td>
                             <td>
@@ -497,7 +510,8 @@
                                             data-email="{{ $supplier->email }}"
                                             data-address="{{ $supplier->delivery_address }}"
                                             data-vat-type="{{ $supplier->vat_type }}"
-                                            data-advances="{{ number_format($supplier->advances, 2) }}"
+                                            data-grni="{{ $supplier->grni_count }}"
+                                            data-advance-payments="{{ number_format($supplier->advance_payments, 2) }}"
                                             data-balance="{{ number_format($supplier->balance, 2) }}"
                                             data-payables="{{ number_format($supplier->payables, 2) }}"
                                             data-payments='{{ $supplier->payments->map(fn ($p) => [
@@ -577,7 +591,8 @@
             document.getElementById('view_delivery_address').textContent = this.getAttribute('data-address');
             document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type');
 
-            document.getElementById('view_advances').textContent = '₱' + (this.getAttribute('data-advances') || '0.00');
+            document.getElementById('view_grni').textContent = this.getAttribute('data-grni') || '0';
+            document.getElementById('view_advance_payments').textContent = '₱' + (this.getAttribute('data-advance-payments') || '0.00');
             document.getElementById('view_balance').textContent = '₱' + (this.getAttribute('data-balance') || '0.00');
             document.getElementById('view_payables').textContent = '₱' + (this.getAttribute('data-payables') || '0.00');
 

@@ -16,7 +16,15 @@ class SupplierController extends Controller
      */
     public function index()
     {
-        $suppliers = Supplier::withCount(['purchaseOrders', 'goodsReceipts', 'purchaseInvoices'])
+        $suppliers = Supplier::withCount([
+                'purchaseOrders', 'goodsReceipts', 'purchaseInvoices',
+                // GRNI (Goods Received Not Invoiced): Goods Receipts already
+                // in the Warehouse with no Purchase Invoice against them yet.
+                // Replaces the old "Advances" column, which was a payment
+                // figure and didn't match what that slot was supposed to
+                // mean — see docs/supplier-grni-plan.md.
+                'goodsReceipts as grni_count' => fn ($query) => $query->doesntHave('purchaseInvoices'),
+            ])
             ->with([
                 'payments' => fn ($query) => $query->latest('payment_date')->limit(5),
             ])
@@ -49,9 +57,12 @@ class SupplierController extends Controller
             $totalPayments = (float) $supplierPayments->firstWhere('type', 'payment')?->total;
             $totalAdvances = (float) $supplierPayments->firstWhere('type', 'advance')?->total;
 
-            // "Advances" = prepayment credit currently on file, as declared
-            // when the payment was recorded.
-            $supplier->advances = $totalAdvances;
+            // Advance payments on file (prepayment credit, declared when the
+            // payment was recorded) — no longer the list's "Advances" column
+            // (that's now GRNI, see grni_count above); kept for the View
+            // modal only. Renamed from $supplier->advances to avoid reading
+            // as the same concept as GRNI.
+            $supplier->advance_payments = $totalAdvances;
 
             // "Balances" = true bottom-line amount owed, after both payments
             // and advances (can go negative if we've paid more than we've
