@@ -59,6 +59,7 @@ class GoodsReceiptController extends Controller
 
         $itemsForJs = $items->map(fn (Product $item) => [
             'id' => $item->id,
+            'code' => $item->code,
             'name' => $item->description ?: $item->item_name,
             'unit_cost' => (float) $item->unit_cost,
             'supplier_id' => $item->supplier_id,
@@ -82,7 +83,7 @@ class GoodsReceiptController extends Controller
             'prepared_by' => 'nullable|exists:users,id',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.qty' => 'required|integer|min:1',
+            'items.*.qty' => 'nullable|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
             'items.*.batch_no' => 'nullable|string|max:100',
             'items.*.expiration_date' => 'nullable|date',

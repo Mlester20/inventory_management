@@ -79,6 +79,17 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Line Items</h6>
+                    <div class="d-flex gap-2 align-items-center">
+                        <select id="itemSortSelect" class="form-select form-select-sm" style="width: 160px;">
+                            <option value="name_asc">Name (A–Z)</option>
+                            <option value="name_desc">Name (Z–A)</option>
+                            <option value="code_asc">Code (A–Z)</option>
+                        </select>
+                        <input type="number" id="generateLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="100" placeholder="# lines">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="generateLinesBtn">
+                            <i class="bx bx-list-plus"></i> Generate
+                        </button>
+                    </div>
                 </div>
 
                 <div id="lineItemsBody"></div>
@@ -140,6 +151,27 @@
     function findItemByLabel(label) {
         return itemsForSupplier(currentSupplierId()).find(i => itemLabel(i) === label);
     }
+
+    // "Sort/arrange" toggle — re-sorts the shared ITEMS array and rebuilds
+    // every already-rendered row's datalist.
+    function sortItems(mode) {
+        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+        if (mode === 'name_desc') {
+            ITEMS.sort((a, b) => collator.compare(b.name, a.name));
+        } else if (mode === 'code_asc') {
+            ITEMS.sort((a, b) => collator.compare(a.code || '', b.code || ''));
+        } else {
+            ITEMS.sort((a, b) => collator.compare(a.name, b.name));
+        }
+
+        document.querySelectorAll('#lineItemsBody datalist').forEach(dl => {
+            dl.innerHTML = itemDatalistOptions();
+        });
+    }
+
+    document.getElementById('itemSortSelect').addEventListener('change', function () {
+        sortItems(this.value);
+    });
 
     function renumberRows() {
         document.querySelectorAll('#lineItemsBody .line-item-card').forEach((card, i) => {
@@ -229,6 +261,35 @@
     }
 
     document.getElementById('addRowBtn').addEventListener('click', addRow);
+
+    // "Generate N Lines" — reuses the exact same addRow() the Add Item
+    // button calls, just N times in a row, so a batch-generated line is
+    // identical to a manually-added one (same indexing, same events bound).
+    const MAX_GENERATE_LINES = 100;
+
+    function generateLines() {
+        const input = document.getElementById('generateLinesInput');
+        const requested = parseInt(input.value, 10);
+
+        if (!requested || requested <= 0) {
+            return;
+        }
+
+        const count = Math.min(requested, MAX_GENERATE_LINES);
+        for (let i = 0; i < count; i++) {
+            addRow();
+        }
+
+        input.value = '';
+    }
+
+    document.getElementById('generateLinesBtn').addEventListener('click', generateLines);
+    document.getElementById('generateLinesInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            generateLines();
+        }
+    });
 
     // Kept for future use if per-supplier filtering is ever reintroduced —
     // currently a no-op refresh, since the item list no longer depends on

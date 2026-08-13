@@ -102,6 +102,11 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">Generic Items</h6>
                         <div class="d-flex gap-2 align-items-center">
+                            <select id="itemSortSelect" class="form-select form-select-sm" style="width: 160px;">
+                                <option value="name_asc">Name (A–Z)</option>
+                                <option value="name_desc">Name (Z–A)</option>
+                                <option value="code_asc">Code (A–Z)</option>
+                            </select>
                             <input type="number" id="generateAoLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="100" placeholder="# lines">
                             <button type="button" class="btn btn-sm btn-outline-primary" id="generateAoLinesBtn">
                                 <i class="bx bx-list-plus"></i> Generate
@@ -252,6 +257,27 @@
     function findGenericByLabel(label) {
         return GENERIC_NAMES.find(g => genericLabel(g) === label);
     }
+
+    // "Sort/arrange" toggle — re-sorts the in-memory GENERIC_NAMES array and
+    // rebuilds every already-rendered Advance Order row's datalist.
+    function sortGenericNames(mode) {
+        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+        if (mode === 'name_desc') {
+            GENERIC_NAMES.sort((a, b) => collator.compare(b.generic_name, a.generic_name));
+        } else if (mode === 'code_asc') {
+            GENERIC_NAMES.sort((a, b) => collator.compare(a.code || '', b.code || ''));
+        } else {
+            GENERIC_NAMES.sort((a, b) => collator.compare(a.generic_name, b.generic_name));
+        }
+
+        document.querySelectorAll('#aoLineItemsBody datalist').forEach(dl => {
+            dl.innerHTML = genericDatalistOptions();
+        });
+    }
+
+    document.getElementById('itemSortSelect').addEventListener('change', function () {
+        sortGenericNames(this.value);
+    });
 
     function showTab(tab) {
         document.getElementById('transaction_type').value = tab;

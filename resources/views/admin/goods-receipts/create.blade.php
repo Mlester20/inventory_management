@@ -73,6 +73,11 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">Received Items</h6>
                         <div class="d-flex gap-2 align-items-center">
+                            <select id="itemSortSelect" class="form-select form-select-sm" style="width: 160px;">
+                                <option value="name_asc">Name (A–Z)</option>
+                                <option value="name_desc">Name (Z–A)</option>
+                                <option value="code_asc">Code (A–Z)</option>
+                            </select>
                             <input type="number" id="generateDirectLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="100" placeholder="# lines">
                             <button type="button" class="btn btn-sm btn-outline-primary" id="generateDirectLinesBtn">
                                 <i class="bx bx-list-plus"></i> Generate
@@ -164,6 +169,28 @@
     function findItemByLabel(label) {
         return itemsForSupplier(currentDirectSupplierId()).find(i => itemLabel(i) === label);
     }
+
+    // "Sort/arrange" toggle — re-sorts the shared ITEMS array (also used by
+    // the Against-PO tab's Brand suggestions) and rebuilds every
+    // already-rendered Direct Receipt row's datalist.
+    function sortItems(mode) {
+        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+        if (mode === 'name_desc') {
+            ITEMS.sort((a, b) => collator.compare(b.name, a.name));
+        } else if (mode === 'code_asc') {
+            ITEMS.sort((a, b) => collator.compare(a.code || '', b.code || ''));
+        } else {
+            ITEMS.sort((a, b) => collator.compare(a.name, b.name));
+        }
+
+        document.querySelectorAll('#directLineItemsBody datalist').forEach(dl => {
+            dl.innerHTML = itemDatalistOptions();
+        });
+    }
+
+    document.getElementById('itemSortSelect').addEventListener('change', function () {
+        sortItems(this.value);
+    });
 
     function addDirectRow() {
         const index = directRowIndex++;

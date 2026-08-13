@@ -54,6 +54,11 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Line Items</h6>
                     <div class="d-flex gap-2 align-items-center">
+                        <select id="itemSortSelect" class="form-select form-select-sm" style="width: 160px;">
+                            <option value="name_asc">Name (A–Z)</option>
+                            <option value="name_desc">Name (Z–A)</option>
+                            <option value="code_asc">Code (A–Z)</option>
+                        </select>
                         <input type="number" id="generateLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="100" placeholder="# lines">
                         <button type="button" class="btn btn-sm btn-outline-primary" id="generateLinesBtn">
                             <i class="bx bx-list-plus"></i> Generate
@@ -103,6 +108,37 @@
         return PRODUCTS.find(p => productLabel(p) === label);
     }
 
+    // Only batches with no expiry or a still-valid expiry are offered as
+    // suggestions — an expired lot shouldn't be the easy default pick, but
+    // typing one that's already on the product (expired or not) still
+    // auto-fills its expiry via the batch-input listener below.
+    function activeBatches(product) {
+        const today = new Date().toISOString().slice(0, 10);
+        return product.batches.filter(b => !b.expiration_date || b.expiration_date >= today);
+    }
+
+    // "Sort/arrange" toggle — re-sorts the in-memory PRODUCTS array and
+    // rebuilds every already-rendered row's datalist, so existing rows
+    // reflect the new order too, not just rows added afterward.
+    function sortProducts(mode) {
+        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+        if (mode === 'name_desc') {
+            PRODUCTS.sort((a, b) => collator.compare(b.name, a.name));
+        } else if (mode === 'code_asc') {
+            PRODUCTS.sort((a, b) => collator.compare(a.code || '', b.code || ''));
+        } else {
+            PRODUCTS.sort((a, b) => collator.compare(a.name, b.name));
+        }
+
+        document.querySelectorAll('#lineItemsBody .product-datalist').forEach(dl => {
+            dl.innerHTML = productDatalistOptions();
+        });
+    }
+
+    document.getElementById('itemSortSelect').addEventListener('change', function () {
+        sortProducts(this.value);
+    });
+
     function renumberRows() {
         document.querySelectorAll('#lineItemsBody .line-item-card').forEach((card, i) => {
             card.querySelector('.line-item-number').textContent = 'Line #' + (i + 1);
@@ -122,13 +158,15 @@
                 </button>
             </div>
             <div class="row g-2">
-                <div class="col-md-3">
+                <div class="col-12">
                     <label class="form-label small mb-1">Item Description</label>
                     <input type="text" class="form-control product-search-input" list="product-list-${index}"
                         placeholder="Search item..." autocomplete="off" required>
                     <datalist id="product-list-${index}" class="product-datalist">${productDatalistOptions()}</datalist>
                     <input type="hidden" name="lines[${index}][product_id]" class="product-id-input">
                 </div>
+            </div>
+            <div class="row g-2 mt-1">
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Lot/Batch No.</label>
                     <input type="text" name="lines[${index}][batch_no]" class="form-control batch-input" list="batch-list-${index}">
@@ -145,15 +183,15 @@
                         ${LOCATIONS.map(loc => `<option value="${loc.id}" ${loc.is_default ? 'selected' : ''}>${loc.name}</option>`).join('')}
                     </select>
                 </div>
-                <div class="col-md-1">
+                <div class="col-md-2">
                     <label class="form-label small mb-1">Qty</label>
                     <input type="number" name="lines[${index}][qty]" class="form-control qty-input" min="1" value="1" required>
                 </div>
-                <div class="col-md-1">
+                <div class="col-md-2">
                     <label class="form-label small mb-1">Unit</label>
                     <input type="text" class="form-control unit-display" readonly>
                 </div>
-                <div class="col-md-1">
+                <div class="col-md-2">
                     <label class="form-label small mb-1">Remarks</label>
                     <input type="text" name="lines[${index}][remarks]" class="form-control">
                 </div>
@@ -189,7 +227,7 @@
             batchIdInput.value = '';
 
             if (product) {
-                product.batches.forEach(b => {
+                activeBatches(product).forEach(b => {
                     const opt = document.createElement('option');
                     opt.value = b.batch_no || '';
                     batchDatalist.appendChild(opt);

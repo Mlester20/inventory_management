@@ -52,6 +52,7 @@ class StockDisposalController extends Controller
 
         $productsForJs = $products->map(fn (Product $p) => [
             'id' => $p->id,
+            'code' => $p->code,
             'name' => $p->item_name,
             'batches' => $p->batches->map(fn (ProductBatch $b) => [
                 'id' => $b->id,

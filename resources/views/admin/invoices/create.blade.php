@@ -145,6 +145,11 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Line Items</h6>
+                    <select id="itemSortSelect" class="form-select form-select-sm" style="width: 160px;">
+                        <option value="name_asc">Name (A–Z)</option>
+                        <option value="name_desc">Name (Z–A)</option>
+                        <option value="code_asc">Code (A–Z)</option>
+                    </select>
                 </div>
 
                 <div id="lineItemsBody"></div>
@@ -248,6 +253,27 @@
     function findItemByLabel(label) {
         return ITEMS.find(i => itemLabel(i) === label);
     }
+
+    // "Sort/arrange" toggle — re-sorts the in-memory ITEMS array and rebuilds
+    // every already-rendered row's datalist.
+    function sortItems(mode) {
+        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+        if (mode === 'name_desc') {
+            ITEMS.sort((a, b) => collator.compare(b.name, a.name));
+        } else if (mode === 'code_asc') {
+            ITEMS.sort((a, b) => collator.compare(a.code || '', b.code || ''));
+        } else {
+            ITEMS.sort((a, b) => collator.compare(a.name, b.name));
+        }
+
+        document.querySelectorAll('#lineItemsBody datalist').forEach(dl => {
+            dl.innerHTML = itemDatalistOptions();
+        });
+    }
+
+    document.getElementById('itemSortSelect').addEventListener('change', function () {
+        sortItems(this.value);
+    });
 
     function renumberRows() {
         document.querySelectorAll('#lineItemsBody .line-item-card').forEach((card, i) => {

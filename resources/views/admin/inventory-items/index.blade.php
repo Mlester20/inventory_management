@@ -4,6 +4,16 @@
 
 @section('content')
     <div class="mt-3">
+        @if ($errors->any())
+            <div class="alert alert-danger">
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <ul class="nav nav-tabs mb-3">
             <li class="nav-item">
                 <a class="nav-link {{ $tab === 'general' ? 'active' : '' }}" href="{{ route('inventory-items.index', ['tab' => 'general']) }}">General Item View</a>
@@ -113,41 +123,45 @@
                 <div class="modal-dialog" role="document">
                     <form action="{{ route('generic-names.store') }}" method="POST">
                         @csrf
+                        <input type="hidden" name="form" value="new_generic">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title">New Generic Item</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
+                                @if (old('form') === 'new_generic' && $errors->has('code'))
+                                    <div class="alert alert-danger py-2">{{ $errors->first('code') }}</div>
+                                @endif
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Code</label>
-                                        <input type="text" name="code" class="form-control" placeholder="e.g., 00012" value="{{ $nextGenericCode }}" required>
+                                        <input type="text" name="code" class="form-control @if (old('form') === 'new_generic') @error('code') is-invalid @enderror @endif" placeholder="e.g., 00012" value="{{ old('form') === 'new_generic' ? old('code') : $nextGenericCode }}" required>
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Category</label>
                                         <select name="category_id" class="form-select" required>
                                             <option value="">-- Select Category --</option>
                                             @foreach ($categories as $category)
-                                                <option value="{{ $category->id }}">{{ $category->category_name }}</option>
+                                                <option value="{{ $category->id }}" {{ old('form') === 'new_generic' && (int) old('category_id') === $category->id ? 'selected' : '' }}>{{ $category->category_name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Generic Description</label>
-                                    <textarea name="generic_name" class="form-control" rows="2" placeholder="e.g., Paracetamol 500mg" required></textarea>
+                                    <textarea name="generic_name" class="form-control" rows="2" placeholder="e.g., Paracetamol 500mg" required>{{ old('form') === 'new_generic' ? old('generic_name') : '' }}</textarea>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Unit</label>
-                                        <input type="text" name="unit" class="form-control" placeholder="e.g. Tablet, Box, Bottle" required>
+                                        <input type="text" name="unit" class="form-control" placeholder="e.g. Tablet, Box, Bottle" value="{{ old('form') === 'new_generic' ? old('unit') : '' }}" required>
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">VAT Type</label>
                                         <select name="vat_type" class="form-select" required>
                                             @foreach (\App\Models\GenericName::VAT_TYPES as $value => $label)
-                                                <option value="{{ $value }}">{{ $label }}</option>
+                                                <option value="{{ $value }}" {{ old('form') === 'new_generic' && old('vat_type') === $value ? 'selected' : '' }}>{{ $label }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -492,6 +506,10 @@
 
 @section('scripts')
 <script>
+    @if (old('form') === 'new_generic' && $errors->any())
+        new bootstrap.Modal(document.getElementById('genericItemModal')).show();
+    @endif
+
     document.querySelectorAll('.edit-generic-btn').forEach(button => {
         button.addEventListener('click', function () {
             const get = (attr) => this.getAttribute(attr);

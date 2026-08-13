@@ -58,6 +58,7 @@ class DeliveryReceiptController extends Controller
 
         $genericNamesForJs = $genericNames->map(fn (GenericName $g) => [
             'id' => $g->id,
+            'code' => $g->code,
             'generic_name' => $g->generic_name,
             'unit' => $g->unit,
             'category_name' => $g->category->category_name,

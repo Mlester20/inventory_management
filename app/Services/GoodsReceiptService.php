@@ -39,6 +39,13 @@ class GoodsReceiptService
      */
     public function createGoodsReceipt(array $data, ?int $userId = null): GoodsReceipt
     {
+        $hasAnyQty = collect($data['items'])->contains(fn ($line) => ! empty($line['qty']) && (int) $line['qty'] > 0);
+        if (! $hasAnyQty) {
+            throw ValidationException::withMessages([
+                'items' => 'Enter a quantity for at least one item.',
+            ]);
+        }
+
         return DB::transaction(function () use ($data, $userId) {
             $grNo = $this->generateGrNo();
 
@@ -53,6 +60,13 @@ class GoodsReceiptService
             $affectedPurchaseOrders = [];
 
             foreach ($data['items'] as $line) {
+                // A partial receipt intentionally leaves some pending PO
+                // lines blank (not yet delivered) — skip them rather than
+                // treating a blank qty as 0 units received.
+                if (empty($line['qty']) || (int) $line['qty'] <= 0) {
+                    continue;
+                }
+
                 $product = Product::findOrFail($line['product_id']);
                 $qty = (int) $line['qty'];
 

@@ -61,6 +61,7 @@ class SalesQuoteController extends Controller
 
             return [
                 'id' => $genericName->id,
+                'code' => $genericName->code,
                 'generic_name' => $genericName->generic_name,
                 'unit' => $genericName->unit,
                 'category_name' => $genericName->category->category_name,

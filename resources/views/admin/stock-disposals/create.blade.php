@@ -54,6 +54,11 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">Items to Dispose</h6>
                     <div class="d-flex gap-2 align-items-center">
+                        <select id="itemSortSelect" class="form-select form-select-sm" style="width: 160px;">
+                            <option value="name_asc">Name (A–Z)</option>
+                            <option value="name_desc">Name (Z–A)</option>
+                            <option value="code_asc">Code (A–Z)</option>
+                        </select>
                         <input type="number" id="generateLinesInput" class="form-control form-control-sm" style="width: 90px;" min="1" max="100" placeholder="# lines">
                         <button type="button" class="btn btn-sm btn-outline-primary" id="generateLinesBtn">
                             <i class="bx bx-list-plus"></i> Generate
@@ -95,6 +100,30 @@
     function findProductByLabel(label) {
         return PRODUCTS.find(p => productLabel(p) === label);
     }
+
+    // "Sort/arrange" toggle — re-sorts the in-memory PRODUCTS array and
+    // rebuilds every already-rendered row's item datalist.
+    function sortProducts(mode) {
+        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+        if (mode === 'name_desc') {
+            PRODUCTS.sort((a, b) => collator.compare(b.name, a.name));
+        } else if (mode === 'code_asc') {
+            PRODUCTS.sort((a, b) => collator.compare(a.code || '', b.code || ''));
+        } else {
+            PRODUCTS.sort((a, b) => collator.compare(a.name, b.name));
+        }
+
+        document.querySelectorAll('#lineItemsBody .product-search-input').forEach(input => {
+            const datalist = document.getElementById(input.getAttribute('list'));
+            if (datalist) {
+                datalist.innerHTML = productDatalistOptions();
+            }
+        });
+    }
+
+    document.getElementById('itemSortSelect').addEventListener('change', function () {
+        sortProducts(this.value);
+    });
 
     function findBatchById(batchId) {
         for (const product of PRODUCTS) {
