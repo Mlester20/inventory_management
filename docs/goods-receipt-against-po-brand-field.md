@@ -1,6 +1,9 @@
 # Goods Receipt "Against Purchase Order" — Brand Field Scope
 
-**Status: Option 1 implemented and live. Option 2 pending Sir's confirmation.**
+**Status: Option 1 implemented and live. Option 2 DISREGARDED (2026-08-11)** — raised during the
+multi-branch discussion, but that turned out not to apply (each branch runs its own separate system, not
+shared under this one). No reason to widen the Brand field beyond Option 1 anymore; closing this out rather
+than leaving it open.
 
 ## Background
 
