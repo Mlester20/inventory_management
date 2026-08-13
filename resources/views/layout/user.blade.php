@@ -247,7 +247,7 @@
                     <li>
                       <a class="dropdown-item" href="{{ route('pages.activity-log') }}">
                         <i class="bx bx-cog me-2"></i>
-                        <span class="align-middle">Activity Log</span>
+                        <span class="align-middle">Audit Trail</span>
                       </a>
                     </li>
                     <li>

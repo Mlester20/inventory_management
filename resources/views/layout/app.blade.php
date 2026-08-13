@@ -466,7 +466,7 @@
             <li class="menu-item">
               <a href="{{ route('activity-logs.index') }}" class="menu-link {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
                 <i class="menu-icon tf-icons bx bx-history"></i>
-                <div data-i18n="Activity Log">Activity Log</div>
+                <div data-i18n="Audit Trail">Audit Trail</div>
               </a>
             </li>
 

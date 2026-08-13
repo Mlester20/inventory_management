@@ -1,11 +1,11 @@
 @extends('layout.app')
 
-@section('title', 'Activities Log')
+@section('title', 'Audit Trail')
 
 @section('content')
 <div class="card shadow-sm mt-3">
     <div class="card-header">
-        <h5 class="mb-3">Activities Log</h5>
+        <h5 class="mb-3">Audit Trail</h5>
         <form action="{{ route('activity-logs.index') }}" method="GET" class="row g-2 align-items-end">
             <div class="col-md-2">
                 <label class="form-label small text-muted mb-1">User</label>
@@ -145,7 +145,7 @@
         @else
             <div class="p-5 text-center">
                 <i class="bx bx-inbox text-muted" style="font-size: 3rem;"></i>
-                <p class="mt-3 text-muted">No activity logs found.</p>
+                <p class="mt-3 text-muted">No audit trail records found.</p>
             </div>
         @endif
     </div>
@@ -160,7 +160,7 @@
                     </small>
                 </div>
                 <div class="col d-flex justify-content-end">
-                    <nav aria-label="Activity log pagination">
+                    <nav aria-label="Audit trail pagination">
                         <ul class="pagination mb-0">
 
                             {{-- First Page --}}
@@ -215,7 +215,7 @@
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Activity Log Details</h5>
+                <h5 class="modal-title">Audit Trail Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">

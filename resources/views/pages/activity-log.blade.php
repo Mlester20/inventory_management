@@ -1,6 +1,6 @@
 @extends('layout.user')
 
-@section('title', 'Activity Log')
+@section('title', 'Audit Trail')
 
 @section('content')
 <div class="container-xxl flex-grow-1 container-p-y">
@@ -8,7 +8,7 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title m-0">Activity Log</h5>
+                    <h5 class="card-title m-0">Audit Trail</h5>
                     <button class="btn btn-sm btn-primary" onclick="location.reload()">
                         <i class="bx bx-refresh me-1"></i>Refresh
                     </button>
@@ -29,7 +29,7 @@
                             <tr>
                                 <td colspan="6" class="text-center text-muted py-4">
                                     <i class="bx bx-loader bx-spin fs-1"></i>
-                                    <p>Loading activity log...</p>
+                                    <p>Loading audit trail...</p>
                                 </td>
                             </tr>
                         </tbody>
@@ -71,12 +71,12 @@
                     populateTable(data.data);
                     updatePagination(data.pagination);
                 } else {
-                    showError('Failed to fetch activity logs');
+                    showError('Failed to fetch audit trail');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showError('An error occurred while fetching activity logs');
+                showError('An error occurred while fetching audit trail');
             });
         }
 
@@ -88,7 +88,7 @@
                     <tr>
                         <td colspan="6" class="text-center text-muted py-4">
                             <i class="bx bx-inbox fs-1"></i>
-                            <p>No activity logs found</p>
+                            <p>No audit trail records found</p>
                         </td>
                     </tr>
                 `;
