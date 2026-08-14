@@ -49,7 +49,7 @@ class GoodsReceiptController extends Controller
     public function create(Request $request)
     {
         $suppliers = Supplier::orderBy('supplier_name')->get();
-        $items = Product::orderBy('item_name')->get();
+        $items = Product::with(['genericName', 'batches'])->orderBy('item_name')->get();
         $openPurchaseOrders = PurchaseOrder::with('supplier')
             ->whereIn('status', ['open', 'partially_received'])
             ->latest()
@@ -61,9 +61,15 @@ class GoodsReceiptController extends Controller
             'id' => $item->id,
             'code' => $item->code,
             'name' => $item->description ?: $item->item_name,
+            'unit' => $item->genericName->unit ?? '',
             'unit_cost' => (float) $item->unit_cost,
             'supplier_id' => $item->supplier_id,
             'generic_name_id' => $item->generic_name_id,
+            'batches' => $item->batches->map(fn ($b) => [
+                'id' => $b->id,
+                'batch_no' => $b->batch_no,
+                'expiration_date' => $b->expiration_date?->format('Y-m-d'),
+            ])->values(),
         ])->values();
 
         return view('admin.goods-receipts.create', compact(
@@ -84,9 +90,11 @@ class GoodsReceiptController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.qty' => 'nullable|integer|min:1',
+            'items.*.unit' => 'nullable|string|max:50',
             'items.*.unit_cost' => 'required|numeric|min:0',
             'items.*.batch_no' => 'nullable|string|max:100',
             'items.*.expiration_date' => 'nullable|date',
+            'items.*.remarks' => 'nullable|string|max:255',
             'items.*.purchase_order_item_id' => 'nullable|exists:purchase_order_items,id',
         ]);
 

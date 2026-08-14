@@ -170,6 +170,15 @@
         return itemsForSupplier(currentDirectSupplierId()).find(i => itemLabel(i) === label);
     }
 
+    // Only batches with no expiry or a still-valid expiry are offered as
+    // suggestions, so re-encoding an existing batch/lot is a pick from the
+    // list instead of retyping — same pattern already used in Inventory
+    // Adjustment. Typing a brand-new batch number still works freely.
+    function activeBatches(item) {
+        const today = new Date().toISOString().slice(0, 10);
+        return item.batches.filter(b => !b.expiration_date || b.expiration_date >= today);
+    }
+
     // "Sort/arrange" toggle — re-sorts the shared ITEMS array (also used by
     // the Against-PO tab's Brand suggestions) and rebuilds every
     // already-rendered Direct Receipt row's datalist.
@@ -221,11 +230,22 @@
                 </div>
                 <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Batch No.</label>
-                    <input type="text" name="items[${index}][batch_no]" class="form-control">
+                    <input type="text" class="form-control batch-input" list="direct-batch-list-${index}" name="items[${index}][batch_no]">
+                    <datalist id="direct-batch-list-${index}" class="batch-datalist"></datalist>
                 </div>
                 <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Expiry</label>
-                    <input type="date" name="items[${index}][expiration_date]" class="form-control">
+                    <input type="date" name="items[${index}][expiration_date]" class="form-control expiry-input">
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Unit</label>
+                    <input type="text" name="items[${index}][unit]" class="form-control unit-input" placeholder="e.g. Box, Bottle">
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label small mb-1">Remarks</label>
+                    <input type="text" name="items[${index}][remarks]" class="form-control">
                 </div>
             </div>
         `;
@@ -234,11 +254,34 @@
         const itemSearchInput = card.querySelector('.item-search-input');
         const itemIdInput = card.querySelector('.item-id-input');
         const costInput = card.querySelector('.cost-input');
+        const unitInput = card.querySelector('.unit-input');
+        const batchInput = card.querySelector('.batch-input');
+        const batchDatalist = card.querySelector('.batch-datalist');
+        const expiryInput = card.querySelector('.expiry-input');
+
         itemSearchInput.addEventListener('input', function () {
             const item = findItemByLabel(this.value);
             itemIdInput.value = item ? item.id : '';
+            batchDatalist.innerHTML = '';
             if (item) {
                 costInput.value = item.unit_cost.toFixed(2);
+                if (!unitInput.value) {
+                    unitInput.value = item.unit || '';
+                }
+                activeBatches(item).forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.batch_no || '';
+                    batchDatalist.appendChild(opt);
+                });
+            }
+        });
+
+        batchInput.addEventListener('input', function () {
+            const item = findItemByLabel(itemSearchInput.value);
+            if (!item) return;
+            const match = item.batches.find(b => b.batch_no === this.value);
+            if (match) {
+                expiryInput.value = match.expiration_date || '';
             }
         });
 
@@ -327,77 +370,147 @@
         }
         emptyMsg.classList.add('d-none');
 
-        data.items.forEach(line => {
-            const index = poRowIndex++;
-            const card = document.createElement('div');
-            card.className = 'line-item-card border rounded p-3 mb-3';
-
-            // Brand siblings: other Products under the same Generic Item as
-            // what the PO line specified — lets the receiver record the
-            // brand actually delivered, since the supplier may not send the
-            // exact same brand the PO was raised against.
-            const brandSiblings = ITEMS.filter(i => i.generic_name_id != null && i.generic_name_id === line.generic_name_id);
-
-            card.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="fw-semibold">${line.item_name}</span>
-                    <span class="badge bg-warning text-dark">Remaining: ${line.remaining_qty}</span>
-                </div>
-                <div class="row g-2">
-                    <div class="col-md-6">
-                        <label class="form-label small mb-1">Brand</label>
-                        <input type="text" class="form-control po-brand-input" list="po-brand-list-${index}"
-                            value="${line.description}" autocomplete="off">
-                        <datalist id="po-brand-list-${index}">${brandSiblings.map(i => `<option value="${i.name}"></option>`).join('')}</datalist>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small mb-1">Qty</label>
-                        <input type="number" name="items[${index}][qty]" class="form-control qty-input" min="1" max="${line.remaining_qty}" value="${line.remaining_qty}">
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small mb-1">Unit Cost</label>
-                        <input type="number" name="items[${index}][unit_cost]" class="form-control po-cost-input" step="0.01" min="0" value="${parseFloat(line.unit_cost).toFixed(2)}">
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small mb-1">Batch No.</label>
-                        <input type="text" name="items[${index}][batch_no]" class="form-control">
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small mb-1">Expiry</label>
-                        <input type="date" name="items[${index}][expiration_date]" class="form-control">
-                    </div>
-                </div>
-                <input type="hidden" name="items[${index}][product_id]" value="${line.product_id}" class="po-product-id-input">
-                <input type="hidden" name="items[${index}][purchase_order_item_id]" value="${line.purchase_order_item_id}">
-            `;
-            body.appendChild(card);
-
-            const qtyInput = card.querySelector('.qty-input');
-            qtyInput.addEventListener('input', function () {
-                if (parseInt(this.value, 10) > line.remaining_qty) {
-                    this.value = line.remaining_qty;
-                }
-            });
-
-            const brandInput = card.querySelector('.po-brand-input');
-            const productIdInput = card.querySelector('.po-product-id-input');
-            const costInput = card.querySelector('.po-cost-input');
-            brandInput.addEventListener('input', function () {
-                // Only re-match against this generic's siblings — a
-                // half-typed or unmatched brand leaves product_id untouched
-                // at its last valid value rather than clearing it, since
-                // this field always starts pre-filled with a valid brand.
-                const match = brandSiblings.find(i => i.name === this.value);
-                if (match) {
-                    productIdInput.value = match.id;
-                    costInput.value = match.unit_cost.toFixed(2);
-                }
-            });
-
-            const poVisible = document.getElementById('purchase_order_tab').style.display !== 'none';
-            card.querySelectorAll('input, select').forEach(el => el.disabled = !poVisible);
-        });
+        data.items.forEach(line => renderPoLine(body, line, false));
     });
+
+    // Sum of every rendered card's qty for this PO line except $excludeCard —
+    // lets a card's own cap reflect what its siblings (from Split Item)
+    // already claim, so the group can never together exceed remaining_qty.
+    function poGroupQtyExcluding(purchaseOrderItemId, excludeCard) {
+        const cards = document.querySelectorAll(`#poLineItemsBody .line-item-card[data-po-item-id="${purchaseOrderItemId}"]`);
+        let total = 0;
+        cards.forEach(c => {
+            if (c === excludeCard) return;
+            total += parseInt(c.querySelector('.qty-input').value, 10) || 0;
+        });
+        return total;
+    }
+
+    // Renders one receiving line for a pending PO line. Called once per
+    // pending line normally, and again by "Split Item" when the same PO
+    // line is being received under more than one brand/batch — every card
+    // for the same purchase_order_item_id shares one combined qty cap.
+    function renderPoLine(body, line, isSplit) {
+        const index = poRowIndex++;
+        const card = document.createElement('div');
+        card.className = 'line-item-card border rounded p-3 mb-3';
+        card.dataset.poItemId = line.purchase_order_item_id;
+
+        // Brand siblings: other Products under the same Generic Item as
+        // what the PO line specified — lets the receiver record the
+        // brand actually delivered, since the supplier may not send the
+        // exact same brand the PO was raised against.
+        const brandSiblings = ITEMS.filter(i => i.generic_name_id != null && i.generic_name_id === line.generic_name_id);
+        const initialItem = ITEMS.find(i => String(i.id) === String(line.product_id));
+        const defaultQty = Math.max(0, line.remaining_qty - poGroupQtyExcluding(line.purchase_order_item_id, null));
+
+        card.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold">${line.item_name}</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-warning text-dark">Remaining: ${line.remaining_qty}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary split-item-btn" title="Received under another brand or batch too?">
+                        <i class="bx bx-git-branch"></i> Split Item
+                    </button>
+                    ${isSplit ? `<button type="button" class="btn btn-sm btn-outline-danger remove-row-btn"><i class="bx bx-trash"></i></button>` : ''}
+                </div>
+            </div>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label small mb-1">Brand</label>
+                    <input type="text" class="form-control po-brand-input" list="po-brand-list-${index}"
+                        value="${line.description}" autocomplete="off">
+                    <datalist id="po-brand-list-${index}">${brandSiblings.map(i => `<option value="${i.name}"></option>`).join('')}</datalist>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Qty</label>
+                    <input type="number" name="items[${index}][qty]" class="form-control qty-input" min="1" max="${line.remaining_qty}" value="${defaultQty}">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Unit Cost</label>
+                    <input type="number" name="items[${index}][unit_cost]" class="form-control po-cost-input" step="0.01" min="0" value="${parseFloat(line.unit_cost).toFixed(2)}">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Batch No.</label>
+                    <input type="text" class="form-control po-batch-input" list="po-batch-list-${index}" name="items[${index}][batch_no]">
+                    <datalist id="po-batch-list-${index}" class="po-batch-datalist"></datalist>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Expiry</label>
+                    <input type="date" name="items[${index}][expiration_date]" class="form-control po-expiry-input">
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Unit</label>
+                    <input type="text" name="items[${index}][unit]" class="form-control" readonly value="${line.unit || ''}">
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label small mb-1">Remarks</label>
+                    <input type="text" name="items[${index}][remarks]" class="form-control">
+                </div>
+            </div>
+            <input type="hidden" name="items[${index}][product_id]" value="${line.product_id || ''}" class="po-product-id-input">
+            <input type="hidden" name="items[${index}][purchase_order_item_id]" value="${line.purchase_order_item_id}">
+        `;
+        body.appendChild(card);
+
+        const qtyInput = card.querySelector('.qty-input');
+        qtyInput.addEventListener('input', function () {
+            const maxForThisCard = Math.max(0, line.remaining_qty - poGroupQtyExcluding(line.purchase_order_item_id, card));
+            if (parseInt(this.value, 10) > maxForThisCard) {
+                this.value = maxForThisCard;
+            }
+        });
+
+        const poBatchInput = card.querySelector('.po-batch-input');
+        const poBatchDatalist = card.querySelector('.po-batch-datalist');
+        const poExpiryInput = card.querySelector('.po-expiry-input');
+        const brandInput = card.querySelector('.po-brand-input');
+        const productIdInput = card.querySelector('.po-product-id-input');
+        const costInput = card.querySelector('.po-cost-input');
+
+        function refreshBatchOptions(item) {
+            poBatchDatalist.innerHTML = '';
+            if (!item) return;
+            activeBatches(item).forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.batch_no || '';
+                poBatchDatalist.appendChild(opt);
+            });
+        }
+        refreshBatchOptions(initialItem);
+
+        poBatchInput.addEventListener('input', function () {
+            const currentItem = ITEMS.find(i => String(i.id) === String(productIdInput.value));
+            if (!currentItem) return;
+            const match = currentItem.batches.find(b => b.batch_no === this.value);
+            if (match) {
+                poExpiryInput.value = match.expiration_date || '';
+            }
+        });
+        brandInput.addEventListener('input', function () {
+            // Only re-match against this generic's siblings — a
+            // half-typed or unmatched brand leaves product_id untouched
+            // at its last valid value rather than clearing it, since
+            // this field always starts pre-filled with a valid brand.
+            const match = brandSiblings.find(i => i.name === this.value);
+            if (match) {
+                productIdInput.value = match.id;
+                costInput.value = match.unit_cost.toFixed(2);
+                refreshBatchOptions(match);
+            }
+        });
+
+        card.querySelector('.split-item-btn').addEventListener('click', () => renderPoLine(body, line, true));
+
+        if (isSplit) {
+            card.querySelector('.remove-row-btn').addEventListener('click', () => card.remove());
+        }
+
+        const poVisible = document.getElementById('purchase_order_tab').style.display !== 'none';
+        card.querySelectorAll('input, select').forEach(el => el.disabled = !poVisible);
+    }
 
     // Auto-trigger the Purchase Order tab load if a purchase_order_id was preselected via the URL
     @if($preselectedPurchaseOrderId)

@@ -22,7 +22,7 @@ class GoodsReceiptService
     public function getPendingPurchaseOrderItems(PurchaseOrder $purchaseOrder): Collection
     {
         return $purchaseOrder->items()
-            ->with('product.batches')
+            ->with(['product.batches', 'genericName'])
             ->get()
             ->filter(fn (PurchaseOrderItem $item) => $item->remaining_qty > 0)
             ->values();
@@ -91,9 +91,11 @@ class GoodsReceiptService
                     'purchase_order_item_id' => $purchaseOrderItem?->id,
                     'product_batch_id' => $batch->id,
                     'qty' => $qty,
+                    'unit' => $line['unit'] ?? null,
                     'unit_cost' => $line['unit_cost'],
                     'batch_no' => $batch->batch_no,
                     'expiration_date' => $batch->expiration_date,
+                    'remarks' => $line['remarks'] ?? null,
                 ]);
 
                 if ($purchaseOrderItem) {

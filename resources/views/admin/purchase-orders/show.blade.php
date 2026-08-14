@@ -55,7 +55,9 @@
                     <tr class="table-header-bg">
                         <th>Item</th>
                         <th class="text-end">Qty</th>
+                        <th>Unit</th>
                         <th class="text-end">Unit Cost</th>
+                        <th>Remarks</th>
                         <th class="text-end">Received</th>
                         <th class="text-end">Remaining</th>
                         <th class="text-end">Amount</th>
@@ -64,9 +66,11 @@
                 <tbody>
                     @foreach ($purchaseOrder->items as $item)
                         <tr>
-                            <td>{{ $item->product->item_name }}</td>
+                            <td>{{ $item->product->item_name ?? $item->genericName->generic_name ?? '—' }}</td>
                             <td class="text-end">{{ $item->qty }}</td>
+                            <td>{{ $item->unit ?? '—' }}</td>
                             <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
+                            <td>{{ $item->remarks ?? '—' }}</td>
                             <td class="text-end">{{ $item->received_qty }}</td>
                             <td class="text-end">
                                 <span class="badge bg-{{ $item->remaining_qty > 0 ? 'warning' : 'success' }}">
@@ -79,7 +83,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="table-info fw-bold">
-                        <td colspan="5">TOTAL</td>
+                        <td colspan="7">TOTAL</td>
                         <td class="text-end">{{ number_format($purchaseOrder->items->sum(fn($i) => $i->qty * $i->unit_cost), 2) }}</td>
                     </tr>
                 </tfoot>

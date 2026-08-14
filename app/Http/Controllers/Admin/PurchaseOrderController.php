@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
-use App\Models\Product;
+use App\Models\GenericName;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\User;
@@ -46,18 +46,21 @@ class PurchaseOrderController extends Controller
     public function create()
     {
         $suppliers = Supplier::orderBy('supplier_name')->get();
-        $items = Product::orderBy('item_name')->get();
+        // A Purchase Order orders a Generic Item, not a specific brand — the
+        // brand isn't decided until Goods Receipt time (same as the
+        // existing GR "Against PO" Brand field already works).
+        $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
         $users = User::orderBy('name')->get();
 
-        $itemsForJs = $items->map(fn (Product $item) => [
-            'id' => $item->id,
-            'code' => $item->code,
-            'name' => $item->description ?: $item->item_name,
-            'unit_cost' => (float) $item->unit_cost,
-            'supplier_id' => $item->supplier_id,
+        $genericNamesForJs = $genericNames->map(fn (GenericName $g) => [
+            'id' => $g->id,
+            'code' => $g->code,
+            'generic_name' => $g->generic_name,
+            'unit' => $g->unit,
+            'category_name' => $g->category->category_name ?? '',
         ])->values();
 
-        return view('admin.purchase-orders.create', compact('suppliers', 'items', 'users', 'itemsForJs'));
+        return view('admin.purchase-orders.create', compact('suppliers', 'users', 'genericNamesForJs'));
     }
 
     /**
@@ -70,9 +73,11 @@ class PurchaseOrderController extends Controller
             'order_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.generic_name_id' => 'required|exists:generic_names,id',
             'items.*.qty' => 'required|integer|min:1',
+            'items.*.unit' => 'nullable|string|max:50',
             'items.*.unit_cost' => 'required|numeric|min:0',
+            'items.*.remarks' => 'nullable|string|max:255',
         ]);
 
         $purchaseOrder = $this->purchaseOrderService->createPurchaseOrder($validated);
@@ -93,7 +98,7 @@ class PurchaseOrderController extends Controller
      */
     public function show(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load('supplier', 'preparedBy', 'items.product', 'goodsReceipts');
+        $purchaseOrder->load('supplier', 'preparedBy', 'items.product', 'items.genericName', 'goodsReceipts');
 
         return view('admin.purchase-orders.show', compact('purchaseOrder'));
     }

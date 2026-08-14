@@ -8,9 +8,12 @@ use Illuminate\Support\Facades\DB;
 class PurchaseOrderService
 {
     /**
-     * Create a Purchase Order with its line items.
+     * Create a Purchase Order with its line items. A line orders a Generic
+     * Item — the specific brand (product_id) isn't decided until Goods
+     * Receipt time, so it's optional here and normally left null.
      *
-     * @param array $data ['supplier_id', 'order_date', 'prepared_by', 'items' => [['product_id','qty','unit_cost'], ...]]
+     * @param array $data ['supplier_id', 'order_date', 'prepared_by',
+     *                     'items' => [['generic_name_id','product_id','qty','unit','unit_cost','remarks'], ...]]
      */
     public function createPurchaseOrder(array $data): PurchaseOrder
     {
@@ -25,9 +28,12 @@ class PurchaseOrderService
 
             foreach ($data['items'] as $line) {
                 $purchaseOrder->items()->create([
-                    'product_id' => $line['product_id'],
+                    'generic_name_id' => $line['generic_name_id'],
+                    'product_id' => $line['product_id'] ?? null,
                     'qty' => $line['qty'],
+                    'unit' => $line['unit'] ?? null,
                     'unit_cost' => $line['unit_cost'],
+                    'remarks' => $line['remarks'] ?? null,
                 ]);
             }
 

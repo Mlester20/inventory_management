@@ -12,9 +12,11 @@ class GoodsReceiptItem extends Model
         'purchase_order_item_id',
         'product_batch_id',
         'qty',
+        'unit',
         'unit_cost',
         'batch_no',
         'expiration_date',
+        'remarks',
     ];
 
     protected $casts = [

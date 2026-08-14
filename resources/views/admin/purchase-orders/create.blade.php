@@ -121,47 +121,38 @@
 
 @section('scripts')
 <script>
-    const ITEMS = @json($itemsForJs);
+    const GENERIC_NAMES = @json($genericNamesForJs);
 
     let rowIndex = 0;
 
-    function currentSupplierId() {
-        return document.getElementById('supplier_id').value;
-    }
-
-    // Item is a searchable text field (native <datalist>, matching the same
-    // technique already used for Generic Description pickers) instead of a
-    // long <select> — the label the user types/picks is matched back to the
-    // real product_id. Not scoped to the chosen supplier — a Product's
-    // assigned supplier_id doesn't mean it can ONLY be ordered from that
-    // supplier, so the full catalog stays selectable regardless of which
-    // supplier this PO is for.
-    function itemLabel(item) {
-        return item.name;
-    }
-
-    function itemsForSupplier(supplierId) {
-        return ITEMS;
+    // Generic Description is a searchable text field (native <datalist>,
+    // matching the same technique already used for Sales Order/Sales Quote/
+    // Delivery Receipt's Generic Description pickers) instead of a long
+    // <select> — the label the user types/picks is matched back to the real
+    // generic_name_id. A PO orders a Generic Item; the specific brand isn't
+    // chosen until Goods Receipt time (same as the existing Brand field).
+    function itemLabel(g) {
+        return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
     }
 
     function itemDatalistOptions() {
-        return itemsForSupplier(currentSupplierId()).map(i => `<option value="${itemLabel(i)}"></option>`).join('');
+        return GENERIC_NAMES.map(g => `<option value="${itemLabel(g)}"></option>`).join('');
     }
 
     function findItemByLabel(label) {
-        return itemsForSupplier(currentSupplierId()).find(i => itemLabel(i) === label);
+        return GENERIC_NAMES.find(g => itemLabel(g) === label);
     }
 
-    // "Sort/arrange" toggle — re-sorts the shared ITEMS array and rebuilds
-    // every already-rendered row's datalist.
+    // "Sort/arrange" toggle — re-sorts the shared GENERIC_NAMES array and
+    // rebuilds every already-rendered row's datalist.
     function sortItems(mode) {
         const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
         if (mode === 'name_desc') {
-            ITEMS.sort((a, b) => collator.compare(b.name, a.name));
+            GENERIC_NAMES.sort((a, b) => collator.compare(b.generic_name, a.generic_name));
         } else if (mode === 'code_asc') {
-            ITEMS.sort((a, b) => collator.compare(a.code || '', b.code || ''));
+            GENERIC_NAMES.sort((a, b) => collator.compare(a.code || '', b.code || ''));
         } else {
-            ITEMS.sort((a, b) => collator.compare(a.name, b.name));
+            GENERIC_NAMES.sort((a, b) => collator.compare(a.generic_name, b.generic_name));
         }
 
         document.querySelectorAll('#lineItemsBody datalist').forEach(dl => {
@@ -194,11 +185,11 @@
 
             <div class="row g-2">
                 <div class="col-md-6">
-                    <label class="form-label small mb-1">Item</label>
+                    <label class="form-label small mb-1">Generic Description</label>
                     <input type="text" class="form-control item-search-input" list="item-list-${index}"
-                        placeholder="Search item..." autocomplete="off" required>
+                        placeholder="Search generic name..." autocomplete="off" required>
                     <datalist id="item-list-${index}">${itemDatalistOptions()}</datalist>
-                    <input type="hidden" name="items[${index}][product_id]" class="item-id-input">
+                    <input type="hidden" name="items[${index}][generic_name_id]" class="item-id-input">
                 </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Qty</label>
@@ -207,6 +198,16 @@
                 <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Unit Cost</label>
                     <input type="number" name="items[${index}][unit_cost]" class="form-control cost-input" step="0.01" min="0" value="0" required>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Unit</label>
+                    <input type="text" name="items[${index}][unit]" class="form-control unit-input" placeholder="e.g. Box, Bottle">
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label small mb-1">Remarks</label>
+                    <input type="text" name="items[${index}][remarks]" class="form-control">
                 </div>
             </div>
 
@@ -225,12 +226,17 @@
         const itemSearchInput = card.querySelector('.item-search-input');
         const itemIdInput = card.querySelector('.item-id-input');
         const costInput = card.querySelector('.cost-input');
+        const unitInput = card.querySelector('.unit-input');
 
         itemSearchInput.addEventListener('input', function () {
             const item = findItemByLabel(this.value);
             itemIdInput.value = item ? item.id : '';
-            if (item) {
-                costInput.value = item.unit_cost.toFixed(2);
+            // No unit_cost auto-fill — a Generic Item has no single cost of
+            // its own (different brands under it can cost differently), so
+            // the user enters it manually. Unit still comes straight from
+            // the Generic Item's own unit field.
+            if (item && !unitInput.value) {
+                unitInput.value = item.unit || '';
             }
             computeTotals();
         });

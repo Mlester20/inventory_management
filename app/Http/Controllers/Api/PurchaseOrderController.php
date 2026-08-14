@@ -18,13 +18,25 @@ class PurchaseOrderController extends Controller
     {
         $pendingItems = $this->goodsReceiptService->getPendingPurchaseOrderItems($purchaseOrder)
             ->map(function ($line) {
+                // A PO line orders a Generic Item — product_id (the specific
+                // brand) is normally still null at this point, only ever
+                // set on older POs from before this line ordered at the
+                // generic level. Fall back to the Generic Item's own name
+                // either way, so the receiver picks the actual brand here.
+                $name = $line->product->item_name ?? $line->genericName->generic_name;
+
                 return [
                     'purchase_order_item_id' => $line->id,
                     'product_id' => $line->product_id,
-                    'item_name' => $line->product->item_name,
-                    'description' => $line->product->description ?: $line->product->item_name,
-                    'generic_name_id' => $line->product->generic_name_id,
+                    'item_name' => $name,
+                    'description' => $line->product?->description ?: $name,
+                    // Older PO lines (from before this ordered at the generic
+                    // level) never got generic_name_id backfilled on this
+                    // table — fall back to the chosen product's own generic,
+                    // so Brand-sibling matching keeps working for them too.
+                    'generic_name_id' => $line->generic_name_id ?? $line->product?->generic_name_id,
                     'qty' => $line->qty,
+                    'unit' => $line->unit,
                     'received_qty' => $line->received_qty,
                     'remaining_qty' => $line->remaining_qty,
                     'unit_cost' => $line->unit_cost,

@@ -60,9 +60,11 @@
                     <tr class="table-header-bg">
                         <th>Item</th>
                         <th class="text-end">Qty Received</th>
+                        <th>Unit</th>
                         <th class="text-end">Unit Cost</th>
                         <th>Batch No.</th>
                         <th>Expiry</th>
+                        <th>Remarks</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -70,9 +72,11 @@
                         <tr>
                             <td>{{ $line->productBatch->product->item_name }}</td>
                             <td class="text-end">{{ $line->qty }}</td>
+                            <td>{{ $line->unit ?? '—' }}</td>
                             <td class="text-end">{{ number_format($line->unit_cost, 2) }}</td>
                             <td>{{ $line->batch_no ?? '—' }}</td>
                             <td>{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
+                            <td>{{ $line->remarks ?? '—' }}</td>
                         </tr>
                     @endforeach
                 </tbody>

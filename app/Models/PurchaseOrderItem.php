@@ -10,9 +10,12 @@ class PurchaseOrderItem extends Model
 {
     protected $fillable = [
         'purchase_order_id',
+        'generic_name_id',
         'product_id',
         'qty',
+        'unit',
         'unit_cost',
+        'remarks',
         'received_qty',
     ];
 
@@ -30,6 +33,11 @@ class PurchaseOrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function genericName(): BelongsTo
+    {
+        return $this->belongsTo(GenericName::class);
     }
 
     public function goodsReceiptItems(): HasMany
