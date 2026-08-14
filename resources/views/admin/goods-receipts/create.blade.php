@@ -142,6 +142,12 @@
         // inputs can't silently block native HTML5 validation on submit.
         document.querySelectorAll('#direct_tab input, #direct_tab select').forEach(el => el.disabled = !directVisible);
         document.querySelectorAll('#purchase_order_tab input, #purchase_order_tab select').forEach(el => el.disabled = directVisible);
+
+        // "Add Item" only applies to the Direct Receipt tab (Against-PO rows
+        // come from the PO's own pending lines, plus Split Item per-line) —
+        // without this it silently added a row to the hidden Direct Receipt
+        // tab when clicked while viewing Against Purchase Order.
+        document.getElementById('addDirectRowBtn').disabled = !directVisible;
     }
 
     // ---------- Direct Receipt tab ----------
