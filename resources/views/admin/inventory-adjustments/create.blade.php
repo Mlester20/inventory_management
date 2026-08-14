@@ -1,10 +1,10 @@
 @extends('layout.app')
 
-@section('title', 'New Inventory Adjustment')
+@section('title', $editingAdjustment ? 'Edit Draft — ' . $editingAdjustment->adjustment_no : 'New Inventory Adjustment')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Inventory Adjustment</h5>
+        <h5 class="card-header">{{ $editingAdjustment ? 'Edit Draft — ' . $editingAdjustment->adjustment_no : 'New Inventory Adjustment' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,20 +16,23 @@
                 </div>
             @endif
 
-            <form action="{{ route('inventory-adjustments.store') }}" method="POST" id="adjustmentForm">
+            <form action="{{ $editingAdjustment ? route('inventory-adjustments.update', $editingAdjustment) : route('inventory-adjustments.store') }}" method="POST" id="adjustmentForm">
                 @csrf
+                @if($editingAdjustment)
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Date</label>
-                        <input type="date" name="adjustment_date" class="form-control" value="{{ old('adjustment_date', now()->toDateString()) }}" required>
+                        <input type="date" name="adjustment_date" class="form-control" value="{{ old('adjustment_date', $editingAdjustment?->adjustment_date?->toDateString() ?? now()->toDateString()) }}" required>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Adjustment Type</label>
                         <select name="adjustment_type" class="form-select" required>
                             <option value="">-- Select Type --</option>
                             @foreach (\App\Models\InventoryAdjustment::TYPES as $value => $label)
-                                <option value="{{ $value }}">{{ $label }}</option>
+                                <option value="{{ $value }}" {{ old('adjustment_type', $editingAdjustment?->adjustment_type ?? '') === $value ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -38,7 +41,7 @@
                         <select name="prepared_by" class="form-select">
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>{{ $user->name }}</option>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingAdjustment?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>{{ $user->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -46,7 +49,7 @@
 
                 <div class="mb-3">
                     <label class="form-label">Description</label>
-                    <input type="text" name="description" class="form-control" value="{{ old('description') }}">
+                    <input type="text" name="description" class="form-control" value="{{ old('description', $editingAdjustment?->description ?? '') }}">
                 </div>
 
                 <hr>
@@ -70,14 +73,17 @@
 
                 <div class="mb-3 mt-3">
                     <label class="form-label">Note</label>
-                    <textarea name="note" class="form-control" rows="2">{{ old('note') }}</textarea>
+                    <textarea name="note" class="form-control" rows="2">{{ old('note', $editingAdjustment?->note ?? '') }}</textarea>
                 </div>
 
                 <div class="mt-3">
                     <button type="button" class="btn btn-secondary" id="addRowBtn">
                         <i class="bx bx-plus"></i> Add Line
                     </button>
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save</button>
                     <a href="{{ route('inventory-adjustments.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -91,6 +97,7 @@
     const LOCATIONS = @json($locations->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'is_default' => $l->is_default]));
 
     const preselectedProductId = @json($preselectedProductId);
+    const prefillLines = @json($prefillLines);
     let rowIndex = 0;
 
     // Item Description is a searchable text field (native <datalist>) instead
@@ -145,7 +152,8 @@
         });
     }
 
-    function addRow(productId = '') {
+    function addRow(prefill = {}) {
+        const { productId = '', batchNo = '', locationId = '', qty = '' } = prefill;
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -207,6 +215,20 @@
                 card.querySelector('.product-search-input').value = productLabel(product);
                 card.querySelector('.product-search-input').dispatchEvent(new Event('input'));
             }
+        }
+
+        if (batchNo) {
+            const batchInput = card.querySelector('.batch-input');
+            batchInput.value = batchNo;
+            batchInput.dispatchEvent(new Event('input'));
+        }
+
+        if (locationId) {
+            card.querySelector('select[name$="[location_id]"]').value = locationId;
+        }
+
+        if (qty) {
+            card.querySelector('.qty-input').value = qty;
         }
     }
 
@@ -284,8 +306,16 @@
         }
     });
 
-    // Start with one row, pre-selecting the product if launched from the
-    // Lot/Serial & Expiry tab's "Adjust Inventory" button.
-    addRow(preselectedProductId);
+    // Start with one row pre-selecting the product (launched from the
+    // Lot/Serial & Expiry tab's "Adjust Inventory" button), or one row per
+    // line of the original adjustment (launched from a Write-off redirect),
+    // or a single blank row otherwise.
+    if (prefillLines.length > 0) {
+        prefillLines.forEach(line => {
+            addRow({ productId: line.product_id, batchNo: line.batch_no, locationId: line.location_id, qty: line.qty });
+        });
+    } else {
+        addRow({ productId: preselectedProductId });
+    }
 </script>
 @endsection

@@ -5,16 +5,28 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class InventoryAdjustment extends Model
 {
     protected $fillable = [
         'adjustment_no', 'adjustment_date', 'adjustment_type', 'description', 'note', 'prepared_by',
+        'reverses_adjustment_id', 'status',
     ];
 
     protected $casts = [
         'adjustment_date' => 'date',
     ];
+
+    public const STATUSES = [
+        'draft' => 'Draft',
+        'posted' => 'Posted',
+    ];
+
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
 
     /**
      * Adjustment type => stock direction. "Correction" is split into two
@@ -45,5 +57,21 @@ class InventoryAdjustment extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(InventoryAdjustmentLine::class);
+    }
+
+    /**
+     * The original adjustment this one reverses, if this is a write-off.
+     */
+    public function reverses(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reverses_adjustment_id');
+    }
+
+    /**
+     * The write-off that reverses this adjustment, if it's been written off.
+     */
+    public function reversedBy(): HasOne
+    {
+        return $this->hasOne(self::class, 'reverses_adjustment_id');
     }
 }

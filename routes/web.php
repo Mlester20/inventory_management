@@ -9,6 +9,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InventoryItemsController;
 use App\Http\Controllers\InventoryAdjustmentController;
+use App\Http\Controllers\ProductBatchController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -156,7 +157,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
         return redirect()->route('inventory-items.index', ['tab' => 'products', 'search' => $product->item_name]);
     })->name('admin.items.show');
     Route::resource('admin/products', ProductController::class)->only(['store', 'update', 'destroy']);
-    Route::resource('admin/inventory-adjustments', InventoryAdjustmentController::class)->only(['index', 'create', 'store', 'show']);
+    Route::put('admin/product-batches/{productBatch}', [ProductBatchController::class, 'update'])->name('product-batches.update');
+    Route::resource('admin/inventory-adjustments', InventoryAdjustmentController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::post('admin/inventory-adjustments/{inventoryAdjustment}/write-off', [InventoryAdjustmentController::class, 'writeOff'])->name('inventory-adjustments.write-off');
 
     Route::resource('admin/users', UserController::class);
     Route::post('admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');

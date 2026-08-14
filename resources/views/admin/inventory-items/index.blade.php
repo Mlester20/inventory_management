@@ -401,6 +401,14 @@
                                         <a href="{{ route('inventory-items.index', ['tab' => 'history', 'product_id' => $batch->product_id]) }}" class="btn btn-sm btn-outline-secondary" title="View Product History">
                                             <i class="bx bx-history"></i>
                                         </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary edit-batch-btn"
+                                            data-bs-toggle="modal" data-bs-target="#updateBatchModal"
+                                            data-id="{{ $batch->id }}"
+                                            data-batch-no="{{ $batch->batch_no }}"
+                                            data-expiration-date="{{ $batch->expiration_date?->format('Y-m-d') }}"
+                                            title="Fix Batch No. / Expiry (typo correction — no effect on quantity)">
+                                            <i class="bx bx-edit-alt"></i>
+                                        </button>
                                     </td>
                                 </tr>
                             @empty
@@ -425,6 +433,41 @@
                         {{ $batches->links() }}
                     </div>
                 @endif
+            </div>
+
+            <!-- Update Batch Modal -->
+            <div class="modal fade" id="updateBatchModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <form id="updateBatchForm" method="POST">
+                        @csrf
+                        @method('PUT')
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Fix Batch No. / Expiry</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-muted small">
+                                    For fixing a typo only — this does not change quantity or stock. To
+                                    correct a wrong quantity, use Write-off on the Inventory Adjustment
+                                    that recorded it instead.
+                                </p>
+                                <div class="mb-3">
+                                    <label class="form-label">Batch/Lot No.</label>
+                                    <input type="text" name="batch_no" id="update_batch_no" class="form-control">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Expiration Date</label>
+                                    <input type="date" name="expiration_date" id="update_batch_expiration_date" class="form-control">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         @endif
 
@@ -521,6 +564,17 @@
 
             const form = document.getElementById('updateGenericItemForm');
             form.action = `{{ url('admin/generic-names') }}/${get('data-id')}`;
+        });
+    });
+
+    document.querySelectorAll('.edit-batch-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const get = (attr) => this.getAttribute(attr);
+            document.getElementById('update_batch_no').value = get('data-batch-no') || '';
+            document.getElementById('update_batch_expiration_date').value = get('data-expiration-date') || '';
+
+            const form = document.getElementById('updateBatchForm');
+            form.action = `{{ url('admin/product-batches') }}/${get('data-id')}`;
         });
     });
 </script>
