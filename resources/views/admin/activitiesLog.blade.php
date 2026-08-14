@@ -105,9 +105,11 @@
                                     <span class="badge bg-secondary">{{ ucfirst(str_replace('_', ' ', $log->action)) }}</span>
                                 @endif
                             </td>
-                            <td>
+                            <td style="max-width: 260px;">
                                 @if($log->description)
-                                    {{ Str::limit($log->description, 60) }}
+                                    <span class="d-inline-block text-truncate" style="max-width: 100%;" title="{{ $log->description }}">
+                                        {{ $log->description }}
+                                    </span>
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif
