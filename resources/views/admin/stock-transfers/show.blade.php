@@ -7,6 +7,20 @@
         <a href="{{ route('stock-transfers.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Stock Transfers
         </a>
+        @if($stockTransfer->isDraft())
+            <div class="d-flex gap-2">
+                <a href="{{ route('stock-transfers.edit', $stockTransfer) }}" class="btn btn-primary">
+                    <i class="bx bx-edit-alt"></i> Continue Editing
+                </a>
+                <form action="{{ route('stock-transfers.destroy', $stockTransfer) }}" method="POST" onsubmit="return confirm('Delete draft {{ $stockTransfer->reference }}? This cannot be undone.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="bx bx-trash"></i> Delete Draft
+                    </button>
+                </form>
+            </div>
+        @endif
     </div>
 
     <div class="card mb-4">
@@ -17,22 +31,30 @@
                     <p class="fw-bold mb-0">{{ $stockTransfer->reference }}</p>
                 </div>
                 <div class="col-md-3">
+                    <label class="text-muted small">Status</label>
+                    <p class="mb-0">
+                        <span class="badge bg-{{ $stockTransfer->isDraft() ? 'secondary' : 'success' }}">
+                            {{ \App\Models\StockTransfer::STATUSES[$stockTransfer->status] ?? $stockTransfer->status }}
+                        </span>
+                    </p>
+                </div>
+                <div class="col-md-3">
                     <label class="text-muted small">Date</label>
-                    <p class="mb-0">{{ $stockTransfer->date->format('M d, Y') }}</p>
+                    <p class="mb-0">{{ $stockTransfer->date?->format('M d, Y') ?? '—' }}</p>
                 </div>
                 <div class="col-md-3">
-                    <label class="text-muted small">From</label>
-                    <p class="mb-0"><span class="badge bg-secondary">{{ $stockTransfer->fromLocation->name }}</span></p>
-                </div>
-                <div class="col-md-3">
-                    <label class="text-muted small">To</label>
-                    <p class="mb-0"><span class="badge bg-primary">{{ $stockTransfer->toLocation->name }}</span></p>
+                    <label class="text-muted small">Prepared By</label>
+                    <p class="mb-0">{{ $stockTransfer->preparedBy->name ?? '—' }}</p>
                 </div>
             </div>
             <div class="row">
                 <div class="col-md-3">
-                    <label class="text-muted small">Prepared By</label>
-                    <p class="mb-0">{{ $stockTransfer->preparedBy->name ?? '—' }}</p>
+                    <label class="text-muted small">From</label>
+                    <p class="mb-0"><span class="badge bg-secondary">{{ $stockTransfer->fromLocation?->name ?? '—' }}</span></p>
+                </div>
+                <div class="col-md-3">
+                    <label class="text-muted small">To</label>
+                    <p class="mb-0"><span class="badge bg-primary">{{ $stockTransfer->toLocation?->name ?? '—' }}</span></p>
                 </div>
             </div>
         </div>

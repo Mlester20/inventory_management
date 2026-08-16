@@ -14,11 +14,22 @@ class StockTransfer extends Model
         'from_location_id',
         'to_location_id',
         'prepared_by',
+        'status',
     ];
 
     protected $casts = [
         'date' => 'date',
     ];
+
+    public const STATUSES = [
+        'draft' => 'Draft',
+        'posted' => 'Posted',
+    ];
+
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
 
     public function fromLocation(): BelongsTo
     {

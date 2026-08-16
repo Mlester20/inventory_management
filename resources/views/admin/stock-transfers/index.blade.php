@@ -31,6 +31,7 @@
                     <tr>
                         <th>#</th>
                         <th>Reference</th>
+                        <th>Status</th>
                         <th>Date</th>
                         <th>From</th>
                         <th>To</th>
@@ -43,19 +44,46 @@
                         <tr>
                             <td>{{ $stockTransfer->id }}</td>
                             <td>{{ $stockTransfer->reference }}</td>
-                            <td>{{ $stockTransfer->date->format('M d, Y') }}</td>
-                            <td>{{ $stockTransfer->fromLocation->name }}</td>
-                            <td>{{ $stockTransfer->toLocation->name }}</td>
+                            <td>
+                                <span class="badge bg-{{ $stockTransfer->isDraft() ? 'secondary' : 'success' }}">
+                                    {{ \App\Models\StockTransfer::STATUSES[$stockTransfer->status] ?? $stockTransfer->status }}
+                                </span>
+                            </td>
+                            <td>{{ $stockTransfer->date?->format('M d, Y') ?? '—' }}</td>
+                            <td>{{ $stockTransfer->fromLocation?->name ?? '—' }}</td>
+                            <td>{{ $stockTransfer->toLocation?->name ?? '—' }}</td>
                             <td>{{ $stockTransfer->preparedBy->name ?? '—' }}</td>
                             <td>
-                                <a href="{{ route('stock-transfers.show', $stockTransfer) }}" class="btn btn-sm btn-info">
-                                    View
-                                </a>
+                                <div class="d-flex gap-1">
+                                    <a href="{{ route('stock-transfers.show', $stockTransfer) }}" class="btn btn-sm btn-info">
+                                        View
+                                    </a>
+                                    @if($stockTransfer->isDraft())
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                                <i class="bx bx-dots-vertical-rounded"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a href="{{ route('stock-transfers.edit', $stockTransfer) }}" class="dropdown-item">
+                                                    <i class="bx bx-edit-alt me-1"></i> Continue Editing
+                                                </a>
+                                                <div class="dropdown-divider"></div>
+                                                <form action="{{ route('stock-transfers.destroy', $stockTransfer) }}" method="POST" class="m-0" onsubmit="return confirm('Delete draft {{ $stockTransfer->reference }}? This cannot be undone.');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <i class="bx bx-trash me-1"></i> Delete Draft
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted">No Stock Transfers found.</td>
+                            <td colspan="8" class="text-center text-muted">No Stock Transfers found.</td>
                         </tr>
                     @endforelse
                 </tbody>

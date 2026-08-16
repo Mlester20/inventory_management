@@ -31,6 +31,7 @@
                     <tr>
                         <th>#</th>
                         <th>G.R. No.</th>
+                        <th>Status</th>
                         <th>Supplier</th>
                         <th>Type</th>
                         <th>Purchase Order</th>
@@ -43,7 +44,12 @@
                         <tr>
                             <td>{{ $goodsReceipt->id }}</td>
                             <td>{{ $goodsReceipt->gr_no }}</td>
-                            <td>{{ $goodsReceipt->supplier->supplier_name }}</td>
+                            <td>
+                                <span class="badge bg-{{ $goodsReceipt->isDraft() ? 'secondary' : 'success' }}">
+                                    {{ \App\Models\GoodsReceipt::STATUSES[$goodsReceipt->status] ?? $goodsReceipt->status }}
+                                </span>
+                            </td>
+                            <td>{{ $goodsReceipt->supplier->supplier_name ?? '—' }}</td>
                             <td>
                                 <span class="badge bg-{{ $goodsReceipt->purchase_order_id ? 'info' : 'secondary' }}">
                                     {{ $goodsReceipt->purchase_order_id ? 'Against P.O.' : 'Direct Receipt' }}
@@ -56,16 +62,38 @@
                                     —
                                 @endif
                             </td>
-                            <td>{{ $goodsReceipt->receipt_date->format('M d, Y') }}</td>
+                            <td>{{ $goodsReceipt->receipt_date?->format('M d, Y') ?? '—' }}</td>
                             <td>
-                                <a href="{{ route('goods-receipts.show', $goodsReceipt) }}" class="btn btn-sm btn-info">
-                                    View
-                                </a>
+                                <div class="d-flex gap-1">
+                                    <a href="{{ route('goods-receipts.show', $goodsReceipt) }}" class="btn btn-sm btn-info">
+                                        View
+                                    </a>
+                                    @if($goodsReceipt->isDraft())
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                                <i class="bx bx-dots-vertical-rounded"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a href="{{ route('goods-receipts.edit', $goodsReceipt) }}" class="dropdown-item">
+                                                    <i class="bx bx-edit-alt me-1"></i> Continue Editing
+                                                </a>
+                                                <div class="dropdown-divider"></div>
+                                                <form action="{{ route('goods-receipts.destroy', $goodsReceipt) }}" method="POST" class="m-0" onsubmit="return confirm('Delete draft {{ $goodsReceipt->gr_no }}? This cannot be undone.');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <i class="bx bx-trash me-1"></i> Delete Draft
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted">No Goods Receipts found.</td>
+                            <td colspan="8" class="text-center text-muted">No Goods Receipts found.</td>
                         </tr>
                     @endforelse
                 </tbody>

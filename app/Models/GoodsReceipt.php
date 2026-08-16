@@ -14,11 +14,22 @@ class GoodsReceipt extends Model
         'gr_no',
         'receipt_date',
         'prepared_by',
+        'status',
     ];
 
     protected $casts = [
         'receipt_date' => 'date',
     ];
+
+    public const STATUSES = [
+        'draft' => 'Draft',
+        'posted' => 'Posted',
+    ];
+
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
 
     public function supplier(): BelongsTo
     {

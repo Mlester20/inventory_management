@@ -39,6 +39,7 @@ use App\Http\Controllers\Admin\StockTransferController;
 use App\Http\Controllers\Admin\StockDisposalController;
 use App\Http\Controllers\Api\ItemController as ApiItemController;
 use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
+use App\Http\Controllers\Api\CustomerController as ApiCustomerController;
 use App\Http\Controllers\Api\GenericNameController as ApiGenericNameController;
 use App\Http\Controllers\Api\SalesOrderController as ApiSalesOrderController;
 use App\Http\Controllers\Api\PurchaseOrderController as ApiPurchaseOrderController;
@@ -117,7 +118,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('admin/sales-quotes', SalesQuoteController::class)->except(['destroy']);
     Route::post('admin/sales-quotes/{salesQuote}/convert', [SalesQuoteController::class, 'convertToSalesOrder'])->name('sales-quotes.convert');
     Route::resource('admin/sales-orders', SalesOrderController::class)->except(['destroy']);
-    Route::resource('admin/delivery-receipts', DeliveryReceiptController::class)->except(['destroy']);
+    Route::resource('admin/delivery-receipts', DeliveryReceiptController::class);
     Route::post('admin/delivery-receipts/{deliveryReceipt}/create-invoice', [DeliveryReceiptController::class, 'createInvoice'])->name('delivery-receipts.create-invoice');
     Route::post('admin/delivery-receipts/{deliveryReceipt}/mark-delivered', [DeliveryReceiptController::class, 'markDelivered'])->name('delivery-receipts.mark-delivered');
 
@@ -170,9 +171,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('admin/expense-categories', ExpenseCategoryController::class)->only(['store', 'destroy']);
     Route::resource('admin/purchase-orders', PurchaseOrderController::class);
-    Route::resource('admin/goods-receipts', GoodsReceiptController::class)->except(['destroy']);
+    Route::resource('admin/goods-receipts', GoodsReceiptController::class);
     Route::resource('admin/purchase-invoices', PurchaseInvoiceController::class);
-    Route::resource('admin/stock-transfers', StockTransferController::class)->only(['index', 'create', 'store', 'show']);
+    Route::resource('admin/stock-transfers', StockTransferController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::resource('admin/stock-disposals', StockDisposalController::class)->only(['index', 'create', 'store', 'show']);
 
     // Invoices, Sales Orders, Delivery Receipts, and Customers are usable by
@@ -208,6 +209,9 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
 
     // Generic Names API (Delivery Receipt "Available Product?" check)
     Route::get('generic-names/{genericName}/available-items', [ApiGenericNameController::class, 'availableItems'])->name('generic-names.available-items');
+
+    // Customers API (admin Return Item form — scope items to what this customer actually bought)
+    Route::get('customers/{customer}/purchased-items', [ApiCustomerController::class, 'purchasedItems'])->name('customers.purchased-items');
 
     // Sales Orders API (Purchase-Order-mode Delivery Receipt remaining lines)
     Route::get('sales-orders/{salesOrder}/remaining-items', [ApiSalesOrderController::class, 'remainingItems'])->name('sales-orders.remaining-items');

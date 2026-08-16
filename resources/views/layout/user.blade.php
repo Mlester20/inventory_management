@@ -320,6 +320,7 @@
     <script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
     <script src="{{ asset('assets/js/dashboards-analytics.js') }}"></script>
+    <script src="{{ asset('assets/js/table-dropdown-overflow-fix.js') }}"></script>
     
     {{-- External Libraries --}}
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>

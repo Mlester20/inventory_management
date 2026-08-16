@@ -65,7 +65,7 @@
                                                 <i class="bx bx-edit-alt me-1"></i> Continue Editing
                                             </a>
                                             <div class="dropdown-divider"></div>
-                                            <form action="{{ route('inventory-adjustments.destroy', $adjustment) }}" method="POST" onsubmit="return confirm('Delete draft {{ $adjustment->adjustment_no }}? This cannot be undone.');">
+                                            <form action="{{ route('inventory-adjustments.destroy', $adjustment) }}" method="POST" class="m-0" onsubmit="return confirm('Delete draft {{ $adjustment->adjustment_no }}? This cannot be undone.');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="dropdown-item text-danger">
@@ -82,7 +82,7 @@
                                                     <i class="bx bx-undo me-1"></i> Write-off
                                                 </span>
                                             @else
-                                                <form action="{{ route('inventory-adjustments.write-off', $adjustment) }}" method="POST" onsubmit="return confirm('Write off {{ $adjustment->adjustment_no }}? This reverses its quantities and takes you to a fresh form for the correct entry.');">
+                                                <form action="{{ route('inventory-adjustments.write-off', $adjustment) }}" method="POST" class="m-0" onsubmit="return confirm('Write off {{ $adjustment->adjustment_no }}? This reverses its quantities and takes you to a fresh form for the correct entry.');">
                                                     @csrf
                                                     <button type="submit" class="dropdown-item">
                                                         <i class="bx bx-undo me-1"></i> Write-off

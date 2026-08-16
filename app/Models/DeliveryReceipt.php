@@ -14,6 +14,7 @@ class DeliveryReceipt extends Model
         'dr_no',
         'transaction_type',
         'status',
+        'is_draft',
         'description',
         'receipt_date',
         'prepared_by',
@@ -21,6 +22,7 @@ class DeliveryReceipt extends Model
 
     protected $casts = [
         'receipt_date' => 'date',
+        'is_draft' => 'boolean',
     ];
 
     public const TRANSACTION_TYPES = [
@@ -33,6 +35,11 @@ class DeliveryReceipt extends Model
         'for_delivery' => 'FOR DELIVERY',
         'delivered' => 'DELIVERED',
     ];
+
+    public function isDraft(): bool
+    {
+        return (bool) $this->is_draft;
+    }
 
     /**
      * COMPLETE once every line is fully invoiced, PARTIALLY INVOICED once

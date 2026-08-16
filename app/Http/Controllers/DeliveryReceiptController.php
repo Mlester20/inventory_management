@@ -47,6 +47,18 @@ class DeliveryReceiptController extends Controller
      */
     public function create(Request $request)
     {
+        return view('admin.delivery-receipts.create', $this->formData($request->query('sales_order_id')));
+    }
+
+    /**
+     * Data shared by the create and edit-draft forms. When editing a draft,
+     * its own items are mapped back into the shape the item picker's async
+     * fetch-then-select flow expects: keyed by product_batch_id so, once
+     * the fresh available-items fetch comes back for that line's generic
+     * name, the saved batch/qty/remarks can be reselected on top of it.
+     */
+    protected function formData(?string $preselectedSalesOrderId = null, ?DeliveryReceipt $editing = null): array
+    {
         $customers = Customer::orderBy('customer_name')->get();
         $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
         $openSalesOrders = SalesOrder::with('customer')
@@ -54,7 +66,6 @@ class DeliveryReceiptController extends Controller
             ->latest()
             ->get();
         $users = User::orderBy('name')->get();
-        $preselectedSalesOrderId = $request->query('sales_order_id');
 
         $genericNamesForJs = $genericNames->map(fn (GenericName $g) => [
             'id' => $g->id,
@@ -64,9 +75,32 @@ class DeliveryReceiptController extends Controller
             'category_name' => $g->category->category_name,
         ])->values();
 
-        return view('admin.delivery-receipts.create', compact(
-            'customers', 'genericNames', 'openSalesOrders', 'users', 'preselectedSalesOrderId', 'genericNamesForJs'
-        ));
+        $prefillLines = [];
+
+        if ($editing) {
+            $preselectedSalesOrderId = $editing->sales_order_id ? (string) $editing->sales_order_id : null;
+            $editing->load('items.productBatch.product.genericName');
+
+            $prefillLines = $editing->items
+                ->filter(fn ($item) => $item->productBatch?->product?->genericName)
+                ->map(function ($item) {
+                    $generic = $item->productBatch->product->genericName;
+
+                    return [
+                        'generic_name_id' => $generic->id,
+                        'product_batch_id' => $item->product_batch_id,
+                        'qty' => $item->qty,
+                        'remarks' => $item->remarks,
+                        'sales_order_item_id' => $item->sales_order_item_id,
+                    ];
+                })
+                ->values();
+        }
+
+        return compact(
+            'customers', 'genericNames', 'openSalesOrders', 'users',
+            'preselectedSalesOrderId', 'genericNamesForJs', 'prefillLines'
+        ) + ['editingDeliveryReceipt' => $editing];
     }
 
     /**
@@ -74,19 +108,23 @@ class DeliveryReceiptController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'transaction_type' => 'required|in:advance_order,purchase_order,walk_in',
-            'customer_id' => 'required_if:transaction_type,advance_order,walk_in|nullable|exists:customers,id',
-            'sales_order_id' => 'required_if:transaction_type,purchase_order|nullable|exists:sales_orders,id',
-            'description' => 'nullable|string|max:255',
-            'receipt_date' => 'required|date',
-            'prepared_by' => 'nullable|exists:users,id',
-            'items' => 'required|array|min:1',
-            'items.*.product_batch_id' => 'required|exists:product_batches,id',
-            'items.*.qty' => 'required|integer|min:1',
-            'items.*.remarks' => 'nullable|string|max:255',
-            'items.*.sales_order_item_id' => 'nullable|exists:sales_order_items,id',
-        ]);
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+
+            $deliveryReceipt = $this->deliveryReceiptService->saveDraft($validated, Auth::id());
+
+            ActivityLog::record(
+                module: 'DeliveryReceipt',
+                action: 'draft_saved',
+                loggable: $deliveryReceipt,
+                description: "Saved draft Delivery Receipt {$deliveryReceipt->dr_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
 
         if ($validated['transaction_type'] === 'purchase_order') {
             $validated['customer_id'] = SalesOrder::findOrFail($validated['sales_order_id'])->customer_id;
@@ -109,6 +147,48 @@ class DeliveryReceiptController extends Controller
 
         Alert::success('Success', 'Delivery Receipt created successfully');
         return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+    }
+
+    /**
+     * Loose rules for a draft — an interrupted encoder can leave anything
+     * blank or half-typed, so nothing here can block the save.
+     */
+    protected function draftValidationRules(): array
+    {
+        return [
+            'transaction_type' => 'nullable|in:advance_order,purchase_order,walk_in',
+            'customer_id' => 'nullable|exists:customers,id',
+            'sales_order_id' => 'nullable|exists:sales_orders,id',
+            'description' => 'nullable|string|max:255',
+            'receipt_date' => 'nullable|date',
+            'prepared_by' => 'nullable|exists:users,id',
+            'items' => 'nullable|array',
+            'items.*.product_batch_id' => 'nullable|exists:product_batches,id',
+            'items.*.qty' => 'nullable|integer|min:1',
+            'items.*.remarks' => 'nullable|string|max:255',
+            'items.*.sales_order_item_id' => 'nullable|exists:sales_order_items,id',
+        ];
+    }
+
+    /**
+     * Strict rules for the moment stock actually moves — whether that's a
+     * direct Save or finalizing a draft, the data must be complete.
+     */
+    protected function postedValidationRules(): array
+    {
+        return [
+            'transaction_type' => 'required|in:advance_order,purchase_order,walk_in',
+            'customer_id' => 'required_if:transaction_type,advance_order,walk_in|nullable|exists:customers,id',
+            'sales_order_id' => 'required_if:transaction_type,purchase_order|nullable|exists:sales_orders,id',
+            'description' => 'nullable|string|max:255',
+            'receipt_date' => 'required|date',
+            'prepared_by' => 'nullable|exists:users,id',
+            'items' => 'required|array|min:1',
+            'items.*.product_batch_id' => 'required|exists:product_batches,id',
+            'items.*.qty' => 'required|integer|min:1',
+            'items.*.remarks' => 'nullable|string|max:255',
+            'items.*.sales_order_item_id' => 'nullable|exists:sales_order_items,id',
+        ];
     }
 
     /**
@@ -175,12 +255,20 @@ class DeliveryReceiptController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * A draft has never touched stock or Sales Order balances, so editing
+     * it is completely safe — reuses the same create view, pre-filled with
+     * the draft's own current items. A posted receipt already mutated
+     * location_stocks (and any linked SO's delivered_qty) the moment it was
+     * created, so editing that is not supported.
      */
     public function edit(DeliveryReceipt $deliveryReceipt)
     {
-        Alert::info('Not supported', 'Editing an issued Delivery Receipt is not supported.');
-        return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        if (! $deliveryReceipt->isDraft()) {
+            Alert::info('Not supported', 'Editing an issued Delivery Receipt is not supported.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        return view('admin.delivery-receipts.create', $this->formData(editing: $deliveryReceipt));
     }
 
     /**
@@ -188,7 +276,74 @@ class DeliveryReceiptController extends Controller
      */
     public function update(Request $request, DeliveryReceipt $deliveryReceipt)
     {
-        Alert::info('Not supported', 'Editing an issued Delivery Receipt is not supported.');
+        if (! $deliveryReceipt->isDraft()) {
+            Alert::info('Not supported', 'Editing an issued Delivery Receipt is not supported.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+
+            $deliveryReceipt = $this->deliveryReceiptService->saveDraft($validated, Auth::id(), $deliveryReceipt);
+
+            ActivityLog::record(
+                module: 'DeliveryReceipt',
+                action: 'draft_updated',
+                loggable: $deliveryReceipt,
+                description: "Updated draft Delivery Receipt {$deliveryReceipt->dr_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
+
+        if ($validated['transaction_type'] === 'purchase_order') {
+            $validated['customer_id'] = SalesOrder::findOrFail($validated['sales_order_id'])->customer_id;
+        } else {
+            $validated['sales_order_id'] = null;
+        }
+
+        try {
+            $deliveryReceipt = $this->deliveryReceiptService->finalizeDraft($deliveryReceipt, $validated, Auth::id());
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'finalized',
+            loggable: $deliveryReceipt,
+            description: "Finalized Delivery Receipt {$deliveryReceipt->dr_no}",
+        );
+
+        Alert::success('Success', 'Delivery Receipt posted successfully');
         return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+    }
+
+    /**
+     * A draft never touched stock or Sales Order balances, so deleting it
+     * outright is safe. A posted receipt can never be deleted — same
+     * policy as everywhere else.
+     */
+    public function destroy(DeliveryReceipt $deliveryReceipt)
+    {
+        if (! $deliveryReceipt->isDraft()) {
+            Alert::info('Not supported', 'Deleting an issued Delivery Receipt is not supported.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        $drNo = $deliveryReceipt->dr_no;
+        $deliveryReceipt->delete();
+
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'draft_deleted',
+            description: "Deleted draft Delivery Receipt {$drNo}",
+        );
+
+        Alert::success('Deleted', "Draft {$drNo} has been deleted.");
+        return redirect()->route('delivery-receipts.index');
     }
 }

@@ -1,10 +1,10 @@
 @extends('layout.app')
 
-@section('title', 'New Stock Transfer')
+@section('title', $editingStockTransfer ? 'Edit Draft — ' . $editingStockTransfer->reference : 'New Stock Transfer')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Stock Transfer</h5>
+        <h5 class="card-header">{{ $editingStockTransfer ? 'Edit Draft — ' . $editingStockTransfer->reference : 'New Stock Transfer' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,19 +16,22 @@
                 </div>
             @endif
 
-            <form action="{{ route('stock-transfers.store') }}" method="POST" id="stockTransferForm">
+            <form action="{{ $editingStockTransfer ? route('stock-transfers.update', $editingStockTransfer) : route('stock-transfers.store') }}" method="POST" id="stockTransferForm">
                 @csrf
+                @if($editingStockTransfer)
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-md-3 mb-3">
                         <label for="date" class="form-label">Date</label>
-                        <input type="date" name="date" id="date" class="form-control" value="{{ old('date', now()->toDateString()) }}" required>
+                        <input type="date" name="date" id="date" class="form-control" value="{{ old('date', $editingStockTransfer?->date?->toDateString() ?? now()->toDateString()) }}" required>
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="from_location_id" class="form-label">From Location</label>
                         <select name="from_location_id" id="from_location_id" class="form-select" required>
                             @foreach ($locations as $location)
-                                <option value="{{ $location->id }}" {{ old('from_location_id', $locations->firstWhere('is_default', true)?->id) == $location->id ? 'selected' : '' }}>
+                                <option value="{{ $location->id }}" {{ old('from_location_id', $editingStockTransfer?->from_location_id ?? $locations->firstWhere('is_default', true)?->id) == $location->id ? 'selected' : '' }}>
                                     {{ $location->name }}
                                 </option>
                             @endforeach
@@ -38,7 +41,7 @@
                         <label for="to_location_id" class="form-label">To Location</label>
                         <select name="to_location_id" id="to_location_id" class="form-select" required>
                             @foreach ($locations as $location)
-                                <option value="{{ $location->id }}" {{ old('to_location_id', $locations->firstWhere('is_default', false)?->id) == $location->id ? 'selected' : '' }}>
+                                <option value="{{ $location->id }}" {{ old('to_location_id', $editingStockTransfer?->to_location_id ?? $locations->firstWhere('is_default', false)?->id) == $location->id ? 'selected' : '' }}>
                                     {{ $location->name }}
                                 </option>
                             @endforeach
@@ -49,7 +52,7 @@
                         <select name="prepared_by" id="prepared_by" class="form-select">
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingStockTransfer?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                                     {{ $user->name }}
                                 </option>
                             @endforeach
@@ -83,7 +86,10 @@
                 </div>
 
                 <div class="mt-3">
-                    <button type="submit" class="btn btn-primary">Save Stock Transfer</button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Stock Transfer</button>
                     <a href="{{ route('stock-transfers.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -94,6 +100,7 @@
 @section('scripts')
 <script>
     const GENERIC_NAMES = @json($genericNamesForJs);
+    const PREFILL_LINES = @json($prefillLines);
     let rowIndex = 0;
 
     function genericLabel(g) {
@@ -134,7 +141,8 @@
         });
     }
 
-    function addRow() {
+    function addRow(prefill = {}) {
+        const { genericLabel: prefillGenericLabel = '', productBatchId = '', qty = '' } = prefill;
         const index = rowIndex++;
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -164,9 +172,17 @@
         });
 
         row.dataset.genericLabel = '';
+
+        // A draft's saved lines are re-typed straight into the search input
+        // (triggering the same async item fetch a manual pick would), then
+        // the matching batch/qty are preselected once the options render.
+        if (prefillGenericLabel) {
+            genericSearchInput.value = prefillGenericLabel;
+            loadItemsForRow(row, prefillGenericLabel, { productBatchId, qty });
+        }
     }
 
-    async function loadItemsForRow(row, genericLabelValue) {
+    async function loadItemsForRow(row, genericLabelValue, preselect = null) {
         const cells = {
             item: row.querySelector('.item-select-cell'),
             available: row.querySelector('.available-cell'),
@@ -185,10 +201,10 @@
         row.dataset.genericLabel = genericLabelValue;
         cells.item.innerHTML = '<span class="text-muted small">Checking availability…</span>';
         const items = await fetchAvailableItems(generic.id);
-        renderAvailability(row, cells, items, generic.unit);
+        renderAvailability(row, cells, items, generic.unit, preselect);
     }
 
-    function renderAvailability(row, cells, items, unit) {
+    function renderAvailability(row, cells, items, unit, preselect = null) {
         const index = [...document.querySelectorAll('#lineItemsBody tr')].indexOf(row);
         const optionsHtml = itemOptionsHtml(items);
 
@@ -220,7 +236,15 @@
             }
         }
         itemSelect.addEventListener('change', syncSelected);
+
+        if (preselect && preselect.productBatchId) {
+            itemSelect.value = String(preselect.productBatchId);
+        }
         syncSelected();
+
+        if (preselect && preselect.qty) {
+            qtyInput.value = preselect.qty;
+        }
     }
 
     document.getElementById('addRowBtn').addEventListener('click', addRow);
@@ -254,7 +278,14 @@
         }
     });
 
-    // Start with one empty row
-    addRow();
+    // Start with one row per line of the draft being resumed, or a single
+    // blank row for a brand new transfer.
+    if (PREFILL_LINES.length > 0) {
+        PREFILL_LINES.forEach(line => {
+            addRow({ genericLabel: line.generic_label, productBatchId: line.product_batch_id, qty: line.qty });
+        });
+    } else {
+        addRow();
+    }
 </script>
 @endsection

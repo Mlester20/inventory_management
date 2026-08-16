@@ -4,15 +4,17 @@
 
 @section('content')
     <div class="mt-3">
-        <!-- Button trigger modal -->
-        <button
-            type="button"
-            class="btn btn-primary"
-            data-bs-toggle="modal"
-            data-bs-target="#supplierModal"
-        >
-            New Supplier
-        </button>
+        <div class="text-end">
+            <!-- Button trigger modal -->
+            <button
+                type="button"
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#supplierModal"
+            >
+                New Supplier
+            </button>
+        </div>
 
         <!-- Add Supplier Modal -->
         <div class="modal fade" id="supplierModal" tabindex="-1" aria-hidden="true">

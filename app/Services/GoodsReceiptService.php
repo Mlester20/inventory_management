@@ -39,77 +39,163 @@ class GoodsReceiptService
      */
     public function createGoodsReceipt(array $data, ?int $userId = null): GoodsReceipt
     {
-        $hasAnyQty = collect($data['items'])->contains(fn ($line) => ! empty($line['qty']) && (int) $line['qty'] > 0);
+        return DB::transaction(function () use ($data, $userId) {
+            $goodsReceipt = GoodsReceipt::create([
+                'supplier_id' => $data['supplier_id'],
+                'purchase_order_id' => $data['purchase_order_id'] ?? null,
+                'gr_no' => $this->generateGrNo(),
+                'receipt_date' => $data['receipt_date'],
+                'prepared_by' => $data['prepared_by'] ?? null,
+                'status' => 'posted',
+            ]);
+
+            $this->applyItems($goodsReceipt, $data['items'], $userId);
+
+            return $goodsReceipt;
+        });
+    }
+
+    /**
+     * Save (or re-save) a draft — no stock movement, no Purchase Order
+     * balance changes, so the encoder can leave supplier/items blank/
+     * incomplete and resume later. Only the header and items are persisted;
+     * nothing here ever touches location_stocks or received_qty.
+     *
+     * @param array $data ['supplier_id', 'purchase_order_id', 'receipt_date', 'prepared_by',
+     *                     'items' => [['product_id','qty','unit_cost','batch_no','expiration_date','purchase_order_item_id'], ...]]
+     */
+    public function saveDraft(array $data, ?int $userId = null, ?GoodsReceipt $existing = null): GoodsReceipt
+    {
+        return DB::transaction(function () use ($data, $userId, $existing) {
+            $goodsReceipt = $existing ?? new GoodsReceipt([
+                'gr_no' => $this->generateGrNo(),
+            ]);
+
+            $goodsReceipt->fill([
+                'supplier_id' => $data['supplier_id'] ?? null,
+                'purchase_order_id' => $data['purchase_order_id'] ?? null,
+                'receipt_date' => $data['receipt_date'] ?? now()->toDateString(),
+                'prepared_by' => $data['prepared_by'] ?? $userId,
+                'status' => 'draft',
+            ]);
+            $goodsReceipt->save();
+
+            // Replace whatever items existed before — safe, since a draft's
+            // items have never been read by anything that moves stock.
+            $goodsReceipt->items()->delete();
+            foreach ($data['items'] ?? [] as $line) {
+                if (empty($line['product_id'])) {
+                    continue;
+                }
+
+                $goodsReceipt->items()->create([
+                    'purchase_order_item_id' => $line['purchase_order_item_id'] ?? null,
+                    'product_id' => $line['product_id'],
+                    'product_batch_id' => $line['product_batch_id'] ?? null,
+                    'qty' => $line['qty'] ?? null,
+                    'unit' => $line['unit'] ?? null,
+                    'unit_cost' => $line['unit_cost'] ?? null,
+                    'batch_no' => $line['batch_no'] ?? null,
+                    'expiration_date' => $line['expiration_date'] ?? null,
+                    'remarks' => $line['remarks'] ?? null,
+                ]);
+            }
+
+            return $goodsReceipt;
+        });
+    }
+
+    /**
+     * Turn a draft into a real, posted Goods Receipt — the one moment its
+     * stock (and any linked Purchase Order balances) actually move.
+     * Replaces the draft's items with the final values, then runs the same
+     * stock-moving logic createGoodsReceipt() uses.
+     */
+    public function finalizeDraft(GoodsReceipt $draft, array $data, ?int $userId = null): GoodsReceipt
+    {
+        return DB::transaction(function () use ($draft, $data, $userId) {
+            $draft->fill([
+                'supplier_id' => $data['supplier_id'],
+                'purchase_order_id' => $data['purchase_order_id'] ?? null,
+                'receipt_date' => $data['receipt_date'],
+                'prepared_by' => $data['prepared_by'] ?? null,
+                'status' => 'posted',
+            ]);
+            $draft->save();
+
+            $draft->items()->delete();
+            $this->applyItems($draft, $data['items'], $userId);
+
+            return $draft;
+        });
+    }
+
+    /**
+     * Resolve each line's batch, restock it, and update any linked Purchase
+     * Order line balances — shared by createGoodsReceipt() and
+     * finalizeDraft() so this logic (especially the PO received_qty
+     * increment) exists in exactly one place and never runs for a draft.
+     */
+    protected function applyItems(GoodsReceipt $goodsReceipt, array $items, ?int $userId): void
+    {
+        $hasAnyQty = collect($items)->contains(fn ($line) => ! empty($line['qty']) && (int) $line['qty'] > 0);
         if (! $hasAnyQty) {
             throw ValidationException::withMessages([
                 'items' => 'Enter a quantity for at least one item.',
             ]);
         }
 
-        return DB::transaction(function () use ($data, $userId) {
-            $grNo = $this->generateGrNo();
+        $affectedPurchaseOrders = [];
 
-            $goodsReceipt = GoodsReceipt::create([
-                'supplier_id' => $data['supplier_id'],
-                'purchase_order_id' => $data['purchase_order_id'] ?? null,
-                'gr_no' => $grNo,
-                'receipt_date' => $data['receipt_date'],
-                'prepared_by' => $data['prepared_by'] ?? null,
+        foreach ($items as $line) {
+            // A partial receipt intentionally leaves some pending PO
+            // lines blank (not yet delivered) — skip them rather than
+            // treating a blank qty as 0 units received.
+            if (empty($line['qty']) || (int) $line['qty'] <= 0) {
+                continue;
+            }
+
+            $product = Product::findOrFail($line['product_id']);
+            $qty = (int) $line['qty'];
+
+            $purchaseOrderItem = null;
+            if (! empty($line['purchase_order_item_id'])) {
+                $purchaseOrderItem = PurchaseOrderItem::findOrFail($line['purchase_order_item_id']);
+
+                if ($qty > $purchaseOrderItem->remaining_qty) {
+                    throw ValidationException::withMessages([
+                        'items' => "Received qty for {$product->item_name} exceeds the remaining balance on the Purchase Order ({$purchaseOrderItem->remaining_qty}).",
+                    ]);
+                }
+            }
+
+            $batch = $this->resolveBatch($product, $line);
+
+            $this->stockService->restock($batch, $qty, Location::warehouse(), "Goods Receipt {$goodsReceipt->gr_no}", $userId, $goodsReceipt);
+
+            $product->update(['unit_cost' => $line['unit_cost']]);
+
+            $goodsReceipt->items()->create([
+                'purchase_order_item_id' => $purchaseOrderItem?->id,
+                'product_id' => $product->id,
+                'product_batch_id' => $batch->id,
+                'qty' => $qty,
+                'unit' => $line['unit'] ?? null,
+                'unit_cost' => $line['unit_cost'],
+                'batch_no' => $batch->batch_no,
+                'expiration_date' => $batch->expiration_date,
+                'remarks' => $line['remarks'] ?? null,
             ]);
 
-            $affectedPurchaseOrders = [];
-
-            foreach ($data['items'] as $line) {
-                // A partial receipt intentionally leaves some pending PO
-                // lines blank (not yet delivered) — skip them rather than
-                // treating a blank qty as 0 units received.
-                if (empty($line['qty']) || (int) $line['qty'] <= 0) {
-                    continue;
-                }
-
-                $product = Product::findOrFail($line['product_id']);
-                $qty = (int) $line['qty'];
-
-                $purchaseOrderItem = null;
-                if (! empty($line['purchase_order_item_id'])) {
-                    $purchaseOrderItem = PurchaseOrderItem::findOrFail($line['purchase_order_item_id']);
-
-                    if ($qty > $purchaseOrderItem->remaining_qty) {
-                        throw ValidationException::withMessages([
-                            'items' => "Received qty for {$product->item_name} exceeds the remaining balance on the Purchase Order ({$purchaseOrderItem->remaining_qty}).",
-                        ]);
-                    }
-                }
-
-                $batch = $this->resolveBatch($product, $line);
-
-                $this->stockService->restock($batch, $qty, Location::warehouse(), "Goods Receipt {$grNo}", $userId, $goodsReceipt);
-
-                $product->update(['unit_cost' => $line['unit_cost']]);
-
-                $goodsReceipt->items()->create([
-                    'purchase_order_item_id' => $purchaseOrderItem?->id,
-                    'product_batch_id' => $batch->id,
-                    'qty' => $qty,
-                    'unit' => $line['unit'] ?? null,
-                    'unit_cost' => $line['unit_cost'],
-                    'batch_no' => $batch->batch_no,
-                    'expiration_date' => $batch->expiration_date,
-                    'remarks' => $line['remarks'] ?? null,
-                ]);
-
-                if ($purchaseOrderItem) {
-                    $purchaseOrderItem->increment('received_qty', $qty);
-                    $affectedPurchaseOrders[$purchaseOrderItem->purchase_order_id] = true;
-                }
+            if ($purchaseOrderItem) {
+                $purchaseOrderItem->increment('received_qty', $qty);
+                $affectedPurchaseOrders[$purchaseOrderItem->purchase_order_id] = true;
             }
+        }
 
-            foreach (array_keys($affectedPurchaseOrders) as $purchaseOrderId) {
-                $this->refreshPurchaseOrderStatus(PurchaseOrder::findOrFail($purchaseOrderId));
-            }
-
-            return $goodsReceipt;
-        });
+        foreach (array_keys($affectedPurchaseOrders) as $purchaseOrderId) {
+            $this->refreshPurchaseOrderStatus(PurchaseOrder::findOrFail($purchaseOrderId));
+        }
     }
 
     /**

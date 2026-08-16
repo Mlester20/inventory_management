@@ -8,17 +8,30 @@
             <i class="bx bx-arrow-back"></i> Back to Delivery Receipts
         </a>
         <div class="d-flex gap-2">
-            @if($deliveryReceipt->status !== 'delivered')
-                <form action="{{ route('delivery-receipts.mark-delivered', $deliveryReceipt) }}" method="POST">
+            @if($deliveryReceipt->isDraft())
+                <a href="{{ route('delivery-receipts.edit', $deliveryReceipt) }}" class="btn btn-primary">
+                    <i class="bx bx-edit-alt"></i> Continue Editing
+                </a>
+                <form action="{{ route('delivery-receipts.destroy', $deliveryReceipt) }}" method="POST" onsubmit="return confirm('Delete draft {{ $deliveryReceipt->dr_no }}? This cannot be undone.');">
                     @csrf
-                    <button type="submit" class="btn btn-success">
-                        <i class="bx bx-check-circle"></i> Mark as Delivered
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="bx bx-trash"></i> Delete Draft
                     </button>
                 </form>
+            @else
+                @if($deliveryReceipt->status !== 'delivered')
+                    <form action="{{ route('delivery-receipts.mark-delivered', $deliveryReceipt) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-success">
+                            <i class="bx bx-check-circle"></i> Mark as Delivered
+                        </button>
+                    </form>
+                @endif
+                <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                    <i class="bx bx-printer"></i> Print
+                </button>
             @endif
-            <button type="button" class="btn btn-outline-primary" onclick="window.print()">
-                <i class="bx bx-printer"></i> Print
-            </button>
         </div>
     </div>
 
@@ -39,13 +52,17 @@
                 <h5 class="mb-0">Delivery Note</h5>
                 <div class="d-flex gap-2">
                     <span class="badge bg-{{ ['purchase_order' => 'info', 'walk_in' => 'warning'][$deliveryReceipt->transaction_type] ?? 'secondary' }}">
-                        {{ \App\Models\DeliveryReceipt::TRANSACTION_TYPES[$deliveryReceipt->transaction_type] ?? $deliveryReceipt->transaction_type }}
+                        {{ \App\Models\DeliveryReceipt::TRANSACTION_TYPES[$deliveryReceipt->transaction_type] ?? ($deliveryReceipt->transaction_type ?? '—') }}
                     </span>
-                    <span class="badge bg-{{ $deliveryReceipt->status === 'delivered' ? 'success' : 'warning text-dark' }}">
-                        {{ \App\Models\DeliveryReceipt::STATUSES[$deliveryReceipt->status] ?? $deliveryReceipt->status }}
-                    </span>
-                    @php $invoiceStatusColor = ['COMPLETE' => 'success', 'PARTIALLY INVOICED' => 'warning', 'NOT INVOICED' => 'secondary'][$deliveryReceipt->invoice_status] ?? 'secondary'; @endphp
-                    <span class="badge bg-{{ $invoiceStatusColor }}">{{ $deliveryReceipt->invoice_status }}</span>
+                    @if($deliveryReceipt->isDraft())
+                        <span class="badge bg-secondary">DRAFT</span>
+                    @else
+                        <span class="badge bg-{{ $deliveryReceipt->status === 'delivered' ? 'success' : 'warning text-dark' }}">
+                            {{ \App\Models\DeliveryReceipt::STATUSES[$deliveryReceipt->status] ?? $deliveryReceipt->status }}
+                        </span>
+                        @php $invoiceStatusColor = ['COMPLETE' => 'success', 'PARTIALLY INVOICED' => 'warning', 'NOT INVOICED' => 'secondary'][$deliveryReceipt->invoice_status] ?? 'secondary'; @endphp
+                        <span class="badge bg-{{ $invoiceStatusColor }}">{{ $deliveryReceipt->invoice_status }}</span>
+                    @endif
                 </div>
             </div>
 
@@ -61,7 +78,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small">Customer</label>
-                        <p class="fw-bold mb-0">{{ $deliveryReceipt->customer->customer_name }}</p>
+                        <p class="fw-bold mb-0">{{ $deliveryReceipt->customer->customer_name ?? '—' }}</p>
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small">Sales Order Number</label>
@@ -92,7 +109,9 @@
                     <table class="table table-hover table-sm align-middle">
                         <thead>
                             <tr class="table-header-bg">
-                                <th class="no-print"></th>
+                                @if(!$deliveryReceipt->isDraft())
+                                    <th class="no-print"></th>
+                                @endif
                                 <th>#</th>
                                 <th>Generic Description</th>
                                 <th>Item Description</th>
@@ -101,51 +120,61 @@
                                 <th>Remarks</th>
                                 <th class="text-end">Qty</th>
                                 <th>Unit</th>
-                                <th class="text-end">Invoiced</th>
+                                @if(!$deliveryReceipt->isDraft())
+                                    <th class="text-end">Invoiced</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($deliveryReceipt->items as $line)
                                 @php $fullyInvoiced = $line->invoiced_qty >= $line->qty; @endphp
                                 <tr>
-                                    <td class="no-print">
-                                        <input type="checkbox" class="form-check-input line-checkbox" name="line_ids[]" value="{{ $line->id }}" {{ $fullyInvoiced ? 'disabled' : '' }}>
-                                    </td>
+                                    @if(!$deliveryReceipt->isDraft())
+                                        <td class="no-print">
+                                            <input type="checkbox" class="form-check-input line-checkbox" name="line_ids[]" value="{{ $line->id }}" {{ $fullyInvoiced ? 'disabled' : '' }}>
+                                        </td>
+                                    @endif
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $line->productBatch->product->genericName->generic_name ?? '—' }}</td>
                                     <td>{{ $line->productBatch->product->item_name }}</td>
                                     <td>{{ $line->batch_no ?? '—' }}</td>
                                     <td>{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
                                     <td>{{ $line->remarks ?? '—' }}</td>
-                                    <td class="text-end">{{ $line->qty }}</td>
+                                    <td class="text-end">{{ $line->qty ?? '—' }}</td>
                                     <td>{{ $line->productBatch->product->genericName->unit ?? '—' }}</td>
-                                    <td class="text-end">
-                                        @php $invoiceForLine = $line->sales->first()?->invoice; @endphp
-                                        @if($line->invoiced_qty > 0 && $invoiceForLine)
-                                            <a href="{{ route('invoices.show', $invoiceForLine) }}">{{ $line->invoiced_qty }}</a>
-                                        @else
-                                            {{ $line->invoiced_qty }}
-                                        @endif
-                                    </td>
+                                    @if(!$deliveryReceipt->isDraft())
+                                        <td class="text-end">
+                                            @php $invoiceForLine = $line->sales->first()?->invoice; @endphp
+                                            @if($line->invoiced_qty > 0 && $invoiceForLine)
+                                                <a href="{{ route('invoices.show', $invoiceForLine) }}">{{ $line->invoiced_qty }}</a>
+                                            @else
+                                                {{ $line->invoiced_qty }}
+                                            @endif
+                                        </td>
+                                    @endif
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-                <p class="text-muted small mb-3 no-print">
-                    Check the lines to invoice, then click Create Invoice. A line's checkbox disables once it's fully invoiced.
-                </p>
+                @if(!$deliveryReceipt->isDraft())
+                    <p class="text-muted small mb-3 no-print">
+                        Check the lines to invoice, then click Create Invoice. A line's checkbox disables once it's fully invoiced.
+                    </p>
+                @endif
 
                 <div class="row align-items-end">
                     <div class="col-md-4">
                         <label class="text-muted small">Prepared By</label>
                         <p class="fw-bold mb-0">{{ $deliveryReceipt->preparedBy->name ?? '—' }}</p>
                     </div>
-                    <div class="col-md-8 text-md-end mt-3 mt-md-0 no-print">
-                        <button type="submit" class="btn btn-primary" id="createInvoiceBtn" disabled>
-                            <i class="bx bx-receipt"></i> Create Invoice
-                        </button>
-                    </div>
+                    @if(!$deliveryReceipt->isDraft())
+                        <div class="col-md-8 text-md-end mt-3 mt-md-0 no-print">
+                            <button type="submit" class="btn btn-primary" id="createInvoiceBtn" disabled>
+                                <i class="bx bx-receipt"></i> Create Invoice
+                            </button>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

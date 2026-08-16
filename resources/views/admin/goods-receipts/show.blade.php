@@ -7,6 +7,20 @@
         <a href="{{ route('goods-receipts.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Goods Receipts
         </a>
+        @if($goodsReceipt->isDraft())
+            <div class="d-flex gap-2">
+                <a href="{{ route('goods-receipts.edit', $goodsReceipt) }}" class="btn btn-primary">
+                    <i class="bx bx-edit-alt"></i> Continue Editing
+                </a>
+                <form action="{{ route('goods-receipts.destroy', $goodsReceipt) }}" method="POST" onsubmit="return confirm('Delete draft {{ $goodsReceipt->gr_no }}? This cannot be undone.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="bx bx-trash"></i> Delete Draft
+                    </button>
+                </form>
+            </div>
+        @endif
     </div>
 
     <div class="card mb-4">
@@ -17,8 +31,16 @@
                     <p class="fw-bold mb-0">{{ $goodsReceipt->gr_no }}</p>
                 </div>
                 <div class="col-md-3">
+                    <label class="text-muted small">Status</label>
+                    <p class="mb-0">
+                        <span class="badge bg-{{ $goodsReceipt->isDraft() ? 'secondary' : 'success' }}">
+                            {{ \App\Models\GoodsReceipt::STATUSES[$goodsReceipt->status] ?? $goodsReceipt->status }}
+                        </span>
+                    </p>
+                </div>
+                <div class="col-md-3">
                     <label class="text-muted small">Supplier</label>
-                    <p class="fw-bold mb-0">{{ $goodsReceipt->supplier->supplier_name }}</p>
+                    <p class="fw-bold mb-0">{{ $goodsReceipt->supplier->supplier_name ?? '—' }}</p>
                 </div>
                 <div class="col-md-3">
                     <label class="text-muted small">Type</label>
@@ -28,6 +50,8 @@
                         </span>
                     </p>
                 </div>
+            </div>
+            <div class="row">
                 <div class="col-md-3">
                     <label class="text-muted small">Purchase Order</label>
                     <p class="mb-0">
@@ -38,11 +62,9 @@
                         @endif
                     </p>
                 </div>
-            </div>
-            <div class="row">
                 <div class="col-md-3">
                     <label class="text-muted small">Receipt Date</label>
-                    <p class="mb-0">{{ $goodsReceipt->receipt_date->format('M d, Y') }}</p>
+                    <p class="mb-0">{{ $goodsReceipt->receipt_date?->format('M d, Y') ?? '—' }}</p>
                 </div>
                 <div class="col-md-3">
                     <label class="text-muted small">Prepared By</label>
@@ -70,10 +92,10 @@
                 <tbody>
                     @foreach ($goodsReceipt->items as $line)
                         <tr>
-                            <td>{{ $line->productBatch->product->item_name }}</td>
-                            <td class="text-end">{{ $line->qty }}</td>
+                            <td>{{ $line->productBatch->product->item_name ?? $line->product->item_name ?? '—' }}</td>
+                            <td class="text-end">{{ $line->qty ?? '—' }}</td>
                             <td>{{ $line->unit ?? '—' }}</td>
-                            <td class="text-end">{{ number_format($line->unit_cost, 2) }}</td>
+                            <td class="text-end">{{ $line->unit_cost !== null ? number_format($line->unit_cost, 2) : '—' }}</td>
                             <td>{{ $line->batch_no ?? '—' }}</td>
                             <td>{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
                             <td>{{ $line->remarks ?? '—' }}</td>

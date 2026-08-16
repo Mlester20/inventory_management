@@ -1,10 +1,10 @@
 @extends('layout.app')
 
-@section('title', 'New Goods Receipt')
+@section('title', $editingGoodsReceipt ? 'Edit Draft — ' . $editingGoodsReceipt->gr_no : 'New Goods Receipt')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Goods Receipt</h5>
+        <h5 class="card-header">{{ $editingGoodsReceipt ? 'Edit Draft — ' . $editingGoodsReceipt->gr_no : 'New Goods Receipt' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,8 +16,11 @@
                 </div>
             @endif
 
-            <form action="{{ route('goods-receipts.store') }}" method="POST" id="goodsReceiptForm">
+            <form action="{{ $editingGoodsReceipt ? route('goods-receipts.update', $editingGoodsReceipt) : route('goods-receipts.store') }}" method="POST" id="goodsReceiptForm">
                 @csrf
+                @if($editingGoodsReceipt)
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -27,7 +30,7 @@
                             name="receipt_date"
                             id="receipt_date"
                             class="form-control @error('receipt_date') is-invalid @enderror"
-                            value="{{ old('receipt_date', now()->toDateString()) }}"
+                            value="{{ old('receipt_date', $editingGoodsReceipt?->receipt_date?->toDateString() ?? now()->toDateString()) }}"
                             required
                         >
                         @error('receipt_date')
@@ -39,7 +42,7 @@
                         <select name="prepared_by" id="prepared_by" class="form-select">
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingGoodsReceipt?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                                     {{ $user->name }}
                                 </option>
                             @endforeach
@@ -64,7 +67,7 @@
                             <select name="supplier_id" id="direct_supplier_id" class="form-select">
                                 <option value="">-- Select Supplier --</option>
                                 @foreach ($suppliers as $supplier)
-                                    <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                                    <option value="{{ $supplier->id }}" {{ old('supplier_id', $editingGoodsReceipt?->supplier_id) == $supplier->id ? 'selected' : '' }}>{{ $supplier->supplier_name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -116,7 +119,10 @@
                     <button type="button" class="btn btn-secondary" id="addDirectRowBtn">
                         <i class="bx bx-plus"></i> Add Item
                     </button>
-                    <button type="submit" class="btn btn-primary">Save Goods Receipt</button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Goods Receipt</button>
                     <a href="{{ route('goods-receipts.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -127,6 +133,8 @@
 @section('scripts')
 <script>
     const ITEMS = @json($itemsForJs);
+    const DIRECT_PREFILL_LINES = @json($directPrefillLines);
+    const PO_PREFILL_LINES = @json($poPrefillLines);
 
     let directRowIndex = 0;
     let poRowIndex = 0;
@@ -207,7 +215,7 @@
         sortItems(this.value);
     });
 
-    function addDirectRow() {
+    function addDirectRow(prefill = null) {
         const index = directRowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -293,6 +301,24 @@
 
         card.querySelector('.remove-row-btn').addEventListener('click', () => card.remove());
 
+        // A draft's saved Direct Receipt line is re-typed straight into the
+        // search input to resolve item-id/batches (same as a manual pick),
+        // then qty/cost/batch/expiry/unit/remarks are overlaid — everything
+        // here is already client-side in ITEMS, no fetch needed.
+        if (prefill) {
+            itemSearchInput.value = prefill.label;
+            itemSearchInput.dispatchEvent(new Event('input'));
+            if (prefill.qty) card.querySelector('.qty-input').value = prefill.qty;
+            if (prefill.unit_cost !== null && prefill.unit_cost !== undefined) costInput.value = Number(prefill.unit_cost).toFixed(2);
+            if (prefill.unit) unitInput.value = prefill.unit;
+            if (prefill.batch_no) {
+                batchInput.value = prefill.batch_no;
+                batchInput.dispatchEvent(new Event('input'));
+            }
+            if (prefill.expiration_date) expiryInput.value = prefill.expiration_date;
+            if (prefill.remarks) card.querySelector('input[name$="[remarks]"]').value = prefill.remarks;
+        }
+
         // A row can be added while the Direct Receipt tab is inactive (e.g. a
         // purchase_order_id preselected via the URL already switched tabs
         // before this initial row gets created) — keep it disabled in that case.
@@ -376,7 +402,19 @@
         }
         emptyMsg.classList.add('d-none');
 
-        data.items.forEach(line => renderPoLine(body, line, false));
+        // A draft resumed on this tab saved its own qty/brand/batch per PO
+        // line — overlay those onto the freshly fetched pending lines
+        // (remaining_qty is always live, never stale) instead of the
+        // fetch's own defaults. Multiple saved lines against the same PO
+        // line (from Split Item) render as that many cards.
+        data.items.forEach(line => {
+            const matches = PO_PREFILL_LINES.filter(p => String(p.purchase_order_item_id) === String(line.purchase_order_item_id));
+            if (matches.length === 0) {
+                renderPoLine(body, line, false);
+                return;
+            }
+            matches.forEach((prefill, i) => renderPoLine(body, line, i > 0, prefill));
+        });
     });
 
     // Sum of every rendered card's qty for this PO line except $excludeCard —
@@ -396,7 +434,7 @@
     // pending line normally, and again by "Split Item" when the same PO
     // line is being received under more than one brand/batch — every card
     // for the same purchase_order_item_id shares one combined qty cap.
-    function renderPoLine(body, line, isSplit) {
+    function renderPoLine(body, line, isSplit, prefill = null) {
         const index = poRowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -487,6 +525,23 @@
         }
         refreshBatchOptions(initialItem);
 
+        // Overlay a resumed draft's saved values for this card — brand may
+        // differ from the PO line's own product, so re-resolve batches
+        // against whichever product was actually saved.
+        if (prefill) {
+            const prefillItem = ITEMS.find(i => String(i.id) === String(prefill.product_id));
+            if (prefillItem) {
+                brandInput.value = prefillItem.name;
+                productIdInput.value = prefillItem.id;
+                refreshBatchOptions(prefillItem);
+            }
+            if (prefill.qty) qtyInput.value = prefill.qty;
+            if (prefill.unit_cost !== null && prefill.unit_cost !== undefined) costInput.value = Number(prefill.unit_cost).toFixed(2);
+            if (prefill.batch_no) poBatchInput.value = prefill.batch_no;
+            if (prefill.expiration_date) poExpiryInput.value = prefill.expiration_date;
+            if (prefill.remarks) card.querySelector('input[name$="[remarks]"]').value = prefill.remarks;
+        }
+
         poBatchInput.addEventListener('input', function () {
             const currentItem = ITEMS.find(i => String(i.id) === String(productIdInput.value));
             if (!currentItem) return;
@@ -526,7 +581,14 @@
         showTab('direct');
     @endif
 
-    // Start with one empty Direct Receipt row (self-disables if the Direct tab isn't active)
-    addDirectRow();
+    // Direct Receipt rows: one per line of a resumed draft (self-disables
+    // if the Direct tab isn't active), or a single blank row otherwise. A
+    // draft resumed on the Against-PO tab has no Direct lines to restore —
+    // its rows come from the PO change handler above instead.
+    if (DIRECT_PREFILL_LINES.length > 0) {
+        DIRECT_PREFILL_LINES.forEach(line => addDirectRow(line));
+    } else {
+        addDirectRow();
+    }
 </script>
 @endsection

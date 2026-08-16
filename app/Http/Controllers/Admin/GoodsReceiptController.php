@@ -48,6 +48,20 @@ class GoodsReceiptController extends Controller
      */
     public function create(Request $request)
     {
+        return view('admin.goods-receipts.create', $this->formData($request->query('purchase_order_id')));
+    }
+
+    /**
+     * Data shared by the create and edit-draft forms. When editing a draft,
+     * its own items are mapped back into the shape each tab's JS expects to
+     * prefill: Direct Receipt items by item label (synchronous, no fetch
+     * needed — ITEMS already has everything client-side), Against-PO items
+     * keyed by purchase_order_item_id so the tab's existing
+     * fetch-pending-lines flow can overlay the draft's saved qty/batch/brand
+     * once the fresh pending lines come back.
+     */
+    protected function formData(?string $preselectedPurchaseOrderId = null, ?GoodsReceipt $editing = null): array
+    {
         $suppliers = Supplier::orderBy('supplier_name')->get();
         $items = Product::with(['genericName', 'batches'])->orderBy('item_name')->get();
         $openPurchaseOrders = PurchaseOrder::with('supplier')
@@ -55,7 +69,6 @@ class GoodsReceiptController extends Controller
             ->latest()
             ->get();
         $users = User::orderBy('name')->get();
-        $preselectedPurchaseOrderId = $request->query('purchase_order_id');
 
         $itemsForJs = $items->map(fn (Product $item) => [
             'id' => $item->id,
@@ -72,9 +85,41 @@ class GoodsReceiptController extends Controller
             ])->values(),
         ])->values();
 
-        return view('admin.goods-receipts.create', compact(
-            'suppliers', 'items', 'itemsForJs', 'openPurchaseOrders', 'users', 'preselectedPurchaseOrderId'
-        ));
+        $directPrefillLines = [];
+        $poPrefillLines = [];
+
+        if ($editing) {
+            $preselectedPurchaseOrderId = $editing->purchase_order_id ? (string) $editing->purchase_order_id : null;
+            $editing->load('items.product');
+
+            foreach ($editing->items as $item) {
+                if (! $item->product) {
+                    continue;
+                }
+
+                $shared = [
+                    'product_id' => $item->product_id,
+                    'label' => $item->product->description ?: $item->product->item_name,
+                    'qty' => $item->qty,
+                    'unit_cost' => $item->unit_cost !== null ? (float) $item->unit_cost : null,
+                    'unit' => $item->unit,
+                    'batch_no' => $item->batch_no,
+                    'expiration_date' => $item->expiration_date?->format('Y-m-d'),
+                    'remarks' => $item->remarks,
+                ];
+
+                if ($item->purchase_order_item_id) {
+                    $poPrefillLines[] = $shared + ['purchase_order_item_id' => $item->purchase_order_item_id];
+                } else {
+                    $directPrefillLines[] = $shared;
+                }
+            }
+        }
+
+        return compact(
+            'suppliers', 'items', 'itemsForJs', 'openPurchaseOrders', 'users',
+            'preselectedPurchaseOrderId', 'directPrefillLines', 'poPrefillLines'
+        ) + ['editingGoodsReceipt' => $editing];
     }
 
     /**
@@ -82,21 +127,23 @@ class GoodsReceiptController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
-            'supplier_id' => 'required_without:purchase_order_id|nullable|exists:suppliers,id',
-            'receipt_date' => 'required|date',
-            'prepared_by' => 'nullable|exists:users,id',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.qty' => 'nullable|integer|min:1',
-            'items.*.unit' => 'nullable|string|max:50',
-            'items.*.unit_cost' => 'required|numeric|min:0',
-            'items.*.batch_no' => 'nullable|string|max:100',
-            'items.*.expiration_date' => 'nullable|date',
-            'items.*.remarks' => 'nullable|string|max:255',
-            'items.*.purchase_order_item_id' => 'nullable|exists:purchase_order_items,id',
-        ]);
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+
+            $goodsReceipt = $this->goodsReceiptService->saveDraft($validated, Auth::id());
+
+            ActivityLog::record(
+                module: 'GoodsReceipt',
+                action: 'draft_saved',
+                loggable: $goodsReceipt,
+                description: "Saved draft Goods Receipt {$goodsReceipt->gr_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
+            return redirect()->route('goods-receipts.show', $goodsReceipt);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
 
         if (! empty($validated['purchase_order_id'])) {
             $validated['supplier_id'] = PurchaseOrder::findOrFail($validated['purchase_order_id'])->supplier_id;
@@ -120,22 +167,76 @@ class GoodsReceiptController extends Controller
     }
 
     /**
+     * Loose rules for a draft — an interrupted encoder can leave anything
+     * blank or half-typed, so nothing here can block the save.
+     */
+    protected function draftValidationRules(): array
+    {
+        return [
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'receipt_date' => 'nullable|date',
+            'prepared_by' => 'nullable|exists:users,id',
+            'items' => 'nullable|array',
+            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.qty' => 'nullable|integer|min:1',
+            'items.*.unit' => 'nullable|string|max:50',
+            'items.*.unit_cost' => 'nullable|numeric|min:0',
+            'items.*.batch_no' => 'nullable|string|max:100',
+            'items.*.expiration_date' => 'nullable|date',
+            'items.*.remarks' => 'nullable|string|max:255',
+            'items.*.purchase_order_item_id' => 'nullable|exists:purchase_order_items,id',
+        ];
+    }
+
+    /**
+     * Strict rules for the moment stock actually moves — whether that's a
+     * direct Save or finalizing a draft, the data must be complete.
+     */
+    protected function postedValidationRules(): array
+    {
+        return [
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
+            'supplier_id' => 'required_without:purchase_order_id|nullable|exists:suppliers,id',
+            'receipt_date' => 'required|date',
+            'prepared_by' => 'nullable|exists:users,id',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.qty' => 'nullable|integer|min:1',
+            'items.*.unit' => 'nullable|string|max:50',
+            'items.*.unit_cost' => 'required|numeric|min:0',
+            'items.*.batch_no' => 'nullable|string|max:100',
+            'items.*.expiration_date' => 'nullable|date',
+            'items.*.remarks' => 'nullable|string|max:255',
+            'items.*.purchase_order_item_id' => 'nullable|exists:purchase_order_items,id',
+        ];
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show(GoodsReceipt $goodsReceipt)
     {
-        $goodsReceipt->load('supplier', 'purchaseOrder', 'preparedBy', 'items.productBatch.product');
+        $goodsReceipt->load('supplier', 'purchaseOrder', 'preparedBy', 'items.productBatch.product', 'items.product');
 
         return view('admin.goods-receipts.show', compact('goodsReceipt'));
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * A draft has never touched stock or PO balances, so editing it is
+     * completely safe — reuses the same create view, pre-filled with the
+     * draft's own current items. A posted receipt already mutated
+     * location_stocks (and any linked PO's received_qty) the moment it was
+     * created, so editing that is not supported.
      */
     public function edit(GoodsReceipt $goodsReceipt)
     {
-        Alert::info('Not supported', 'Editing an issued Goods Receipt is not supported.');
-        return redirect()->route('goods-receipts.show', $goodsReceipt);
+        if (! $goodsReceipt->isDraft()) {
+            Alert::info('Not supported', 'Editing an issued Goods Receipt is not supported.');
+            return redirect()->route('goods-receipts.show', $goodsReceipt);
+        }
+
+        return view('admin.goods-receipts.create', $this->formData(editing: $goodsReceipt));
     }
 
     /**
@@ -143,7 +244,72 @@ class GoodsReceiptController extends Controller
      */
     public function update(Request $request, GoodsReceipt $goodsReceipt)
     {
-        Alert::info('Not supported', 'Editing an issued Goods Receipt is not supported.');
+        if (! $goodsReceipt->isDraft()) {
+            Alert::info('Not supported', 'Editing an issued Goods Receipt is not supported.');
+            return redirect()->route('goods-receipts.show', $goodsReceipt);
+        }
+
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+
+            $goodsReceipt = $this->goodsReceiptService->saveDraft($validated, Auth::id(), $goodsReceipt);
+
+            ActivityLog::record(
+                module: 'GoodsReceipt',
+                action: 'draft_updated',
+                loggable: $goodsReceipt,
+                description: "Updated draft Goods Receipt {$goodsReceipt->gr_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
+            return redirect()->route('goods-receipts.show', $goodsReceipt);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
+
+        if (! empty($validated['purchase_order_id'])) {
+            $validated['supplier_id'] = PurchaseOrder::findOrFail($validated['purchase_order_id'])->supplier_id;
+        }
+
+        try {
+            $goodsReceipt = $this->goodsReceiptService->finalizeDraft($goodsReceipt, $validated, Auth::id());
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        ActivityLog::record(
+            module: 'GoodsReceipt',
+            action: 'finalized',
+            loggable: $goodsReceipt,
+            description: "Finalized Goods Receipt {$goodsReceipt->gr_no}",
+        );
+
+        Alert::success('Success', 'Goods Receipt posted successfully');
         return redirect()->route('goods-receipts.show', $goodsReceipt);
+    }
+
+    /**
+     * A draft never touched stock or PO balances, so deleting it outright
+     * is safe. A posted receipt can never be deleted — same policy as
+     * everywhere else.
+     */
+    public function destroy(GoodsReceipt $goodsReceipt)
+    {
+        if (! $goodsReceipt->isDraft()) {
+            Alert::info('Not supported', 'Deleting an issued Goods Receipt is not supported.');
+            return redirect()->route('goods-receipts.show', $goodsReceipt);
+        }
+
+        $grNo = $goodsReceipt->gr_no;
+        $goodsReceipt->delete();
+
+        ActivityLog::record(
+            module: 'GoodsReceipt',
+            action: 'draft_deleted',
+            description: "Deleted draft Goods Receipt {$grNo}",
+        );
+
+        Alert::success('Deleted', "Draft {$grNo} has been deleted.");
+        return redirect()->route('goods-receipts.index');
     }
 }

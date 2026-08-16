@@ -1,10 +1,10 @@
 @extends(Auth::user()->role === 'admin' ? 'layout.app' : 'layout.user')
 
-@section('title', 'New Delivery Receipt')
+@section('title', $editingDeliveryReceipt ? 'Edit Draft — ' . $editingDeliveryReceipt->dr_no : 'New Delivery Receipt')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Delivery Receipt</h5>
+        <h5 class="card-header">{{ $editingDeliveryReceipt ? 'Edit Draft — ' . $editingDeliveryReceipt->dr_no : 'New Delivery Receipt' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,9 +16,12 @@
                 </div>
             @endif
 
-            <form action="{{ route('delivery-receipts.store') }}" method="POST" id="deliveryReceiptForm">
+            <form action="{{ $editingDeliveryReceipt ? route('delivery-receipts.update', $editingDeliveryReceipt) : route('delivery-receipts.store') }}" method="POST" id="deliveryReceiptForm">
                 @csrf
-                <input type="hidden" name="transaction_type" id="transaction_type" value="advance_order">
+                @if($editingDeliveryReceipt)
+                    @method('PUT')
+                @endif
+                <input type="hidden" name="transaction_type" id="transaction_type" value="{{ old('transaction_type', $editingDeliveryReceipt?->transaction_type ?? 'advance_order') }}">
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -28,7 +31,7 @@
                             name="receipt_date"
                             id="receipt_date"
                             class="form-control @error('receipt_date') is-invalid @enderror"
-                            value="{{ old('receipt_date', now()->toDateString()) }}"
+                            value="{{ old('receipt_date', $editingDeliveryReceipt?->receipt_date?->toDateString() ?? now()->toDateString()) }}"
                             required
                         >
                         @error('receipt_date')
@@ -40,7 +43,7 @@
                         <select name="prepared_by" id="prepared_by" class="form-select">
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingDeliveryReceipt?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                                     {{ $user->name }}
                                 </option>
                             @endforeach
@@ -51,7 +54,7 @@
                 <div class="row">
                     <div class="col-md-8 mb-3">
                         <label for="description" class="form-label">Description</label>
-                        <input type="text" name="description" id="description" class="form-control @error('description') is-invalid @enderror" value="{{ old('description') }}">
+                        <input type="text" name="description" id="description" class="form-control @error('description') is-invalid @enderror" value="{{ old('description', $editingDeliveryReceipt?->description) }}">
                         @error('description')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
@@ -83,7 +86,7 @@
                                 <select name="customer_id" id="ao_customer_id" class="form-select">
                                     <option value="">-- Select Customer --</option>
                                     @foreach ($customers as $customer)
-                                        <option value="{{ $customer->id }}" data-address="{{ $customer->delivery_address }}">{{ $customer->customer_name }}</option>
+                                        <option value="{{ $customer->id }}" data-address="{{ $customer->delivery_address }}" {{ old('customer_id', $editingDeliveryReceipt?->customer_id) == $customer->id ? 'selected' : '' }}>{{ $customer->customer_name }}</option>
                                     @endforeach
                                 </select>
                                 @if(Auth::user()->role === 'admin')
@@ -184,7 +187,10 @@
                     <button type="button" class="btn btn-secondary" id="addAoRowBtn">
                         <i class="bx bx-plus"></i> Add Generic
                     </button>
-                    <button type="submit" class="btn btn-primary">Save Delivery Receipt</button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Delivery Receipt</button>
                     <a href="{{ route('delivery-receipts.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -245,6 +251,15 @@
     // in Inventory Adjustment) rather than a long <select> — the label the
     // user types/picks is matched back to the real generic_name_id.
     const GENERIC_NAMES = @json($genericNamesForJs);
+
+    // A resumed draft's saved lines, split by whether they came from the
+    // Advance Order/Walk-in tab (no sales_order_item_id) or the Purchase
+    // Order tab (matched by sales_order_item_id once its remaining-items
+    // fetch comes back) — mirrors which tab actually submitted them, since
+    // the inactive tab's disabled inputs never make it into the request.
+    const PREFILL_LINES = @json($prefillLines);
+    const AO_PREFILL_LINES = PREFILL_LINES.filter(l => !l.sales_order_item_id);
+    const PO_PREFILL_LINES = PREFILL_LINES.filter(l => l.sales_order_item_id);
 
     function genericLabel(g) {
         return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
@@ -339,7 +354,7 @@
         });
     }
 
-    function addAoRow() {
+    function addAoRow(prefill = null) {
         const index = aoRowIndex++;
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -374,7 +389,8 @@
         });
 
         const genericSearchInput = row.querySelector('.ao-generic-search-input');
-        genericSearchInput.addEventListener('input', async function () {
+
+        async function loadAoAvailability(labelValue, preselect = null) {
             const cells = {
                 item: row.querySelector('.item-select-cell'),
                 batch: row.querySelector('.batch-cell'),
@@ -389,18 +405,34 @@
             cells.remarks.innerHTML = '';
             cells.unit.innerHTML = '';
 
-            const generic = findGenericByLabel(this.value);
+            const generic = findGenericByLabel(labelValue);
             if (!generic) {
                 cells.item.innerHTML = '<span class="text-muted small">Select a generic first</span>';
                 return;
             }
             cells.item.innerHTML = '<span class="text-muted small">Checking availability…</span>';
             const items = await fetchAvailableItems(generic.id);
-            renderAvailability(cells, items, index, null, null, generic.unit);
+            renderAvailability(cells, items, index, null, null, generic.unit, preselect);
+        }
+
+        genericSearchInput.addEventListener('input', function () {
+            loadAoAvailability(this.value);
         });
+
+        // A draft's saved Advance Order/Walk-in line is re-typed straight
+        // into the search input to trigger the same availability fetch a
+        // manual pick would, with the saved batch/qty/remarks overlaid once
+        // it resolves.
+        if (prefill) {
+            const generic = GENERIC_NAMES.find(g => g.id === prefill.generic_name_id);
+            if (generic) {
+                genericSearchInput.value = genericLabel(generic);
+                loadAoAvailability(genericLabel(generic), prefill);
+            }
+        }
     }
 
-    function renderAvailability(cells, items, index, salesOrderItemId, remainingQty, unit) {
+    function renderAvailability(cells, items, index, salesOrderItemId, remainingQty, unit, preselect = null) {
         const optionsHtml = itemOptionsHtml(items);
 
         if (!optionsHtml) {
@@ -445,10 +477,27 @@
             }
         }
         itemSelect.addEventListener('change', syncSelected);
+
+        // Overlay a resumed draft's saved batch/qty/remarks for this line —
+        // only if that batch is still among the live fetched options (stock
+        // may have moved since the draft was saved).
+        if (preselect && preselect.product_batch_id) {
+            const hasOption = [...itemSelect.options].some(o => o.value === String(preselect.product_batch_id));
+            if (hasOption) {
+                itemSelect.value = String(preselect.product_batch_id);
+            }
+        }
         syncSelected();
+        if (preselect) {
+            if (preselect.qty) qtyInput.value = preselect.qty;
+            if (preselect.remarks) {
+                const remarksInput = cells.remarks.querySelector('input[type="text"]');
+                if (remarksInput) remarksInput.value = preselect.remarks;
+            }
+        }
     }
 
-    document.getElementById('addAoRowBtn').addEventListener('click', addAoRow);
+    document.getElementById('addAoRowBtn').addEventListener('click', () => addAoRow());
 
     // "Generate N Lines" — reuses the exact same addAoRow() the Add Generic
     // button calls, just N times in a row, so a batch-generated line is
@@ -533,14 +582,21 @@
                 unit: row.querySelector('.unit-cell'),
             };
             const items = await fetchAvailableItems(line.generic_name_id);
-            renderAvailability(cells, items, index, line.sales_order_item_id, line.remaining_qty, line.unit);
+            // A draft resumed on this tab saved its own batch/qty/remarks
+            // per Sales Order line — overlay it onto this freshly fetched
+            // pending line (remaining_qty is always live, never stale).
+            const preselect = PO_PREFILL_LINES.find(p => String(p.sales_order_item_id) === String(line.sales_order_item_id)) || null;
+            renderAvailability(cells, items, index, line.sales_order_item_id, line.remaining_qty, line.unit, preselect);
         }
     });
 
     // Auto-trigger the Purchase Order tab load if a sales_order_id was preselected via the URL
+    // (either from the query string, or from a resumed draft's own header).
     @if($preselectedSalesOrderId)
         showTab('purchase_order');
         document.getElementById('po_sales_order_id').dispatchEvent(new Event('change'));
+    @elseif($editingDeliveryReceipt && $editingDeliveryReceipt->transaction_type === 'walk_in')
+        showTab('walk_in');
     @endif
 
     // ---------- New Customer modal ----------
@@ -594,7 +650,23 @@
         inactiveTabEl.querySelectorAll('input, select').forEach(el => el.disabled = true);
     });
 
-    // Start with one empty Advance Order row
-    addAoRow();
+    // A resumed draft's preselected customer needs its delivery address
+    // filled the same way the onchange handler does for a manual pick.
+    (function () {
+        const customerSelect = document.getElementById('ao_customer_id');
+        if (customerSelect.value) {
+            customerSelect.dispatchEvent(new Event('change'));
+        }
+    })();
+
+    // Advance Order/Walk-in rows: one per line of a resumed draft, or a
+    // single blank row otherwise. A draft resumed on the Purchase Order tab
+    // has no Advance Order lines to restore — its rows come from the
+    // Sales Order change handler above instead.
+    if (AO_PREFILL_LINES.length > 0) {
+        AO_PREFILL_LINES.forEach(line => addAoRow(line));
+    } else {
+        addAoRow();
+    }
 </script>
 @endsection

@@ -44,66 +44,154 @@ class DeliveryReceiptService
     public function createDeliveryReceipt(array $data, ?int $userId = null): DeliveryReceipt
     {
         return DB::transaction(function () use ($data, $userId) {
-            $drNo = $this->generateDrNo();
-
             $deliveryReceipt = DeliveryReceipt::create([
                 'customer_id' => $data['customer_id'],
                 'sales_order_id' => $data['sales_order_id'] ?? null,
-                'dr_no' => $drNo,
+                'dr_no' => $this->generateDrNo(),
                 'transaction_type' => $data['transaction_type'],
                 'description' => $data['description'] ?? null,
                 'receipt_date' => $data['receipt_date'],
                 'prepared_by' => $data['prepared_by'] ?? null,
+                'is_draft' => false,
             ]);
 
-            $warehouse = Location::warehouse();
-            $affectedSalesOrders = [];
+            $this->applyItems($deliveryReceipt, $data['items'], $userId);
 
-            foreach ($data['items'] as $line) {
-                $batch = ProductBatch::with('product')->findOrFail($line['product_batch_id']);
-                $qty = (int) $line['qty'];
-                $availableAtWarehouse = $batch->qtyAtLocation($warehouse->id);
+            return $deliveryReceipt;
+        });
+    }
 
-                if ($availableAtWarehouse < $qty) {
-                    throw ValidationException::withMessages([
-                        'items' => "Insufficient stock for {$batch->product->item_name}. Available: {$availableAtWarehouse}",
-                    ]);
+    /**
+     * Save (or re-save) a draft — no stock movement, no Sales Order balance
+     * changes, so the encoder can leave customer/items blank/incomplete and
+     * resume later. Only the header and items are persisted; nothing here
+     * ever touches location_stocks or delivered_qty.
+     *
+     * @param array $data ['customer_id', 'sales_order_id', 'transaction_type', 'receipt_date', 'prepared_by',
+     *                     'items' => [['product_batch_id','qty','sales_order_item_id'], ...]]
+     */
+    public function saveDraft(array $data, ?int $userId = null, ?DeliveryReceipt $existing = null): DeliveryReceipt
+    {
+        return DB::transaction(function () use ($data, $userId, $existing) {
+            $deliveryReceipt = $existing ?? new DeliveryReceipt([
+                'dr_no' => $this->generateDrNo(),
+            ]);
+
+            $deliveryReceipt->fill([
+                'customer_id' => $data['customer_id'] ?? null,
+                'sales_order_id' => $data['sales_order_id'] ?? null,
+                'transaction_type' => $data['transaction_type'] ?? null,
+                'description' => $data['description'] ?? null,
+                'receipt_date' => $data['receipt_date'] ?? now()->toDateString(),
+                'prepared_by' => $data['prepared_by'] ?? $userId,
+                'is_draft' => true,
+            ]);
+            $deliveryReceipt->save();
+
+            // Replace whatever items existed before — safe, since a draft's
+            // items have never been read by anything that moves stock.
+            $deliveryReceipt->items()->delete();
+            foreach ($data['items'] ?? [] as $line) {
+                if (empty($line['product_batch_id'])) {
+                    continue;
                 }
 
-                $salesOrderItem = null;
-                if (! empty($line['sales_order_item_id'])) {
-                    $salesOrderItem = SalesOrderItem::findOrFail($line['sales_order_item_id']);
-
-                    if ($qty > $salesOrderItem->remaining_qty) {
-                        throw ValidationException::withMessages([
-                            'items' => "Delivered qty for {$batch->product->item_name} exceeds the remaining balance on the Sales Order ({$salesOrderItem->remaining_qty}).",
-                        ]);
-                    }
-                }
-
-                $this->stockService->deduct($batch, $qty, $warehouse, "Delivery Receipt {$drNo}", $userId, $deliveryReceipt);
+                $batch = ProductBatch::find($line['product_batch_id']);
 
                 $deliveryReceipt->items()->create([
-                    'sales_order_item_id' => $salesOrderItem?->id,
-                    'product_batch_id' => $batch->id,
-                    'qty' => $qty,
+                    'sales_order_item_id' => $line['sales_order_item_id'] ?? null,
+                    'product_batch_id' => $line['product_batch_id'],
+                    'qty' => $line['qty'] ?? null,
                     'remarks' => $line['remarks'] ?? null,
-                    'batch_no' => $batch->batch_no,
-                    'expiration_date' => $batch->expiration_date,
+                    'batch_no' => $batch?->batch_no,
+                    'expiration_date' => $batch?->expiration_date,
                 ]);
-
-                if ($salesOrderItem) {
-                    $salesOrderItem->increment('delivered_qty', $qty);
-                    $affectedSalesOrders[$salesOrderItem->sales_order_id] = true;
-                }
-            }
-
-            foreach (array_keys($affectedSalesOrders) as $salesOrderId) {
-                $this->refreshSalesOrderStatus(SalesOrder::findOrFail($salesOrderId));
             }
 
             return $deliveryReceipt;
         });
+    }
+
+    /**
+     * Turn a draft into a real, posted Delivery Receipt — the one moment
+     * its stock (and any linked Sales Order balances) actually move.
+     * Replaces the draft's items with the final values, then runs the same
+     * stock-moving logic createDeliveryReceipt() uses.
+     */
+    public function finalizeDraft(DeliveryReceipt $draft, array $data, ?int $userId = null): DeliveryReceipt
+    {
+        return DB::transaction(function () use ($draft, $data, $userId) {
+            $draft->fill([
+                'customer_id' => $data['customer_id'],
+                'sales_order_id' => $data['sales_order_id'] ?? null,
+                'transaction_type' => $data['transaction_type'],
+                'description' => $data['description'] ?? null,
+                'receipt_date' => $data['receipt_date'],
+                'prepared_by' => $data['prepared_by'] ?? null,
+                'is_draft' => false,
+            ]);
+            $draft->save();
+
+            $draft->items()->delete();
+            $this->applyItems($draft, $data['items'], $userId);
+
+            return $draft;
+        });
+    }
+
+    /**
+     * Deduct stock for each line's batch and update any linked Sales Order
+     * line balances — shared by createDeliveryReceipt() and finalizeDraft()
+     * so this logic (especially the SO delivered_qty increment) exists in
+     * exactly one place and never runs for a draft.
+     */
+    protected function applyItems(DeliveryReceipt $deliveryReceipt, array $items, ?int $userId): void
+    {
+        $warehouse = Location::warehouse();
+        $affectedSalesOrders = [];
+
+        foreach ($items as $line) {
+            $batch = ProductBatch::with('product')->findOrFail($line['product_batch_id']);
+            $qty = (int) $line['qty'];
+            $availableAtWarehouse = $batch->qtyAtLocation($warehouse->id);
+
+            if ($availableAtWarehouse < $qty) {
+                throw ValidationException::withMessages([
+                    'items' => "Insufficient stock for {$batch->product->item_name}. Available: {$availableAtWarehouse}",
+                ]);
+            }
+
+            $salesOrderItem = null;
+            if (! empty($line['sales_order_item_id'])) {
+                $salesOrderItem = SalesOrderItem::findOrFail($line['sales_order_item_id']);
+
+                if ($qty > $salesOrderItem->remaining_qty) {
+                    throw ValidationException::withMessages([
+                        'items' => "Delivered qty for {$batch->product->item_name} exceeds the remaining balance on the Sales Order ({$salesOrderItem->remaining_qty}).",
+                    ]);
+                }
+            }
+
+            $this->stockService->deduct($batch, $qty, $warehouse, "Delivery Receipt {$deliveryReceipt->dr_no}", $userId, $deliveryReceipt);
+
+            $deliveryReceipt->items()->create([
+                'sales_order_item_id' => $salesOrderItem?->id,
+                'product_batch_id' => $batch->id,
+                'qty' => $qty,
+                'remarks' => $line['remarks'] ?? null,
+                'batch_no' => $batch->batch_no,
+                'expiration_date' => $batch->expiration_date,
+            ]);
+
+            if ($salesOrderItem) {
+                $salesOrderItem->increment('delivered_qty', $qty);
+                $affectedSalesOrders[$salesOrderItem->sales_order_id] = true;
+            }
+        }
+
+        foreach (array_keys($affectedSalesOrders) as $salesOrderId) {
+            $this->refreshSalesOrderStatus(SalesOrder::findOrFail($salesOrderId));
+        }
     }
 
     /**

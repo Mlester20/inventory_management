@@ -55,17 +55,21 @@
                                     —
                                 @endif
                             </td>
-                            <td>{{ $deliveryReceipt->customer->customer_name }}</td>
+                            <td>{{ $deliveryReceipt->customer->customer_name ?? '—' }}</td>
                             <td>{{ $deliveryReceipt->description ?? '—' }}</td>
                             <td>
                                 <span class="badge bg-{{ ['purchase_order' => 'info', 'walk_in' => 'warning'][$deliveryReceipt->transaction_type] ?? 'secondary' }}">
-                                    {{ \App\Models\DeliveryReceipt::TRANSACTION_TYPES[$deliveryReceipt->transaction_type] ?? $deliveryReceipt->transaction_type }}
+                                    {{ \App\Models\DeliveryReceipt::TRANSACTION_TYPES[$deliveryReceipt->transaction_type] ?? ($deliveryReceipt->transaction_type ?? '—') }}
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-{{ $deliveryReceipt->status === 'delivered' ? 'success' : 'warning text-dark' }}">
-                                    {{ \App\Models\DeliveryReceipt::STATUSES[$deliveryReceipt->status] ?? $deliveryReceipt->status }}
-                                </span>
+                                @if($deliveryReceipt->isDraft())
+                                    <span class="badge bg-secondary">DRAFT</span>
+                                @else
+                                    <span class="badge bg-{{ $deliveryReceipt->status === 'delivered' ? 'success' : 'warning text-dark' }}">
+                                        {{ \App\Models\DeliveryReceipt::STATUSES[$deliveryReceipt->status] ?? $deliveryReceipt->status }}
+                                    </span>
+                                @endif
                             </td>
                             <td>
                                 @php $invoiceStatusColor = ['COMPLETE' => 'success', 'PARTIALLY INVOICED' => 'warning', 'NOT INVOICED' => 'secondary'][$deliveryReceipt->invoice_status] ?? 'secondary'; @endphp
@@ -73,9 +77,31 @@
                             </td>
                             <td>{{ $deliveryReceipt->created_at->format('m/d/Y h:i A') }}</td>
                             <td>
-                                <a href="{{ route('delivery-receipts.show', $deliveryReceipt) }}" class="btn btn-sm btn-info">
-                                    View
-                                </a>
+                                <div class="d-flex gap-1">
+                                    <a href="{{ route('delivery-receipts.show', $deliveryReceipt) }}" class="btn btn-sm btn-info">
+                                        View
+                                    </a>
+                                    @if($deliveryReceipt->isDraft())
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                                <i class="bx bx-dots-vertical-rounded"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a href="{{ route('delivery-receipts.edit', $deliveryReceipt) }}" class="dropdown-item">
+                                                    <i class="bx bx-edit-alt me-1"></i> Continue Editing
+                                                </a>
+                                                <div class="dropdown-divider"></div>
+                                                <form action="{{ route('delivery-receipts.destroy', $deliveryReceipt) }}" method="POST" class="m-0" onsubmit="return confirm('Delete draft {{ $deliveryReceipt->dr_no }}? This cannot be undone.');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <i class="bx bx-trash me-1"></i> Delete Draft
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty

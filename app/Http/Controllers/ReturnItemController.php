@@ -38,18 +38,38 @@ class ReturnItemController extends Controller
         }
 
         // Admin view - all return items
-        $returnItems = ReturnItem::with('productBatch.product')->latest()->paginate(15);
+        $returnItems = ReturnItem::with('productBatch.product', 'customer', 'stockDisposal')->latest()->paginate(15);
         $products = Product::with('batches')->orderBy('item_name')->get();
         $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name']);
-        return view('admin.return-items', compact('returnItems', 'products', 'customers'));
+        return view('admin.return-items.index', compact('returnItems', 'products', 'customers'));
     }
 
     /**
      * Show the form for creating a new resource.
+     *
+     * The POS side (pages/return-items.blade.php) only lets a user return
+     * from their own Purchase history. Admin isn't limited to that — any
+     * product/batch can be picked directly, same pattern as Inventory
+     * Adjustment's item search, since an admin-initiated return is usually
+     * for a customer who bought via Delivery Receipt/Invoice rather than POS.
      */
     public function create()
     {
-        //
+        $products = Product::with(['genericName', 'batches'])->orderBy('item_name')->get();
+        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name']);
+
+        $productsForJs = $products->map(fn (Product $p) => [
+            'id' => $p->id,
+            'name' => $p->description ?: $p->item_name,
+            'unit' => $p->genericName->unit ?? '',
+            'batches' => $p->batches->map(fn ($b) => [
+                'id' => $b->id,
+                'batch_no' => $b->batch_no,
+                'expiration_date' => $b->expiration_date?->format('Y-m-d'),
+            ])->values(),
+        ])->values();
+
+        return view('admin.return-items.create', compact('customers', 'productsForJs'));
     }
 
     /**
@@ -86,7 +106,7 @@ class ReturnItemController extends Controller
             ], 201);
         }
 
-        return redirect()->route('admin.return-items')
+        return redirect()->route('return-items.index')
             ->with('success', 'Return item created successfully.');
     }
 
@@ -131,7 +151,7 @@ class ReturnItemController extends Controller
             ],
         );
 
-        return redirect()->route('admin.return-items')
+        return redirect()->route('return-items.index')
             ->with('success', 'Return item updated successfully.');
     }
 
@@ -150,7 +170,7 @@ class ReturnItemController extends Controller
             description: "Deleted return item #{$returnItemId}",
         );
 
-        return redirect()->route('admin.return-items')
+        return redirect()->route('return-items.index')
             ->with('success', 'Return item deleted successfully.');
     }
 
@@ -161,6 +181,8 @@ class ReturnItemController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
+            'refund_method' => 'required|in:credit,cash',
+            'stock_disposition' => 'required|in:sellable,write_off',
         ]);
 
         try {
@@ -173,13 +195,17 @@ class ReturnItemController extends Controller
                 $returnItem->customer_id = $validated['customer_id'];
             }
 
-            $result = $this->returnItemService->approve($returnItem, auth()->id());
+            if ($validated['refund_method'] === 'credit' && !$returnItem->customer_id) {
+                return back()->with('error', 'Select a customer to store this return as credit — or choose Cash Refund instead.');
+            }
+
+            $result = $this->returnItemService->approve($returnItem, $validated['refund_method'], $validated['stock_disposition'], auth()->id());
 
             ActivityLog::record(
                 module: 'ReturnItem',
                 action: 'approved',
                 loggable: $returnItem,
-                description: "Approved return item #{$returnItem->id} and restocked {$returnItem->quantity} units to POS",
+                description: "Approved return item #{$returnItem->id} ({$validated['stock_disposition']}, {$validated['refund_method']} refund, {$returnItem->refund_amount})",
             );
 
             if ($result['creditPayment']) {
