@@ -59,7 +59,7 @@ class SearchController extends Controller
                         'id' => $purchase->id,
                         'title' => 'Sale #' . $purchase->id . ' - ' . ($purchase->productBatch->product->item_name ?? 'N/A'),
                         'subtitle' => 'Qty: ' . $purchase->quantity_sold . ' | Total: ₱' . number_format($purchase->total_price, 2),
-                        'url' => route('admin.purchases.show', $purchase->id),
+                        'url' => route('purchases.show', $purchase->id),
                         'icon' => 'bx-receipt'
                     ];
                 });
@@ -77,7 +77,7 @@ class SearchController extends Controller
                         'id' => $supplier->id,
                         'title' => $supplier->supplier_name,
                         'subtitle' => ($supplier->contact_person ?? 'N/A') . ' | ' . ($supplier->email ?? 'N/A'),
-                        'url' => route('admin.suppliers.show', $supplier->id),
+                        'url' => route('suppliers.show', $supplier->id),
                         'icon' => 'bx-user'
                     ];
                 });
@@ -92,7 +92,7 @@ class SearchController extends Controller
                         'id' => $category->id,
                         'title' => $category->category_name,
                         'subtitle' => 'Category',
-                        'url' => route('admin.categories.show', $category->id),
+                        'url' => route('categories.show', $category->id),
                         'icon' => 'bx-receipt'
                     ];
                 });
