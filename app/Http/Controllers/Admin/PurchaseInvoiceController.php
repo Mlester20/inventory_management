@@ -43,6 +43,14 @@ class PurchaseInvoiceController extends Controller
      */
     public function create()
     {
+        return view('admin.purchase-invoices.create', $this->formData() + ['editingPurchaseInvoice' => null]);
+    }
+
+    /**
+     * Data shared by the create and edit-draft forms.
+     */
+    protected function formData(): array
+    {
         $suppliers = Supplier::orderBy('supplier_name')->get();
         $users = User::orderBy('name')->get();
 
@@ -65,7 +73,7 @@ class PurchaseInvoiceController extends Controller
                 'supplier_id' => $po->supplier_id,
             ])->values();
 
-        return view('admin.purchase-invoices.create', compact('suppliers', 'users', 'goodsReceipts', 'purchaseOrders'));
+        return compact('suppliers', 'users', 'goodsReceipts', 'purchaseOrders');
     }
 
     /**
@@ -73,27 +81,30 @@ class PurchaseInvoiceController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
-            'goods_receipt_id' => 'nullable|exists:goods_receipts,id',
-            'invoice_no' => 'required|string|max:255',
-            'invoice_date' => 'required|date',
-            'amount' => 'required|numeric|min:0.01',
-            'vat_amount' => 'nullable|numeric|min:0',
-            'remarks' => 'nullable|string|max:255',
-            'prepared_by' => 'nullable|exists:users,id',
-        ]);
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
 
-        $purchaseInvoice = PurchaseInvoice::create([
-            'supplier_id' => $validated['supplier_id'],
-            'purchase_order_id' => $validated['purchase_order_id'] ?? null,
-            'goods_receipt_id' => $validated['goods_receipt_id'] ?? null,
-            'invoice_no' => $validated['invoice_no'],
-            'invoice_date' => $validated['invoice_date'],
-            'amount' => $validated['amount'],
-            'vat_amount' => $validated['vat_amount'] ?? null,
-            'remarks' => $validated['remarks'] ?? null,
+            $purchaseInvoice = PurchaseInvoice::create($validated + [
+                'status' => 'draft',
+                'invoice_date' => $validated['invoice_date'] ?? now()->toDateString(),
+                'prepared_by' => $validated['prepared_by'] ?? auth()->id(),
+            ]);
+
+            ActivityLog::record(
+                module: 'PurchaseInvoice',
+                action: 'draft_saved',
+                loggable: $purchaseInvoice,
+                description: "Saved draft Purchase Invoice {$purchaseInvoice->invoice_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
+            return redirect()->route('purchase-invoices.show', $purchaseInvoice);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
+
+        $purchaseInvoice = PurchaseInvoice::create($validated + [
+            'status' => 'posted',
             'prepared_by' => $validated['prepared_by'] ?? auth()->id(),
         ]);
 
@@ -109,6 +120,45 @@ class PurchaseInvoiceController extends Controller
     }
 
     /**
+     * Loose rules for a draft — an interrupted encoder can leave anything
+     * blank or half-typed, so nothing here can block the save.
+     */
+    protected function draftValidationRules(): array
+    {
+        return [
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
+            'goods_receipt_id' => 'nullable|exists:goods_receipts,id',
+            'invoice_no' => 'nullable|string|max:255',
+            'invoice_date' => 'nullable|date',
+            'amount' => 'nullable|numeric|min:0',
+            'vat_amount' => 'nullable|numeric|min:0',
+            'remarks' => 'nullable|string|max:255',
+            'prepared_by' => 'nullable|exists:users,id',
+        ];
+    }
+
+    /**
+     * Strict rules for the moment the invoice is actually recorded —
+     * whether that's a direct Save or finalizing a draft, the data must be
+     * complete.
+     */
+    protected function postedValidationRules(): array
+    {
+        return [
+            'supplier_id' => 'required|exists:suppliers,id',
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
+            'goods_receipt_id' => 'nullable|exists:goods_receipts,id',
+            'invoice_no' => 'required|string|max:255',
+            'invoice_date' => 'required|date',
+            'amount' => 'required|numeric|min:0.01',
+            'vat_amount' => 'nullable|numeric|min:0',
+            'remarks' => 'nullable|string|max:255',
+            'prepared_by' => 'nullable|exists:users,id',
+        ];
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show(PurchaseInvoice $purchaseInvoice)
@@ -119,12 +169,19 @@ class PurchaseInvoiceController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * A draft has no downstream effects yet, so editing it is completely
+     * safe — reuses the same create view, pre-filled with the draft's own
+     * current values. A posted (recorded) invoice is not supported for
+     * editing, matching the existing behavior for non-draft invoices.
      */
     public function edit(PurchaseInvoice $purchaseInvoice)
     {
-        Alert::info('Not supported', 'Editing a recorded Purchase Invoice is not supported.');
-        return redirect()->route('purchase-invoices.show', $purchaseInvoice);
+        if (! $purchaseInvoice->isDraft()) {
+            Alert::info('Not supported', 'Editing a recorded Purchase Invoice is not supported.');
+            return redirect()->route('purchase-invoices.show', $purchaseInvoice);
+        }
+
+        return view('admin.purchase-invoices.create', $this->formData() + ['editingPurchaseInvoice' => $purchaseInvoice]);
     }
 
     /**
@@ -132,7 +189,42 @@ class PurchaseInvoiceController extends Controller
      */
     public function update(Request $request, PurchaseInvoice $purchaseInvoice)
     {
-        Alert::info('Not supported', 'Editing a recorded Purchase Invoice is not supported.');
+        if (! $purchaseInvoice->isDraft()) {
+            Alert::info('Not supported', 'Editing a recorded Purchase Invoice is not supported.');
+            return redirect()->route('purchase-invoices.show', $purchaseInvoice);
+        }
+
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+
+            $purchaseInvoice->update($validated + [
+                'status' => 'draft',
+                'invoice_date' => $validated['invoice_date'] ?? now()->toDateString(),
+            ]);
+
+            ActivityLog::record(
+                module: 'PurchaseInvoice',
+                action: 'draft_updated',
+                loggable: $purchaseInvoice,
+                description: "Updated draft Purchase Invoice {$purchaseInvoice->invoice_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
+            return redirect()->route('purchase-invoices.show', $purchaseInvoice);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
+
+        $purchaseInvoice->update($validated + ['status' => 'posted']);
+
+        ActivityLog::record(
+            module: 'PurchaseInvoice',
+            action: 'finalized',
+            loggable: $purchaseInvoice,
+            description: "Finalized Purchase Invoice {$purchaseInvoice->invoice_no} (amount: {$purchaseInvoice->amount})",
+        );
+
+        Alert::success('Success', 'Purchase Invoice recorded successfully');
         return redirect()->route('purchase-invoices.show', $purchaseInvoice);
     }
 

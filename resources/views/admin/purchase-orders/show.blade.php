@@ -7,7 +7,20 @@
         <a href="{{ route('purchase-orders.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Purchase Orders
         </a>
-        @if($purchaseOrder->status !== 'completed' && $purchaseOrder->status !== 'cancelled')
+        @if($purchaseOrder->isDraft())
+            <div class="d-flex gap-2">
+                <a href="{{ route('purchase-orders.edit', $purchaseOrder) }}" class="btn btn-primary">
+                    <i class="bx bx-edit-alt"></i> Continue Editing
+                </a>
+                <form action="{{ route('purchase-orders.destroy', $purchaseOrder) }}" method="POST" onsubmit="return confirm('Delete draft {{ $purchaseOrder->po_no }}? This cannot be undone.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="bx bx-trash"></i> Delete Draft
+                    </button>
+                </form>
+            </div>
+        @elseif($purchaseOrder->status !== 'completed' && $purchaseOrder->status !== 'cancelled')
             <a href="{{ route('goods-receipts.create', ['purchase_order_id' => $purchaseOrder->id]) }}" class="btn btn-primary">
                 <i class="bx bx-plus"></i> Create Goods Receipt
             </a>
@@ -23,7 +36,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="text-muted small">Supplier</label>
-                    <p class="fw-bold mb-0">{{ $purchaseOrder->supplier->supplier_name }}</p>
+                    <p class="fw-bold mb-0">{{ $purchaseOrder->supplier->supplier_name ?? '—' }}</p>
                 </div>
                 <div class="col-md-3">
                     <label class="text-muted small">Order Date</label>
@@ -32,9 +45,13 @@
                 <div class="col-md-3">
                     <label class="text-muted small">Status</label>
                     <p class="mb-0">
-                        <span class="badge bg-{{ ['open' => 'warning', 'partially_received' => 'info', 'completed' => 'success', 'cancelled' => 'danger'][$purchaseOrder->status] ?? 'secondary' }}">
-                            {{ ucfirst(str_replace('_', ' ', $purchaseOrder->status)) }}
-                        </span>
+                        @if($purchaseOrder->isDraft())
+                            <span class="badge bg-secondary">DRAFT</span>
+                        @else
+                            <span class="badge bg-{{ ['open' => 'warning', 'partially_received' => 'info', 'completed' => 'success', 'cancelled' => 'danger'][$purchaseOrder->status] ?? 'secondary' }}">
+                                {{ ucfirst(str_replace('_', ' ', $purchaseOrder->status)) }}
+                            </span>
+                        @endif
                     </p>
                 </div>
             </div>
@@ -67,9 +84,9 @@
                     @foreach ($purchaseOrder->items as $item)
                         <tr>
                             <td>{{ $item->product->item_name ?? $item->genericName->generic_name ?? '—' }}</td>
-                            <td class="text-end">{{ $item->qty }}</td>
+                            <td class="text-end">{{ $item->qty ?? '—' }}</td>
                             <td>{{ $item->unit ?? '—' }}</td>
-                            <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
+                            <td class="text-end">{{ $item->unit_cost !== null ? number_format($item->unit_cost, 2) : '—' }}</td>
                             <td>{{ $item->remarks ?? '—' }}</td>
                             <td class="text-end">{{ $item->received_qty }}</td>
                             <td class="text-end">
@@ -77,7 +94,7 @@
                                     {{ $item->remaining_qty }}
                                 </span>
                             </td>
-                            <td class="text-end">{{ number_format($item->qty * $item->unit_cost, 2) }}</td>
+                            <td class="text-end">{{ ($item->qty !== null && $item->unit_cost !== null) ? number_format($item->qty * $item->unit_cost, 2) : '—' }}</td>
                         </tr>
                     @endforeach
                 </tbody>

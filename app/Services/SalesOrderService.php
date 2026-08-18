@@ -20,21 +20,99 @@ class SalesOrderService
                 'so_no' => $this->generateSoNo(),
                 'po_no' => $data['po_no'] ?? null,
                 'status' => 'open',
+                'is_draft' => false,
                 'order_date' => $data['order_date'],
                 'prepared_by' => $data['prepared_by'] ?? null,
             ]);
 
-            foreach ($data['items'] as $line) {
+            $this->applyItems($salesOrder, $data['items']);
+
+            return $salesOrder;
+        });
+    }
+
+    /**
+     * Save (or re-save) a draft — nothing here ever touches SO status or
+     * delivered_qty tracking, so the encoder can leave customer/items blank/
+     * incomplete and resume later.
+     *
+     * @param array $data ['customer_id', 'po_no', 'order_date', 'prepared_by', 'items' => [['generic_name_id','qty','price','advance_order_qty'], ...]]
+     */
+    public function saveDraft(array $data, ?SalesOrder $existing = null): SalesOrder
+    {
+        return DB::transaction(function () use ($data, $existing) {
+            $salesOrder = $existing ?? new SalesOrder([
+                'so_no' => $this->generateSoNo(),
+            ]);
+
+            $salesOrder->fill([
+                'customer_id' => $data['customer_id'] ?? null,
+                'po_no' => $data['po_no'] ?? null,
+                'order_date' => $data['order_date'] ?? now()->toDateString(),
+                'prepared_by' => $data['prepared_by'] ?? null,
+                'is_draft' => true,
+            ]);
+            $salesOrder->save();
+
+            // Replace whatever items existed before — safe, since a draft's
+            // items have never been delivered against.
+            $salesOrder->items()->delete();
+            foreach ($data['items'] ?? [] as $line) {
+                if (empty($line['generic_name_id'])) {
+                    continue;
+                }
+
                 $salesOrder->items()->create([
                     'generic_name_id' => $line['generic_name_id'],
-                    'qty' => $line['qty'],
-                    'price' => $line['price'],
+                    'qty' => $line['qty'] ?? null,
+                    'price' => $line['price'] ?? null,
                     'advance_order_qty' => $line['advance_order_qty'] ?? 0,
                 ]);
             }
 
             return $salesOrder;
         });
+    }
+
+    /**
+     * Turn a draft into a real, posted Sales Order. Replaces the draft's
+     * items with the final values, then runs the same item-creation logic
+     * createSalesOrder() uses.
+     */
+    public function finalizeDraft(SalesOrder $draft, array $data): SalesOrder
+    {
+        return DB::transaction(function () use ($draft, $data) {
+            $draft->fill([
+                'customer_id' => $data['customer_id'],
+                'po_no' => $data['po_no'] ?? null,
+                'status' => 'open',
+                'is_draft' => false,
+                'order_date' => $data['order_date'],
+                'prepared_by' => $data['prepared_by'] ?? null,
+            ]);
+            $draft->save();
+
+            $draft->items()->delete();
+            $this->applyItems($draft, $data['items']);
+
+            return $draft;
+        });
+    }
+
+    /**
+     * Create each line item — shared by createSalesOrder() and
+     * finalizeDraft() so this logic exists in exactly one place.
+     */
+    protected function applyItems(SalesOrder $salesOrder, array $items): void
+    {
+        foreach ($items as $line) {
+            $salesOrder->items()->create([
+                'generic_name_id' => $line['generic_name_id'],
+                'qty' => $line['qty'],
+                'price' => $line['price'],
+                'advance_order_qty' => $line['advance_order_qty'] ?? 0,
+            ]);
+        }
     }
 
     /**

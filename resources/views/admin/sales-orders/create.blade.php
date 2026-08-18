@@ -1,10 +1,10 @@
 @extends(Auth::user()->role === 'admin' ? 'layout.app' : 'layout.user')
 
-@section('title', 'New Sales Order')
+@section('title', $editingSalesOrder ? 'Edit Draft — ' . $editingSalesOrder->so_no : 'New Sales Order')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Sales Order</h5>
+        <h5 class="card-header">{{ $editingSalesOrder ? 'Edit Draft — ' . $editingSalesOrder->so_no : 'New Sales Order' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,8 +16,11 @@
                 </div>
             @endif
 
-            <form action="{{ route('sales-orders.store') }}" method="POST" id="salesOrderForm">
+            <form action="{{ $editingSalesOrder ? route('sales-orders.update', $editingSalesOrder) : route('sales-orders.store') }}" method="POST" id="salesOrderForm">
                 @csrf
+                @if($editingSalesOrder)
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -30,7 +33,7 @@
                         >
                             <option value="">-- Select Customer --</option>
                             @foreach ($customers as $customer)
-                                <option value="{{ $customer->id }}" data-price-level="{{ $customer->price_level }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+                                <option value="{{ $customer->id }}" data-price-level="{{ $customer->price_level }}" {{ old('customer_id', $editingSalesOrder?->customer_id) == $customer->id ? 'selected' : '' }}>
                                     {{ $customer->customer_name }}
                                 </option>
                             @endforeach
@@ -50,7 +53,7 @@
                             name="po_no"
                             id="po_no"
                             class="form-control @error('po_no') is-invalid @enderror"
-                            value="{{ old('po_no') }}"
+                            value="{{ old('po_no', $editingSalesOrder?->po_no) }}"
                         >
                         @error('po_no')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -64,7 +67,7 @@
                             name="order_date"
                             id="order_date"
                             class="form-control @error('order_date') is-invalid @enderror"
-                            value="{{ old('order_date', now()->toDateString()) }}"
+                            value="{{ old('order_date', $editingSalesOrder?->order_date?->toDateString() ?? now()->toDateString()) }}"
                             required
                         >
                         @error('order_date')
@@ -83,7 +86,7 @@
                         >
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingSalesOrder?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                                     {{ $user->name }}
                                 </option>
                             @endforeach
@@ -130,7 +133,10 @@
                     <button type="button" class="btn btn-secondary" id="addRowBtn">
                         <i class="bx bx-plus"></i> Add Item
                     </button>
-                    <button type="submit" class="btn btn-primary">Save Sales Order</button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Sales Order</button>
                     <a href="{{ route('sales-orders.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -141,6 +147,7 @@
 @section('scripts')
 <script>
     const GENERIC_NAMES = @json($genericNamesForJs);
+    const prefillLines = @json($prefillLines);
 
     let rowIndex = 0;
 
@@ -193,7 +200,8 @@
         });
     }
 
-    function addRow() {
+    function addRow(prefill = {}) {
+        const { genericLabel = '', qty = '', price = null, advanceOrderQty = '' } = prefill;
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -236,6 +244,21 @@
         document.getElementById('lineItemsBody').appendChild(card);
         bindRowEvents(card);
         renumberRows();
+
+        // A draft's saved line is re-typed straight into the search input
+        // to resolve generic_name_id (same as a manual pick, including the
+        // price-tier auto-suggestion), then qty/price/advance qty are
+        // overlaid — everything here is already client-side in
+        // GENERIC_NAMES, no fetch needed.
+        if (genericLabel) {
+            const genericSearchInput = card.querySelector('.generic-search-input');
+            genericSearchInput.value = genericLabel;
+            genericSearchInput.dispatchEvent(new Event('input'));
+            if (qty) card.querySelector('.qty-input').value = qty;
+            if (price !== null && price !== undefined) card.querySelector('.price-input').value = Number(price).toFixed(2);
+            if (advanceOrderQty) card.querySelector('.advance-input').value = advanceOrderQty;
+        }
+
         computeTotals();
     }
 
@@ -282,7 +305,7 @@
         document.getElementById('grandTotal').textContent = '₱' + grandTotal.toFixed(2);
     }
 
-    document.getElementById('addRowBtn').addEventListener('click', addRow);
+    document.getElementById('addRowBtn').addEventListener('click', () => addRow());
 
     // "Generate N Lines" — reuses the exact same addRow() the Add Item
     // button calls, just N times in a row, so a batch-generated line is
@@ -329,7 +352,19 @@
         computeTotals();
     });
 
-    // Start with one empty row
-    addRow();
+    // Start with one row per line of a resumed draft, or a single blank
+    // row for a brand new order.
+    if (prefillLines.length > 0) {
+        prefillLines.forEach(line => {
+            addRow({
+                genericLabel: line.generic_label,
+                qty: line.qty,
+                price: line.price,
+                advanceOrderQty: line.advance_order_qty,
+            });
+        });
+    } else {
+        addRow();
+    }
 </script>
 @endsection

@@ -43,13 +43,17 @@
                         <tr>
                             <td>{{ $salesOrder->id }}</td>
                             <td>{{ $salesOrder->so_no }}</td>
-                            <td>{{ $salesOrder->customer->customer_name }}</td>
+                            <td>{{ $salesOrder->customer->customer_name ?? '—' }}</td>
                             <td>{{ $salesOrder->po_no ?? '—' }}</td>
                             <td>{{ $salesOrder->order_date->format('M d, Y') }}</td>
                             <td>
-                                <span class="badge bg-{{ ['open' => 'warning', 'partially_delivered' => 'info', 'completed' => 'success', 'cancelled' => 'danger'][$salesOrder->status] ?? 'secondary' }}">
-                                    {{ ucfirst(str_replace('_', ' ', $salesOrder->status)) }}
-                                </span>
+                                @if($salesOrder->isDraft())
+                                    <span class="badge bg-secondary">DRAFT</span>
+                                @else
+                                    <span class="badge bg-{{ ['open' => 'warning', 'partially_delivered' => 'info', 'completed' => 'success', 'cancelled' => 'danger'][$salesOrder->status] ?? 'secondary' }}">
+                                        {{ ucfirst(str_replace('_', ' ', $salesOrder->status)) }}
+                                    </span>
+                                @endif
                             </td>
                             <td>
                                 <div class="dropdown">
@@ -60,6 +64,11 @@
                                         <a href="{{ route('sales-orders.show', $salesOrder) }}" class="dropdown-item">
                                             <i class="bx bx-show me-1"></i> View
                                         </a>
+                                        @if($salesOrder->isDraft())
+                                            <a href="{{ route('sales-orders.edit', $salesOrder) }}" class="dropdown-item">
+                                                <i class="bx bx-edit-alt me-1"></i> Continue Editing
+                                            </a>
+                                        @endif
                                         @if(Auth::user()->role === 'admin')
                                             <div class="dropdown-divider"></div>
                                             <form
@@ -71,9 +80,9 @@
                                                 <button
                                                     type="submit"
                                                     class="dropdown-item text-danger"
-                                                    onclick="return confirm('Are you sure you want to delete this Sales Order?')"
+                                                    onclick="return confirm('Are you sure you want to delete this {{ $salesOrder->isDraft() ? 'draft' : 'Sales Order' }}?')"
                                                 >
-                                                    <i class="bx bx-trash me-1"></i> Delete
+                                                    <i class="bx bx-trash me-1"></i> {{ $salesOrder->isDraft() ? 'Delete Draft' : 'Delete' }}
                                                 </button>
                                             </form>
                                         @endif

@@ -14,13 +14,20 @@ class SalesOrder extends Model
         'so_no',
         'po_no',
         'status',
+        'is_draft',
         'order_date',
         'prepared_by',
     ];
 
     protected $casts = [
         'order_date' => 'date',
+        'is_draft' => 'boolean',
     ];
+
+    public function isDraft(): bool
+    {
+        return (bool) $this->is_draft;
+    }
 
     public function customer(): BelongsTo
     {

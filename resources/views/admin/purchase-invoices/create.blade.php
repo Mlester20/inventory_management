@@ -1,10 +1,10 @@
 @extends('layout.app')
 
-@section('title', 'New Purchase Invoice')
+@section('title', $editingPurchaseInvoice ? 'Edit Draft — Purchase Invoice' : 'New Purchase Invoice')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Purchase Invoice</h5>
+        <h5 class="card-header">{{ $editingPurchaseInvoice ? 'Edit Draft — Purchase Invoice' : 'New Purchase Invoice' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,8 +16,11 @@
                 </div>
             @endif
 
-            <form action="{{ route('purchase-invoices.store') }}" method="POST">
+            <form action="{{ $editingPurchaseInvoice ? route('purchase-invoices.update', $editingPurchaseInvoice) : route('purchase-invoices.store') }}" method="POST">
                 @csrf
+                @if($editingPurchaseInvoice)
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -25,7 +28,7 @@
                         <select name="supplier_id" id="supplier_id" class="form-select @error('supplier_id') is-invalid @enderror" required>
                             <option value="">-- Select Supplier --</option>
                             @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
+                                <option value="{{ $supplier->id }}" {{ old('supplier_id', $editingPurchaseInvoice?->supplier_id) == $supplier->id ? 'selected' : '' }}>
                                     {{ $supplier->supplier_name }}
                                 </option>
                             @endforeach
@@ -39,7 +42,7 @@
                         <select name="prepared_by" id="prepared_by" class="form-select">
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingPurchaseInvoice?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                                     {{ $user->name }}
                                 </option>
                             @endforeach
@@ -72,7 +75,7 @@
                             id="invoice_no"
                             class="form-control @error('invoice_no') is-invalid @enderror"
                             placeholder="e.g., SI-00123 (supplier's own reference)"
-                            value="{{ old('invoice_no') }}"
+                            value="{{ old('invoice_no', $editingPurchaseInvoice?->invoice_no) }}"
                             required
                         >
                         @error('invoice_no')
@@ -86,7 +89,7 @@
                             name="invoice_date"
                             id="invoice_date"
                             class="form-control @error('invoice_date') is-invalid @enderror"
-                            value="{{ old('invoice_date', now()->toDateString()) }}"
+                            value="{{ old('invoice_date', $editingPurchaseInvoice?->invoice_date?->toDateString() ?? now()->toDateString()) }}"
                             required
                         >
                         @error('invoice_date')
@@ -106,7 +109,7 @@
                             id="amount"
                             class="form-control @error('amount') is-invalid @enderror"
                             placeholder="e.g., 15000.00"
-                            value="{{ old('amount') }}"
+                            value="{{ old('amount', $editingPurchaseInvoice?->amount) }}"
                             required
                         >
                         @error('amount')
@@ -123,18 +126,21 @@
                             id="vat_amount"
                             class="form-control"
                             placeholder="e.g., 1607.14"
-                            value="{{ old('vat_amount') }}"
+                            value="{{ old('vat_amount', $editingPurchaseInvoice?->vat_amount) }}"
                         >
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label for="remarks" class="form-label">Remarks <span class="text-muted small">(optional)</span></label>
-                    <input type="text" name="remarks" id="remarks" class="form-control" placeholder="e.g., Covers partial delivery of PO-2026-00045" value="{{ old('remarks') }}">
+                    <input type="text" name="remarks" id="remarks" class="form-control" placeholder="e.g., Covers partial delivery of PO-2026-00045" value="{{ old('remarks', $editingPurchaseInvoice?->remarks) }}">
                 </div>
 
                 <div class="mt-3">
-                    <button type="submit" class="btn btn-primary">Save Purchase Invoice</button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Purchase Invoice</button>
                     <a href="{{ route('purchase-invoices.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -146,6 +152,8 @@
 <script>
     const GOODS_RECEIPTS = @json($goodsReceipts);
     const PURCHASE_ORDERS = @json($purchaseOrders);
+    const PREFILL_GOODS_RECEIPT_ID = @json($editingPurchaseInvoice?->goods_receipt_id);
+    const PREFILL_PURCHASE_ORDER_ID = @json($editingPurchaseInvoice?->purchase_order_id);
 
     const supplierSelect = document.getElementById('supplier_id');
     const goodsReceiptSelect = document.getElementById('goods_receipt_id');
@@ -208,6 +216,15 @@
     if (supplierSelect.value) {
         refreshGoodsReceiptOptions();
         refreshPurchaseOrderOptions();
+
+        // A resumed draft's saved GR/PO links only make sense once the
+        // matching supplier's options have been built above.
+        if (PREFILL_GOODS_RECEIPT_ID) {
+            goodsReceiptSelect.value = PREFILL_GOODS_RECEIPT_ID;
+        }
+        if (PREFILL_PURCHASE_ORDER_ID) {
+            purchaseOrderSelect.value = PREFILL_PURCHASE_ORDER_ID;
+        }
     }
 </script>
 @endsection

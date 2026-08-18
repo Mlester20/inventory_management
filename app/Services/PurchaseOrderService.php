@@ -22,23 +22,102 @@ class PurchaseOrderService
                 'supplier_id' => $data['supplier_id'],
                 'po_no' => $this->generatePoNo(),
                 'status' => 'open',
+                'is_draft' => false,
                 'order_date' => $data['order_date'],
                 'prepared_by' => $data['prepared_by'] ?? null,
             ]);
 
-            foreach ($data['items'] as $line) {
+            $this->applyItems($purchaseOrder, $data['items']);
+
+            return $purchaseOrder;
+        });
+    }
+
+    /**
+     * Save (or re-save) a draft — nothing here ever touches PO status or
+     * received_qty tracking, so the encoder can leave supplier/items blank/
+     * incomplete and resume later.
+     *
+     * @param array $data ['supplier_id', 'order_date', 'prepared_by',
+     *                     'items' => [['generic_name_id','product_id','qty','unit','unit_cost','remarks'], ...]]
+     */
+    public function saveDraft(array $data, ?PurchaseOrder $existing = null): PurchaseOrder
+    {
+        return DB::transaction(function () use ($data, $existing) {
+            $purchaseOrder = $existing ?? new PurchaseOrder([
+                'po_no' => $this->generatePoNo(),
+            ]);
+
+            $purchaseOrder->fill([
+                'supplier_id' => $data['supplier_id'] ?? null,
+                'order_date' => $data['order_date'] ?? now()->toDateString(),
+                'prepared_by' => $data['prepared_by'] ?? null,
+                'is_draft' => true,
+            ]);
+            $purchaseOrder->save();
+
+            // Replace whatever items existed before — safe, since a draft's
+            // items have never been received against.
+            $purchaseOrder->items()->delete();
+            foreach ($data['items'] ?? [] as $line) {
+                if (empty($line['generic_name_id'])) {
+                    continue;
+                }
+
                 $purchaseOrder->items()->create([
                     'generic_name_id' => $line['generic_name_id'],
                     'product_id' => $line['product_id'] ?? null,
-                    'qty' => $line['qty'],
+                    'qty' => $line['qty'] ?? null,
                     'unit' => $line['unit'] ?? null,
-                    'unit_cost' => $line['unit_cost'],
+                    'unit_cost' => $line['unit_cost'] ?? null,
                     'remarks' => $line['remarks'] ?? null,
                 ]);
             }
 
             return $purchaseOrder;
         });
+    }
+
+    /**
+     * Turn a draft into a real, posted Purchase Order. Replaces the draft's
+     * items with the final values, then runs the same item-creation logic
+     * createPurchaseOrder() uses.
+     */
+    public function finalizeDraft(PurchaseOrder $draft, array $data): PurchaseOrder
+    {
+        return DB::transaction(function () use ($draft, $data) {
+            $draft->fill([
+                'supplier_id' => $data['supplier_id'],
+                'status' => 'open',
+                'is_draft' => false,
+                'order_date' => $data['order_date'],
+                'prepared_by' => $data['prepared_by'] ?? null,
+            ]);
+            $draft->save();
+
+            $draft->items()->delete();
+            $this->applyItems($draft, $data['items']);
+
+            return $draft;
+        });
+    }
+
+    /**
+     * Create each line item — shared by createPurchaseOrder() and
+     * finalizeDraft() so this logic exists in exactly one place.
+     */
+    protected function applyItems(PurchaseOrder $purchaseOrder, array $items): void
+    {
+        foreach ($items as $line) {
+            $purchaseOrder->items()->create([
+                'generic_name_id' => $line['generic_name_id'],
+                'product_id' => $line['product_id'] ?? null,
+                'qty' => $line['qty'],
+                'unit' => $line['unit'] ?? null,
+                'unit_cost' => $line['unit_cost'],
+                'remarks' => $line['remarks'] ?? null,
+            ]);
+        }
     }
 
     /**

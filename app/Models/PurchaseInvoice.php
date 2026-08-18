@@ -17,6 +17,7 @@ class PurchaseInvoice extends Model
         'vat_amount',
         'remarks',
         'prepared_by',
+        'status',
     ];
 
     protected $casts = [
@@ -24,6 +25,16 @@ class PurchaseInvoice extends Model
         'amount' => 'decimal:2',
         'vat_amount' => 'decimal:2',
     ];
+
+    public const STATUSES = [
+        'draft' => 'Draft',
+        'posted' => 'Posted',
+    ];
+
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
 
     public function supplier(): BelongsTo
     {

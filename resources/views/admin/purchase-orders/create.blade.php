@@ -1,10 +1,10 @@
 @extends('layout.app')
 
-@section('title', 'New Purchase Order')
+@section('title', $editingPurchaseOrder ? 'Edit Draft — ' . $editingPurchaseOrder->po_no : 'New Purchase Order')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Purchase Order</h5>
+        <h5 class="card-header">{{ $editingPurchaseOrder ? 'Edit Draft — ' . $editingPurchaseOrder->po_no : 'New Purchase Order' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,8 +16,11 @@
                 </div>
             @endif
 
-            <form action="{{ route('purchase-orders.store') }}" method="POST" id="purchaseOrderForm">
+            <form action="{{ $editingPurchaseOrder ? route('purchase-orders.update', $editingPurchaseOrder) : route('purchase-orders.store') }}" method="POST" id="purchaseOrderForm">
                 @csrf
+                @if($editingPurchaseOrder)
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -30,7 +33,7 @@
                         >
                             <option value="">-- Select Supplier --</option>
                             @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
+                                <option value="{{ $supplier->id }}" {{ old('supplier_id', $editingPurchaseOrder?->supplier_id) == $supplier->id ? 'selected' : '' }}>
                                     {{ $supplier->supplier_name }}
                                 </option>
                             @endforeach
@@ -47,7 +50,7 @@
                             name="order_date"
                             id="order_date"
                             class="form-control @error('order_date') is-invalid @enderror"
-                            value="{{ old('order_date', now()->toDateString()) }}"
+                            value="{{ old('order_date', $editingPurchaseOrder?->order_date?->toDateString() ?? now()->toDateString()) }}"
                             required
                         >
                         @error('order_date')
@@ -64,7 +67,7 @@
                         >
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingPurchaseOrder?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                                     {{ $user->name }}
                                 </option>
                             @endforeach
@@ -111,7 +114,10 @@
                     <button type="button" class="btn btn-secondary" id="addRowBtn">
                         <i class="bx bx-plus"></i> Add Item
                     </button>
-                    <button type="submit" class="btn btn-primary">Save Purchase Order</button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Purchase Order</button>
                     <a href="{{ route('purchase-orders.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -122,6 +128,7 @@
 @section('scripts')
 <script>
     const GENERIC_NAMES = @json($genericNamesForJs);
+    const prefillLines = @json($prefillLines);
 
     let rowIndex = 0;
 
@@ -170,7 +177,8 @@
         });
     }
 
-    function addRow() {
+    function addRow(prefill = {}) {
+        const { genericLabel = '', qty = '', unit = '', unitCost = null, remarks = '' } = prefill;
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -219,6 +227,21 @@
         document.getElementById('lineItemsBody').appendChild(card);
         bindRowEvents(card);
         renumberRows();
+
+        // A draft's saved line is re-typed straight into the search input
+        // to resolve generic_name_id (same as a manual pick), then
+        // qty/cost/unit/remarks are overlaid — everything here is already
+        // client-side in GENERIC_NAMES, no fetch needed.
+        if (genericLabel) {
+            const itemSearchInput = card.querySelector('.item-search-input');
+            itemSearchInput.value = genericLabel;
+            itemSearchInput.dispatchEvent(new Event('input'));
+            if (qty) card.querySelector('.qty-input').value = qty;
+            if (unitCost !== null && unitCost !== undefined) card.querySelector('.cost-input').value = Number(unitCost).toFixed(2);
+            if (unit) card.querySelector('.unit-input').value = unit;
+            if (remarks) card.querySelector('input[name$="[remarks]"]').value = remarks;
+        }
+
         computeTotals();
     }
 
@@ -314,7 +337,20 @@
         });
     });
 
-    // Start with one empty row
-    addRow();
+    // Start with one row per line of a resumed draft, or a single blank
+    // row for a brand new order.
+    if (prefillLines.length > 0) {
+        prefillLines.forEach(line => {
+            addRow({
+                genericLabel: line.generic_label,
+                qty: line.qty,
+                unit: line.unit,
+                unitCost: line.unit_cost,
+                remarks: line.remarks,
+            });
+        });
+    } else {
+        addRow();
+    }
 </script>
 @endsection

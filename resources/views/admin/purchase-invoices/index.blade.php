@@ -33,6 +33,7 @@
                         <th>Invoice No.</th>
                         <th>Supplier</th>
                         <th>Invoice Date</th>
+                        <th>Status</th>
                         <th class="text-end">Amount</th>
                         <th>Actions</th>
                     </tr>
@@ -41,10 +42,15 @@
                     @forelse ($purchaseInvoices as $purchaseInvoice)
                         <tr>
                             <td>{{ $purchaseInvoice->id }}</td>
-                            <td>{{ $purchaseInvoice->invoice_no }}</td>
-                            <td>{{ $purchaseInvoice->supplier->supplier_name }}</td>
-                            <td>{{ $purchaseInvoice->invoice_date->format('M d, Y') }}</td>
-                            <td class="text-end">{{ number_format($purchaseInvoice->amount, 2) }}</td>
+                            <td>{{ $purchaseInvoice->invoice_no ?? '—' }}</td>
+                            <td>{{ $purchaseInvoice->supplier->supplier_name ?? '—' }}</td>
+                            <td>{{ $purchaseInvoice->invoice_date?->format('M d, Y') ?? '—' }}</td>
+                            <td>
+                                <span class="badge bg-{{ $purchaseInvoice->isDraft() ? 'secondary' : 'success' }}">
+                                    {{ \App\Models\PurchaseInvoice::STATUSES[$purchaseInvoice->status] ?? $purchaseInvoice->status }}
+                                </span>
+                            </td>
+                            <td class="text-end">{{ $purchaseInvoice->amount !== null ? number_format($purchaseInvoice->amount, 2) : '—' }}</td>
                             <td>
                                 <div class="dropdown">
                                     <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
@@ -54,6 +60,11 @@
                                         <a href="{{ route('purchase-invoices.show', $purchaseInvoice) }}" class="dropdown-item">
                                             <i class="bx bx-show me-1"></i> View
                                         </a>
+                                        @if($purchaseInvoice->isDraft())
+                                            <a href="{{ route('purchase-invoices.edit', $purchaseInvoice) }}" class="dropdown-item">
+                                                <i class="bx bx-edit-alt me-1"></i> Continue Editing
+                                            </a>
+                                        @endif
 
                                         <div class="dropdown-divider"></div>
 
@@ -66,9 +77,9 @@
                                             <button
                                                 type="submit"
                                                 class="dropdown-item text-danger"
-                                                onclick="return confirm('Are you sure you want to delete this Purchase Invoice?')"
+                                                onclick="return confirm('Are you sure you want to delete this {{ $purchaseInvoice->isDraft() ? 'draft' : 'Purchase Invoice' }}?')"
                                             >
-                                                <i class="bx bx-trash me-1"></i> Delete
+                                                <i class="bx bx-trash me-1"></i> {{ $purchaseInvoice->isDraft() ? 'Delete Draft' : 'Delete' }}
                                             </button>
                                         </form>
                                     </div>
@@ -77,7 +88,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted">No Purchase Invoices found.</td>
+                            <td colspan="7" class="text-center text-muted">No Purchase Invoices found.</td>
                         </tr>
                     @endforelse
                 </tbody>

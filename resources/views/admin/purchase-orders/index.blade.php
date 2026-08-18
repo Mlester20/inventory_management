@@ -42,12 +42,16 @@
                         <tr>
                             <td>{{ $purchaseOrder->id }}</td>
                             <td>{{ $purchaseOrder->po_no }}</td>
-                            <td>{{ $purchaseOrder->supplier->supplier_name }}</td>
+                            <td>{{ $purchaseOrder->supplier->supplier_name ?? '—' }}</td>
                             <td>{{ $purchaseOrder->order_date->format('M d, Y') }}</td>
                             <td>
-                                <span class="badge bg-{{ ['open' => 'warning', 'partially_received' => 'info', 'completed' => 'success', 'cancelled' => 'danger'][$purchaseOrder->status] ?? 'secondary' }}">
-                                    {{ ucfirst(str_replace('_', ' ', $purchaseOrder->status)) }}
-                                </span>
+                                @if($purchaseOrder->isDraft())
+                                    <span class="badge bg-secondary">DRAFT</span>
+                                @else
+                                    <span class="badge bg-{{ ['open' => 'warning', 'partially_received' => 'info', 'completed' => 'success', 'cancelled' => 'danger'][$purchaseOrder->status] ?? 'secondary' }}">
+                                        {{ ucfirst(str_replace('_', ' ', $purchaseOrder->status)) }}
+                                    </span>
+                                @endif
                             </td>
                             <td>
                                 <div class="dropdown">
@@ -58,6 +62,11 @@
                                         <a href="{{ route('purchase-orders.show', $purchaseOrder) }}" class="dropdown-item">
                                             <i class="bx bx-show me-1"></i> View
                                         </a>
+                                        @if($purchaseOrder->isDraft())
+                                            <a href="{{ route('purchase-orders.edit', $purchaseOrder) }}" class="dropdown-item">
+                                                <i class="bx bx-edit-alt me-1"></i> Continue Editing
+                                            </a>
+                                        @endif
                                         <div class="dropdown-divider"></div>
                                         <form
                                             action="{{ route('purchase-orders.destroy', $purchaseOrder) }}"
@@ -68,9 +77,9 @@
                                             <button
                                                 type="submit"
                                                 class="dropdown-item text-danger"
-                                                onclick="return confirm('Are you sure you want to delete this Purchase Order?')"
+                                                onclick="return confirm('Are you sure you want to delete this {{ $purchaseOrder->isDraft() ? 'draft' : 'Purchase Order' }}?')"
                                             >
-                                                <i class="bx bx-trash me-1"></i> Delete
+                                                <i class="bx bx-trash me-1"></i> {{ $purchaseOrder->isDraft() ? 'Delete Draft' : 'Delete' }}
                                             </button>
                                         </form>
                                     </div>

@@ -45,7 +45,7 @@
         </div>
     @endif
 
-    <form action="{{ route('delivery-receipts.create-invoice', $deliveryReceipt) }}" method="POST" id="createInvoiceForm">
+    <form action="{{ route('delivery-receipts.create-invoice', $deliveryReceipt) }}" method="POST" id="createInvoiceForm" class="no-print">
         @csrf
         <div class="card" id="printableDeliveryReceipt">
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -180,9 +180,209 @@
         </div>
     </form>
 
+    <div class="card dr-print-only" id="printableDeliveryNote">
+        <div class="card-body p-4 dr-sheet">
+
+            <div class="dr-letterhead row g-0 pb-2 mb-0">
+                <div class="col-4 d-flex align-items-center">
+                    <img src="{{ asset('assets/img/favicon/icon.png') }}" alt="SAIMS" class="dr-logo me-2">
+                    <div>
+                        <div class="dr-company-name">{{ strtoupper(config('company.name')) }}</div>
+                        <div class="dr-company-detail">{{ config('company.address') }}</div>
+                        <div class="dr-company-detail">{{ config('company.proprietor') }} - Proprietor</div>
+                        <div class="dr-company-detail">VAT Reg Tin: {{ config('company.tin') }}</div>
+                        <div class="dr-company-detail">Email: {{ config('company.email') }}</div>
+                    </div>
+                </div>
+                <div class="col-8">
+                    <table class="table table-bordered table-sm dr-to-table mb-0">
+                        <tr>
+                            <td colspan="2" class="label dr-to-header">DELIVER TO</td>
+                            <td rowspan="5" class="dr-doc-title">
+                                <div class="dr-title">DELIVERY RECEIPT</div>
+                                <div class="dr-no">No. <span>{{ $deliveryReceipt->dr_no }}</span></div>
+                                <div class="dr-date">Date {{ $deliveryReceipt->receipt_date->format('m/d/Y') }}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label" style="width: 90px;">Name</td>
+                            <td>{{ $deliveryReceipt->customer->customer_name ?? '—' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Address</td>
+                            <td style="white-space: pre-line;">{{ $deliveryReceipt->customer->delivery_address ?? '—' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">TIN</td>
+                            <td>—</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Business Style</td>
+                            <td>—</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <table class="table table-bordered table-sm dr-strip-table mb-0">
+                <thead>
+                    <tr>
+                        <th>D.R. No.</th>
+                        <th>Delivery Date</th>
+                        <th>Sales Order No.</th>
+                        <th>Status</th>
+                        <th>Page</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ $deliveryReceipt->dr_no }}</td>
+                        <td>{{ $deliveryReceipt->receipt_date->format('m/d/Y') }}</td>
+                        <td>{{ $deliveryReceipt->salesOrder->so_no ?? '—' }}</td>
+                        <td>{{ \App\Models\DeliveryReceipt::STATUSES[$deliveryReceipt->status] ?? $deliveryReceipt->status }}</td>
+                        <td>1 of 1</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm dr-items-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Generic Description</th>
+                            <th>Item Description</th>
+                            <th style="width: 10%;">Lot/Batch No.</th>
+                            <th style="width: 9%;">Expiry Date</th>
+                            <th>Remarks</th>
+                            <th class="text-end" style="width: 7%;">Qty</th>
+                            <th style="width: 8%;">Unit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($deliveryReceipt->items as $line)
+                            <tr>
+                                <td>{{ $line->productBatch->product->genericName->generic_name ?? '—' }}</td>
+                                <td>{{ $line->productBatch->product->item_name }}</td>
+                                <td class="text-center">{{ $line->batch_no ?? '—' }}</td>
+                                <td class="text-center">{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
+                                <td>{{ $line->remarks ?? '—' }}</td>
+                                <td class="text-end">{{ $line->qty ?? '—' }}</td>
+                                <td>{{ $line->productBatch->product->genericName->unit ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row mt-4 signature-block">
+                <div class="col-4 text-center">
+                    <div class="border-top pt-1">Prepared By: {{ $deliveryReceipt->preparedBy->name ?? '—' }}</div>
+                </div>
+                <div class="col-4 text-center">
+                    <div class="border-top pt-1">Delivered By: ____________________</div>
+                </div>
+                <div class="col-4 text-center">
+                    <div class="border-top pt-1">Received By: ____________________</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <style>
     .table-header-bg {
         background-color: #f7f8fa;
+    }
+
+    .dr-print-only {
+        display: none;
+    }
+
+    .dr-sheet {
+        font-size: 0.85rem;
+    }
+
+    .dr-letterhead {
+        border-bottom: 2px solid #333;
+    }
+
+    .dr-logo {
+        width: 56px;
+        height: 56px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+
+    .dr-company-name {
+        font-weight: 700;
+        font-size: 1rem;
+        letter-spacing: 0.3px;
+    }
+
+    .dr-company-detail {
+        font-size: 0.7rem;
+        line-height: 1.3;
+        color: #333;
+    }
+
+    .dr-doc-title {
+        width: 190px;
+        text-align: center;
+        vertical-align: middle !important;
+    }
+
+    .dr-doc-title .dr-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .dr-doc-title .dr-no span {
+        font-weight: 700;
+        color: #d9534f;
+    }
+
+    .dr-to-table td,
+    .dr-strip-table th,
+    .dr-strip-table td,
+    .dr-items-table th,
+    .dr-items-table td {
+        border-color: #333;
+        vertical-align: middle;
+    }
+
+    .dr-to-table td {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.72rem;
+    }
+
+    .dr-to-table .label {
+        font-weight: 700;
+        background-color: #f5f5f5;
+    }
+
+    .dr-to-header {
+        font-weight: 700;
+        text-align: center;
+        background-color: #eee;
+    }
+
+    .dr-strip-table th,
+    .dr-strip-table td {
+        font-size: 0.62rem;
+        text-align: center;
+        padding: 0.2rem 0.3rem;
+        white-space: nowrap;
+    }
+
+    .dr-strip-table thead th {
+        background-color: #eee;
+        font-weight: 700;
+    }
+
+    .dr-items-table thead th {
+        background-color: #eee;
+        font-weight: 700;
+        text-align: center;
+        white-space: nowrap;
     }
 
     @media print {
@@ -211,12 +411,33 @@
             border: none !important;
         }
 
+        .dr-print-only {
+            display: block !important;
+        }
+
+        #printableDeliveryNote {
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        #printableDeliveryNote .card-body {
+            padding: 0 !important;
+        }
+
         table,
         tr {
             page-break-inside: avoid;
         }
 
         .table-header-bg {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .dr-items-table thead th,
+        .dr-to-table .label,
+        .dr-to-header,
+        .dr-strip-table thead th {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
