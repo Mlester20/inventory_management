@@ -1,7 +1,50 @@
 # Admin / Admin Staff Role Split — Implementation Plan
 
-**Status: planned, not yet built — blocked on the same open question as before (which specific peso figures
-get hidden) before any of this can be built.**
+**Status: Phase 1 built (2026-08-19, branch `feature/rbac-admin-staff`).** The role infrastructure (middleware,
+validation, dropdown, layout-picker/UI parity) and Sir's first concrete restriction list are live. Still open:
+the original "which peso figures get hidden system-wide" question (Total Sales, Reports, etc.) — Sir has only
+given the list below so far; more may follow.
+
+## Phase 1 — what's actually built
+
+- **Role infra**: `AdminOnly` middleware, login-redirect logic (both `routes/web.php` and
+  `AuthenticatedSessionController`), and every `@extends(...)` layout-picker / admin-only UI-visibility spot
+  (~19 total) now treat `admin` and `admin_staff` identically — same sidebar, same pages open, same
+  Invoice/Sales Order/Sales Quote delete actions, same Delivery Receipt quick-add-customer button. Two
+  deliberate exceptions: the "Add customer here" hint link in Sales Quote/Sales Order create (would point
+  admin_staff at a page where they can't actually add one) and the admin-only account-protection checks in
+  `UserController` (suspend/delete) — see decisions below.
+- **Role validation**: `UserController::store` now allows `admin_staff` as a role value; the Add User modal
+  has an "Admin Staff" option.
+- **Decided (2026-08-19)**: admin_staff accounts get **no** suspend/delete protection — a full admin can
+  freely suspend or delete one, same as a plain `user` account. Only `admin` keeps that protection.
+  `UserController.php:57,83` left unchanged (already scoped to `'admin'` only).
+
+### Sir's first restriction list (all built, server-side enforced + UI-hidden)
+
+1. **Products/Inventory — Hide Cost.** The Products tab's Cost column shows `••••` for admin_staff; the New/
+   Edit Item modal's Cost field is omitted entirely (not just hidden — never rendered in the DOM, including
+   the `data-unit-cost` attribute that used to feed the edit modal). Scoped to the Inventory Items module
+   only — Purchase Order/Goods Receipt/Purchase Invoice still show cost, since that's operationally required
+   to receive stock.
+2. **Products/Inventory — Disable Item Deletion.** Delete option hidden from the Products tab's row actions
+   for admin_staff, and `ProductController::destroy` rejects admin_staff server-side even if hit directly.
+3. **Disable Customer and Supplier Creation and Editing.** Supplier: `SupplierController::store`/`update`
+   both reject admin_staff, "New Supplier"/"Edit" hidden from `admin/supplier.blade.php`. Customer: same for
+   `update`, but `store` has a carve-out — **decided (2026-08-19)**: Delivery Receipt's inline "quick add new
+   customer" popup (`admin/delivery-receipts/create.blade.php`) must keep working for admin_staff, since
+   blocking it would break normal DR/delivery workflow, not just an admin settings screen. The dedicated
+   Customers page's "New Customer" flow is a traditional form POST; the DR quick-add is a `fetch()` call with
+   `Accept: application/json`. `CustomerController::store` uses that existing `$request->expectsJson()`
+   signal to tell the two apart — admin_staff blocked on the form path, allowed on the JSON path. "New
+   Customer"/"Edit" hidden from `admin/customers.blade.php` either way. Deletion of customers/suppliers was
+   **not** in Sir's list — left open to both roles, unchanged.
+
+Verified live (2026-08-19): temp `admin_staff` account confirmed against every item above (masked cost, no
+delete option + server-side block, no supplier/customer create-edit UI + server-side block except the DR
+JSON path, which was confirmed to still succeed), a temp `admin` account confirmed unaffected (still creates
+suppliers, sees real cost), and `php artisan test` showed the same 33 pre-existing unrelated failures (no
+regressions). Test accounts cleaned up, admin password restored after.
 
 **Naming reversed (2026-08-13):** the earlier direction in this doc (rename full-access `admin` →
 `super_admin`, free up `admin` for the restricted tier) was reverted. Steady na lang sa `admin` bilang full

@@ -273,7 +273,13 @@
                                     <td>{{ $product->category->category_name ?? 'N/A' }}</td>
                                     <td>{{ $product->description ?: $product->item_name }}</td>
                                     <td>{{ $product->barcode ?? '—' }}</td>
-                                    <td>{{ number_format($product->unit_cost ?? 0, 2) }}</td>
+                                    <td>
+                                        @if(Auth::user()->role === 'admin')
+                                            {{ number_format($product->unit_cost ?? 0, 2) }}
+                                        @else
+                                            ••••
+                                        @endif
+                                    </td>
                                     <td>{{ number_format($product->unit_price, 2) }}</td>
                                     <td>{{ number_format($product->wholesale_price ?? 0, 2) }}</td>
                                     <td>{{ number_format($product->price_1 ?? 0, 2) }}</td>
@@ -303,7 +309,7 @@
                                                     data-barcode="{{ $product->barcode }}"
                                                     data-supplier-id="{{ $product->supplier_id }}"
                                                     data-tax-id="{{ $product->tax_id }}"
-                                                    data-unit-cost="{{ $product->unit_cost }}"
+                                                    data-unit-cost="{{ Auth::user()->role === 'admin' ? $product->unit_cost : '' }}"
                                                     data-unit-price-percent="{{ $product->unit_price_percent }}"
                                                     data-unit-price="{{ $product->unit_price }}"
                                                     data-wholesale-percent="{{ $product->wholesale_percent }}"
@@ -325,6 +331,7 @@
                                                     <i class="bx bx-edit-alt me-1"></i> Edit
                                                 </button>
 
+                                                @if(Auth::user()->role === 'admin')
                                                 <div class="dropdown-divider"></div>
 
                                                 <form action="{{ route('products.destroy', $product) }}" method="POST">
@@ -334,6 +341,7 @@
                                                         <i class="bx bx-trash me-1"></i> Delete
                                                     </button>
                                                 </form>
+                                                @endif
                                             </div>
                                         </div>
                                     </td>

@@ -1,4 +1,4 @@
-@extends(Auth::user()->role === 'admin' ? 'layout.app' : 'layout.user')
+@extends(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? 'layout.app' : 'layout.user')
 
 @section('title', 'New Sales Quote')
 

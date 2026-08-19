@@ -4,6 +4,7 @@
 
 @section('content')
     <div class="mt-3">
+        @if(Auth::user()->role === 'admin')
         <div class="text-end">
             <!-- Button trigger modal -->
             <button
@@ -15,6 +16,7 @@
                 New Supplier
             </button>
         </div>
+        @endif
 
         <!-- Add Supplier Modal -->
         <div class="modal fade" id="supplierModal" tabindex="-1" aria-hidden="true">
@@ -527,6 +529,7 @@
                                             <i class="bx bx-show me-1"></i> View
                                         </button>
 
+                                        @if(Auth::user()->role === 'admin')
                                         <button
                                             type="button"
                                             class="dropdown-item edit-btn"
@@ -542,6 +545,7 @@
                                         >
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </button>
+                                        @endif
 
                                         <div class="dropdown-divider"></div>
 

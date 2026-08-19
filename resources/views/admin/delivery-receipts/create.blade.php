@@ -1,4 +1,4 @@
-@extends(Auth::user()->role === 'admin' ? 'layout.app' : 'layout.user')
+@extends(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? 'layout.app' : 'layout.user')
 
 @section('title', $editingDeliveryReceipt ? 'Edit Draft — ' . $editingDeliveryReceipt->dr_no : 'New Delivery Receipt')
 
@@ -89,7 +89,7 @@
                                         <option value="{{ $customer->id }}" data-address="{{ $customer->delivery_address }}" {{ old('customer_id', $editingDeliveryReceipt?->customer_id) == $customer->id ? 'selected' : '' }}>{{ $customer->customer_name }}</option>
                                     @endforeach
                                 </select>
-                                @if(Auth::user()->role === 'admin')
+                                @if(in_array(Auth::user()->role, ['admin', 'admin_staff'], true))
                                     <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
                                         New?
                                     </button>

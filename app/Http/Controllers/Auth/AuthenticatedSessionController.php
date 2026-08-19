@@ -83,7 +83,7 @@ class AuthenticatedSessionController extends Controller
     {
         $user = Auth::user();
         
-        if ($user->role === 'admin') {
+        if (in_array($user->role, ['admin', 'admin_staff'], true)) {
             return route('admin.dashboard');
         }
         

@@ -1,4 +1,4 @@
-@extends(Auth::user()->role === 'admin' ? 'layout.app' : 'layout.user')
+@extends(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? 'layout.app' : 'layout.user')
 
 @section('title', 'Sales Orders')
 
@@ -69,7 +69,7 @@
                                                 <i class="bx bx-edit-alt me-1"></i> Continue Editing
                                             </a>
                                         @endif
-                                        @if(Auth::user()->role === 'admin')
+                                        @if(in_array(Auth::user()->role, ['admin', 'admin_staff'], true))
                                             <div class="dropdown-divider"></div>
                                             <form
                                                 action="{{ route('sales-orders.destroy', $salesOrder) }}"

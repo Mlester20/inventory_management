@@ -1,9 +1,10 @@
-@extends(Auth::user()->role === 'admin' ? 'layout.app' : 'layout.user')
+@extends(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? 'layout.app' : 'layout.user')
 
 @section('title', 'Customers')
 
 @section('content')
     <div class="mt-3">
+        @if(Auth::user()->role === 'admin')
         <!-- Button trigger modal -->
         <div class="text-end">
             <button
@@ -15,6 +16,7 @@
                 New Customer
             </button>
         </div>
+        @endif
 
         <!-- Add Customer Modal -->
         <div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
@@ -604,6 +606,7 @@
                                             <i class="bx bx-show me-1"></i> View
                                         </button>
 
+                                        @if(Auth::user()->role === 'admin')
                                         <button
                                             type="button"
                                             class="dropdown-item edit-btn"
@@ -621,6 +624,7 @@
                                         >
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </button>
+                                        @endif
 
                                         <div class="dropdown-divider"></div>
 

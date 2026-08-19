@@ -111,6 +111,11 @@ class SupplierController extends Controller
      */
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Adding suppliers is restricted to full admin accounts.');
+            return redirect()->route('suppliers.index');
+        }
+
         //validate the request
         $request->validate([
             'supplier_name' => 'required|unique:suppliers,supplier_name',
@@ -145,6 +150,11 @@ class SupplierController extends Controller
      */
     public function update(Request $request, Supplier $supplier)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Editing suppliers is restricted to full admin accounts.');
+            return redirect()->route('suppliers.index');
+        }
+
         //validate the request
         $request->validate([
             'supplier_name' => 'required|unique:suppliers,supplier_name,' . $supplier->id,

@@ -1,4 +1,4 @@
-@extends(Auth::user()->role === 'admin' ? 'layout.app' : 'layout.user')
+@extends(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? 'layout.app' : 'layout.user')
 
 @section('title', 'Sales Quotes')
 
@@ -60,7 +60,7 @@
                                         <a href="{{ route('sales-quotes.show', $salesQuote) }}" class="dropdown-item">
                                             <i class="bx bx-show me-1"></i> View
                                         </a>
-                                        @if(Auth::user()->role === 'admin')
+                                        @if(in_array(Auth::user()->role, ['admin', 'admin_staff'], true))
                                             <div class="dropdown-divider"></div>
                                             <form
                                                 action="{{ route('sales-quotes.destroy', $salesQuote) }}"

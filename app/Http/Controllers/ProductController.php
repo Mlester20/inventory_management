@@ -111,6 +111,11 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting items is restricted to full admin accounts.');
+            return redirect()->route('inventory-items.index', ['tab' => 'products']);
+        }
+
         $productName = $product->item_name;
         $product->delete();
 

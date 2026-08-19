@@ -76,6 +76,7 @@
                                     >
                                         <option value="user">User</option>
                                         <option value="admin">Admin</option>
+                                        <option value="admin_staff">Admin Staff</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">

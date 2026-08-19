@@ -64,10 +64,12 @@
                             <label class="form-label">Brand Name</label>
                             <input type="text" name="brand_name" id="{{ $prefix }}brand_name" class="form-control" placeholder="e.g., Biogesic">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Cost</label>
-                            <input type="number" step="0.01" name="unit_cost" id="{{ $prefix }}unit_cost" class="form-control" placeholder="e.g., 2.50">
-                        </div>
+                        @if(Auth::user()->role === 'admin')
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Cost</label>
+                                <input type="number" step="0.01" name="unit_cost" id="{{ $prefix }}unit_cost" class="form-control" placeholder="e.g., 2.50">
+                            </div>
+                        @endif
                     </div>
 
                     <div class="mb-3">
@@ -233,7 +235,9 @@
             document.getElementById('update_barcode').value = get('data-barcode') || '';
             document.getElementById('update_supplier_id').value = get('data-supplier-id') || '';
             document.getElementById('update_tax_id').value = get('data-tax-id') || '';
-            document.getElementById('update_unit_cost').value = get('data-unit-cost') || '';
+            if (document.getElementById('update_unit_cost')) {
+                document.getElementById('update_unit_cost').value = get('data-unit-cost') || '';
+            }
             document.getElementById('update_unit_price_percent').value = get('data-unit-price-percent') || '';
             document.getElementById('update_unit_price').value = get('data-unit-price') || '';
             document.getElementById('update_wholesale_percent').value = get('data-wholesale-percent') || '';
