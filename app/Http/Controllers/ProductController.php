@@ -117,7 +117,16 @@ class ProductController extends Controller
         }
 
         $productName = $product->item_name;
-        $product->delete();
+
+        try {
+            $product->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ((int) $e->getCode() === 23000) {
+                Alert::error('Cannot delete', "{$productName} still has related records (batches, purchase orders, or goods receipts) and cannot be deleted.");
+                return redirect()->route('inventory-items.index', ['tab' => 'products']);
+            }
+            throw $e;
+        }
 
         ActivityLog::record(
             module: 'Product',

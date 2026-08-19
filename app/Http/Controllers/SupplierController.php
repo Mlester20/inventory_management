@@ -199,8 +199,15 @@ class SupplierController extends Controller
     {
         $supplierName = $supplier->supplier_name;
 
-        //delete the supplier
-        $supplier->delete();
+        try {
+            $supplier->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ((int) $e->getCode() === 23000) {
+                Alert::error('Cannot delete', "{$supplierName} still has related records (purchase orders, goods receipts, invoices, or payments) and cannot be deleted.");
+                return redirect()->route('suppliers.index');
+            }
+            throw $e;
+        }
 
         ActivityLog::record(
             module: 'Supplier',

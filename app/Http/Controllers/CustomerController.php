@@ -200,8 +200,15 @@ class CustomerController extends Controller
     {
         $customerName = $customer->customer_name;
 
-        //delete the customer
-        $customer->delete();
+        try {
+            $customer->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ((int) $e->getCode() === 23000) {
+                Alert::error('Cannot delete', "{$customerName} still has related records (sales orders, delivery receipts, invoices, or payments) and cannot be deleted.");
+                return redirect()->route('customers.index');
+            }
+            throw $e;
+        }
 
         ActivityLog::record(
             module: 'Customer',
