@@ -55,11 +55,16 @@
                         <span class="dash-stat-icon"><i class="bx bx-receipt"></i></span>
                         @include('admin.partials.dash-trend-badge', ['trend' => $salesOverview['trend']])
                     </div>
-                    <h4 class="mb-0">₱{{ number_format($salesOverview['month']['total_amount'], 2) }}</h4>
-                    <span class="text-muted small d-block">Total Sales</span>
-                    <div class="text-muted small mt-1">
-                        {{ $salesOverview['today']['total_transactions'] > 0 ? '₱' . number_format($salesOverview['today']['total_amount'], 2) . ' Today' : 'No sales today' }}
-                    </div>
+                    @if(Auth::user()->role === 'admin')
+                        <h4 class="mb-0">₱{{ number_format($salesOverview['month']['total_amount'], 2) }}</h4>
+                        <span class="text-muted small d-block">Total Sales</span>
+                        <div class="text-muted small mt-1">
+                            {{ $salesOverview['today']['total_transactions'] > 0 ? '₱' . number_format($salesOverview['today']['total_amount'], 2) . ' Today' : 'No sales today' }}
+                        </div>
+                    @else
+                        <h4 class="mb-0">₱••••</h4>
+                        <span class="text-muted small d-block">Total Sales</span>
+                    @endif
                 </div>
             </div>
         </div>
@@ -71,11 +76,16 @@
                         <span class="dash-stat-icon"><i class="bx bx-cart-alt"></i></span>
                         @include('admin.partials.dash-trend-badge', ['trend' => $purchasesOverview['trend']])
                     </div>
-                    <h4 class="mb-0">₱{{ number_format($purchasesOverview['month']['total_amount'], 2) }}</h4>
-                    <span class="text-muted small d-block">Total Purchases</span>
-                    <div class="text-muted small mt-1">
-                        {{ $purchasesOverview['today']['total_transactions'] > 0 ? '₱' . number_format($purchasesOverview['today']['total_amount'], 2) . ' Today' : 'No purchases today' }}
-                    </div>
+                    @if(Auth::user()->role === 'admin')
+                        <h4 class="mb-0">₱{{ number_format($purchasesOverview['month']['total_amount'], 2) }}</h4>
+                        <span class="text-muted small d-block">Total Purchases</span>
+                        <div class="text-muted small mt-1">
+                            {{ $purchasesOverview['today']['total_transactions'] > 0 ? '₱' . number_format($purchasesOverview['today']['total_amount'], 2) . ' Today' : 'No purchases today' }}
+                        </div>
+                    @else
+                        <h4 class="mb-0">₱••••</h4>
+                        <span class="text-muted small d-block">Total Purchases</span>
+                    @endif
                 </div>
             </div>
         </div>
@@ -126,7 +136,7 @@
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <span class="dash-stat-icon"><i class="bx bx-box"></i></span>
                     </div>
-                    <h4 class="mb-0">₱{{ number_format($inventorySnapshot['total_value'], 2) }}</h4>
+                    <h4 class="mb-0">{{ Auth::user()->role === 'admin' ? '₱' . number_format($inventorySnapshot['total_value'], 2) : '₱••••' }}</h4>
                     <span class="text-muted small d-block">Inventory Value</span>
                 </div>
             </div>
@@ -162,37 +172,44 @@
         <div class="col-12 col-lg-8 mb-4">
             <div class="card h-100">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-3">
-                        <div>
-                            <span class="text-muted d-block mb-1">
-                                <span class="dash-legend-dot" style="background-color:#696cff"></span> Total Sales
-                            </span>
-                            <div class="d-flex align-items-baseline gap-2">
-                                <h5 class="mb-0">₱{{ number_format($salesOverview['month']['total_amount'], 2) }}</h5>
-                                @include('admin.partials.dash-trend-badge', ['trend' => $salesOverview['trend']])
+                    @if(Auth::user()->role === 'admin')
+                        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-3">
+                            <div>
+                                <span class="text-muted d-block mb-1">
+                                    <span class="dash-legend-dot" style="background-color:#696cff"></span> Total Sales
+                                </span>
+                                <div class="d-flex align-items-baseline gap-2">
+                                    <h5 class="mb-0">₱{{ number_format($salesOverview['month']['total_amount'], 2) }}</h5>
+                                    @include('admin.partials.dash-trend-badge', ['trend' => $salesOverview['trend']])
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-muted d-block mb-1">
+                                    <span class="dash-legend-dot" style="background-color:#8592a3"></span> POS Revenue
+                                </span>
+                                <h5 class="mb-0">₱{{ number_format($totalRevenue, 2) }}</h5>
+                                <span class="text-muted small">this year</span>
+                            </div>
+                            <div class="text-md-end">
+                                <span class="text-muted d-block mb-1">
+                                    <span class="dash-legend-dot" style="background-color:#ffab00"></span> Expenses
+                                </span>
+                                <h5 class="mb-0">₱{{ number_format($expensesOverview['month']['total_amount'], 2) }}</h5>
+                                @include('admin.partials.dash-trend-badge', ['trend' => $expensesOverview['trend'], 'invert' => true])
                             </div>
                         </div>
-                        <div>
-                            <span class="text-muted d-block mb-1">
-                                <span class="dash-legend-dot" style="background-color:#8592a3"></span> POS Revenue
-                            </span>
-                            <h5 class="mb-0">₱{{ number_format($totalRevenue, 2) }}</h5>
-                            <span class="text-muted small">this year</span>
+                        <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Chart period filter" id="salesTrendPeriodFilter">
+                            <button type="button" class="btn btn-outline-primary" data-period="week">Week</button>
+                            <button type="button" class="btn btn-outline-primary active" data-period="month">Month</button>
+                            <button type="button" class="btn btn-outline-primary" data-period="year">Year</button>
                         </div>
-                        <div class="text-md-end">
-                            <span class="text-muted d-block mb-1">
-                                <span class="dash-legend-dot" style="background-color:#ffab00"></span> Expenses
-                            </span>
-                            <h5 class="mb-0">₱{{ number_format($expensesOverview['month']['total_amount'], 2) }}</h5>
-                            @include('admin.partials.dash-trend-badge', ['trend' => $expensesOverview['trend'], 'invert' => true])
+                        <div id="monthlySalesTrendChart" style="height: 260px;"></div>
+                    @else
+                        <span class="text-muted d-block mb-2">Sales vs. POS Revenue vs. Expenses</span>
+                        <div class="d-flex align-items-center justify-content-center text-muted" style="height: 260px;">
+                            Financial figures are restricted to full admin accounts.
                         </div>
-                    </div>
-                    <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Chart period filter" id="salesTrendPeriodFilter">
-                        <button type="button" class="btn btn-outline-primary" data-period="week">Week</button>
-                        <button type="button" class="btn btn-outline-primary active" data-period="month">Month</button>
-                        <button type="button" class="btn btn-outline-primary" data-period="year">Year</button>
-                    </div>
-                    <div id="monthlySalesTrendChart" style="height: 260px;"></div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -204,7 +221,13 @@
                     <small class="text-muted">Sales &amp; Purchases</small>
                 </div>
                 <div class="card-body">
-                    <div id="last5DaysChart" style="height: 260px;"></div>
+                    @if(Auth::user()->role === 'admin')
+                        <div id="last5DaysChart" style="height: 260px;"></div>
+                    @else
+                        <div class="d-flex align-items-center justify-content-center text-muted" style="height: 260px;">
+                            Financial figures are restricted to full admin accounts.
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -375,7 +398,7 @@
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
                             <span class="text-muted d-block mb-2">POS Revenue</span>
-                            <h4 class="mb-0">₱{{ number_format($totalRevenue, 2) }}</h4>
+                            <h4 class="mb-0">{{ Auth::user()->role === 'admin' ? '₱' . number_format($totalRevenue, 2) : '₱••••' }}</h4>
                         </div>
                         <div class="avatar">
                             <span class="avatar-initial rounded bg-label-secondary">
@@ -524,6 +547,7 @@
 @endsection
 
 @section('scripts')
+@if(Auth::user()->role === 'admin')
     <script>
         // Wait for ApexCharts to be loaded before initializing the hero chart —
         // Invoice-based Sales vs. POS Revenue vs. Expenses plotted together for a direct comparison.
@@ -650,4 +674,5 @@
         document.addEventListener('DOMContentLoaded', initMonthlySalesTrendChart);
         document.addEventListener('DOMContentLoaded', initLast5DaysChart);
     </script>
+@endif
 @endsection

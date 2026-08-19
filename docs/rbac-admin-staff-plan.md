@@ -53,11 +53,22 @@ server-side; the "Add User" button and the entire per-row Actions dropdown (Susp
 hidden from `admin/users.blade.php` for admin_staff — but the Users list itself stays visible (read-only), so
 admin_staff can still see who has access to the system, just can't change it.
 
-Also flagged as worth deciding later, not yet built: whether Total Sales / Reports figures (Dashboard, Sales
-Summary, COGS, Expense Summary) should be masked for admin_staff — this is the original open question from
-the top of this doc, still unresolved; and whether a proper Trash/Recycle Bin (SoftDeletes + restore UI) is
-worth building for Customer/Supplier/Product given the delete-snapshot-in-audit-log approach already covers
-the actual recoverability risk cheaper.
+**Extension (2026-08-19): Dashboard financial figures masked.** This closes the original open question from
+the top of this doc — Total Sales, Total Purchases, Inventory Value, and POS Revenue stat cards, plus the
+hero "Sales vs. POS Revenue vs. Expenses" trend chart and the "Last 5 Days" chart, are all masked for
+admin_staff (either `₱••••` or a "restricted to full admin accounts" placeholder in place of the chart).
+Deliberately scoped to *aggregate* figures only, not per-record ones — Recent Invoices' Amount column, Recent
+POS Sales' Unit Price/Total columns, and Recent Activity's Amount column are all left visible, since those are
+operational (needed to actually help a customer or verify a transaction), matching the same "don't cripple
+day-to-day work" reasoning already used for Cost on Purchase Order/Goods Receipt. The two charts' underlying
+JSON data (`$salesTrendByPeriod`, `$last5DaysComparison`) is never embedded in the page source for
+admin_staff — the entire chart-init `<script>` block is gated server-side in Blade, not just visually hidden,
+same true-concealment approach used for Cost's `data-unit-cost` attribute. Reports (Sales Summary, COGS,
+Expense Summary) are a separate surface, not yet addressed — worth deciding later.
+
+Also flagged as worth deciding later, not yet built: whether a proper Trash/Recycle Bin (SoftDeletes + restore
+UI) is worth building for Customer/Supplier/Product given the delete-snapshot-in-audit-log approach already
+covers the actual recoverability risk cheaper.
 
 Verified live (2026-08-19): temp `admin_staff` account confirmed against every item above (masked cost, no
 delete option + server-side block, no supplier/customer create-edit UI + server-side block except the DR
