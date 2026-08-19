@@ -117,6 +117,7 @@ class ProductController extends Controller
         }
 
         $productName = $product->item_name;
+        $snapshot = $product->getAttributes();
 
         try {
             $product->delete();
@@ -133,6 +134,7 @@ class ProductController extends Controller
             action: 'deleted',
             loggable: $product,
             description: "Deleted product {$productName}",
+            metadata: ['deleted_record' => $snapshot],
         );
 
         Alert::success('Success', 'Product deleted successfully');

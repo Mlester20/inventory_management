@@ -203,6 +203,7 @@ class SupplierController extends Controller
         }
 
         $supplierName = $supplier->supplier_name;
+        $snapshot = $supplier->getAttributes();
 
         try {
             $supplier->delete();
@@ -219,6 +220,7 @@ class SupplierController extends Controller
             action: 'deleted',
             loggable: $supplier,
             description: "Deleted supplier {$supplierName}",
+            metadata: ['deleted_record' => $snapshot],
         );
 
         Alert::success('Success', 'Supplier deleted successfully');

@@ -204,6 +204,7 @@ class CustomerController extends Controller
         }
 
         $customerName = $customer->customer_name;
+        $snapshot = $customer->getAttributes();
 
         try {
             $customer->delete();
@@ -215,11 +216,16 @@ class CustomerController extends Controller
             throw $e;
         }
 
+        // Full attribute snapshot, not just an id/name — deleting a Customer
+        // is not soft-deleted or otherwise recoverable from the database, so
+        // this is the only way to reconstruct one if a delete turns out to
+        // have been a mistake.
         ActivityLog::record(
             module: 'Customer',
             action: 'deleted',
             loggable: $customer,
             description: "Deleted customer {$customerName}",
+            metadata: ['deleted_record' => $snapshot],
         );
 
         Alert::success('Success', 'Customer deleted successfully');
