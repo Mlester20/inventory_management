@@ -705,6 +705,14 @@
                 });
             }
 
+            // Customers Section
+            if (data.results.customers.length > 0) {
+                html += '<div class="search-results-section-header">Customers</div>';
+                data.results.customers.forEach(customer => {
+                    html += createResultItemHTML(customer);
+                });
+            }
+
             // Suppliers Section
             if (data.results.suppliers.length > 0) {
                 html += '<div class="search-results-section-header">Suppliers</div>';

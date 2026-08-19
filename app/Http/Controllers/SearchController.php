@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Supplier;
@@ -21,6 +22,7 @@ class SearchController extends Controller
                     'results' => [
                         'items' => [],
                         'purchases' => [],
+                        'customers' => [],
                         'suppliers' => [],
                         'categories' => [],
                     ],
@@ -64,6 +66,24 @@ class SearchController extends Controller
                     ];
                 });
 
+            // Search for customers
+            $customers = Customer::where('customer_name', 'LIKE', "%{$query}%")
+                ->orWhere('contact_person', 'LIKE', "%{$query}%")
+                ->orWhere('email', 'LIKE', "%{$query}%")
+                ->orWhere('contact_number', 'LIKE', "%{$query}%")
+                ->limit(5)
+                ->get(['id', 'customer_name', 'contact_person', 'email', 'contact_number'])
+                ->map(function($customer) {
+                    return [
+                        'type' => 'customer',
+                        'id' => $customer->id,
+                        'title' => $customer->customer_name,
+                        'subtitle' => ($customer->contact_person ?? 'N/A') . ' | ' . ($customer->email ?? 'N/A'),
+                        'url' => route('customers.index'),
+                        'icon' => 'bx-user-circle'
+                    ];
+                });
+
             // Search for suppliers
             $suppliers = Supplier::where('supplier_name', 'LIKE', "%{$query}%")
                 ->orWhere('contact_person', 'LIKE', "%{$query}%")
@@ -101,10 +121,11 @@ class SearchController extends Controller
                 'results' => [
                     'items' => $items->toArray(),
                     'purchases' => $purchases->toArray(),
+                    'customers' => $customers->toArray(),
                     'suppliers' => $suppliers->toArray(),
                     'categories' => $categories->toArray(),
                 ],
-                'total' => $items->count() + $purchases->count() + $suppliers->count() + $categories->count()
+                'total' => $items->count() + $purchases->count() + $customers->count() + $suppliers->count() + $categories->count()
             ]);
         } catch (\Exception $e) {
             return response()->json([
