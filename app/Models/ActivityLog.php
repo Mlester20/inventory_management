@@ -31,6 +31,7 @@ class ActivityLog extends Model
      */
     protected $fillable = [
         'user_id',
+        'role',
         'module',
         'action',
         'source',
@@ -86,8 +87,20 @@ class ActivityLog extends Model
         string $source = self::SOURCE_ADMIN,
         ?int $userId = null,
     ): self {
+        $userId = $userId ?? Auth::id();
+
+        // A snapshot, not a live lookup — resolved from whichever user_id is
+        // actually being credited with this action (the current session's
+        // user in the common case, but some callers thread through a
+        // specific $userId instead), so it's correct even when record() is
+        // called outside the request that authenticated the actor.
+        $role = $userId === Auth::id()
+            ? Auth::user()?->role
+            : User::find($userId)?->role;
+
         return static::create([
-            'user_id' => $userId ?? Auth::id(),
+            'user_id' => $userId,
+            'role' => $role,
             'module' => $module,
             'action' => $action,
             'source' => $source,

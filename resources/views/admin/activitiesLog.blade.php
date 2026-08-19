@@ -17,6 +17,15 @@
                 </select>
             </div>
             <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Role</label>
+                <select name="role" class="form-select form-select-sm">
+                    <option value="">All roles</option>
+                    @foreach($roles as $role)
+                        <option value="{{ $role }}" @selected(request('role') === $role)>{{ ucfirst(str_replace('_', ' ', $role)) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label small text-muted mb-1">Module</label>
                 <select name="module" class="form-select form-select-sm">
                     <option value="">All modules</option>
@@ -44,7 +53,7 @@
             </div>
             <div class="col-md-2 d-flex gap-2">
                 <button type="submit" class="btn btn-sm btn-outline-secondary">Filter</button>
-                @if(request()->anyFilled(['user_id', 'module', 'source', 'date_from', 'date_to']))
+                @if(request()->anyFilled(['user_id', 'role', 'module', 'source', 'date_from', 'date_to']))
                     <a href="{{ route('activity-logs.index') }}" class="btn btn-sm btn-outline-danger">Clear</a>
                 @endif
             </div>
@@ -72,6 +81,11 @@
                             <td>
                                 @if($log->user)
                                     <strong>{{ $log->user->name }}</strong>
+                                    @if($log->role)
+                                        <span class="badge bg-label-{{ $log->role === 'admin' ? 'danger' : ($log->role === 'admin_staff' ? 'warning' : 'secondary') }} ms-1">
+                                            {{ ucfirst(str_replace('_', ' ', $log->role)) }}
+                                        </span>
+                                    @endif
                                     <br>
                                     <small class="text-muted">{{ $log->user->email }}</small>
                                 @else
