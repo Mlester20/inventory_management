@@ -23,6 +23,11 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Managing user accounts is restricted to full admin accounts.');
+            return redirect()->route('users.index');
+        }
+
         $request->validate([
             'name' => 'required',
             'email' => 'required|email|unique:users,email',
@@ -52,6 +57,11 @@ class UserController extends Controller
 
     public function destroy(string $id)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Managing user accounts is restricted to full admin accounts.');
+            return redirect()->route('users.index');
+        }
+
         $user = User::findOrFail($id);
 
         if ($user->role === 'admin') {
@@ -80,6 +90,11 @@ class UserController extends Controller
      */
     public function toggleStatus(User $user)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Managing user accounts is restricted to full admin accounts.');
+            return redirect()->route('users.index');
+        }
+
         if ($user->role === 'admin') {
             Alert::error('Not allowed', 'Admin accounts cannot be suspended.');
             return redirect()->route('users.index');

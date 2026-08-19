@@ -46,6 +46,19 @@ now blocked for admin_staff the same way creation/editing is: `CustomerControlle
 `SupplierController::destroy` both reject admin_staff server-side, and the Delete option is hidden from both
 `admin/customers.blade.php` and `admin/supplier.blade.php`.
 
+**Extension (2026-08-19):** User Management CRUD is now admin-only too — user's own suggestion after
+discussing what else should be concealed, confirmed with "oo, if the session is 'admin_staff' disable mo crud
+operations for the user management." `UserController::store`/`toggleStatus`/`destroy` all reject admin_staff
+server-side; the "Add User" button and the entire per-row Actions dropdown (Suspend/Reactivate, Delete) are
+hidden from `admin/users.blade.php` for admin_staff — but the Users list itself stays visible (read-only), so
+admin_staff can still see who has access to the system, just can't change it.
+
+Also flagged as worth deciding later, not yet built: whether Total Sales / Reports figures (Dashboard, Sales
+Summary, COGS, Expense Summary) should be masked for admin_staff — this is the original open question from
+the top of this doc, still unresolved; and whether a proper Trash/Recycle Bin (SoftDeletes + restore UI) is
+worth building for Customer/Supplier/Product given the delete-snapshot-in-audit-log approach already covers
+the actual recoverability risk cheaper.
+
 Verified live (2026-08-19): temp `admin_staff` account confirmed against every item above (masked cost, no
 delete option + server-side block, no supplier/customer create-edit UI + server-side block except the DR
 JSON path, which was confirmed to still succeed), a temp `admin` account confirmed unaffected (still creates

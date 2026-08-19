@@ -4,6 +4,7 @@
 
 @section('content')
     <div class="mt-3">
+        @if(Auth::user()->role === 'admin')
         <!-- Button trigger modal -->
         <div class="text-end">
             <button
@@ -15,6 +16,7 @@
                 Add User
             </button>
         </div>
+        @endif
 
         <!-- Add User Modal -->
         <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
@@ -150,6 +152,7 @@
                                 </span>
                             </td>
                             <td>
+                                @if(Auth::user()->role === 'admin')
                                 <div class="dropdown">
                                     <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
                                         <i class="bx bx-dots-vertical-rounded"></i>
@@ -199,6 +202,9 @@
                                         </form>
                                     </div>
                                 </div>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
