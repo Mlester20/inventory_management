@@ -197,6 +197,11 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting suppliers is restricted to full admin accounts.');
+            return redirect()->route('suppliers.index');
+        }
+
         $supplierName = $supplier->supplier_name;
 
         try {

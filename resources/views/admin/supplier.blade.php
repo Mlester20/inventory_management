@@ -547,6 +547,7 @@
                                         </button>
                                         @endif
 
+                                        @if(Auth::user()->role === 'admin')
                                         <div class="dropdown-divider"></div>
 
                                         <form
@@ -564,6 +565,7 @@
                                                 <i class="bx bx-trash me-1"></i> Delete
                                             </button>
                                         </form>
+                                        @endif
                                     </div>
                                 </div>
                             </td>

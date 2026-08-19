@@ -198,6 +198,11 @@ class CustomerController extends Controller
      */
     public function destroy(Customer $customer)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting customers is restricted to full admin accounts.');
+            return redirect()->route('customers.index');
+        }
+
         $customerName = $customer->customer_name;
 
         try {

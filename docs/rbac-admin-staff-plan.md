@@ -37,8 +37,14 @@ given the list below so far; more may follow.
    Customers page's "New Customer" flow is a traditional form POST; the DR quick-add is a `fetch()` call with
    `Accept: application/json`. `CustomerController::store` uses that existing `$request->expectsJson()`
    signal to tell the two apart — admin_staff blocked on the form path, allowed on the JSON path. "New
-   Customer"/"Edit" hidden from `admin/customers.blade.php` either way. Deletion of customers/suppliers was
-   **not** in Sir's list — left open to both roles, unchanged.
+   Customer"/"Edit" hidden from `admin/customers.blade.php` either way.
+
+**Correction (2026-08-19):** Deletion of customers/suppliers was initially left open to admin_staff (not
+explicitly in Sir's "Creation and Editing" list) — user flagged this as wrong after testing live ("bakit
+nabubura ko yung customers? naka session admin_staff, dapat naka disabled yung delete button"). Deletion is
+now blocked for admin_staff the same way creation/editing is: `CustomerController::destroy` and
+`SupplierController::destroy` both reject admin_staff server-side, and the Delete option is hidden from both
+`admin/customers.blade.php` and `admin/supplier.blade.php`.
 
 Verified live (2026-08-19): temp `admin_staff` account confirmed against every item above (masked cost, no
 delete option + server-side block, no supplier/customer create-edit UI + server-side block except the DR
