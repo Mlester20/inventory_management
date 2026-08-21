@@ -90,6 +90,29 @@ class PurchaseOrderController extends Controller
                 ->values();
         }
 
+        // A failed validation redirect flashes the submitted `items` array
+        // via old() — reuse it so the JS-built line-item rows repopulate
+        // from what the user actually typed, instead of resetting to blank.
+        // Takes precedence over the draft's own saved items.
+        if (old('items')) {
+            $prefillLines = collect(old('items'))
+                ->map(function ($line) use ($genericNames) {
+                    $genericName = $genericNames->firstWhere('id', $line['generic_name_id'] ?? null);
+
+                    return [
+                        'generic_label' => $genericName
+                            ? "{$genericName->generic_name} ({$genericName->unit}) — {$genericName->category->category_name}"
+                            : null,
+                        'generic_name_id' => $line['generic_name_id'] ?? null,
+                        'qty' => $line['qty'] ?? null,
+                        'unit' => $line['unit'] ?? null,
+                        'unit_cost' => $line['unit_cost'] ?? null,
+                        'remarks' => $line['remarks'] ?? null,
+                    ];
+                })
+                ->values();
+        }
+
         return compact('suppliers', 'users', 'genericNamesForJs', 'prefillLines') + ['editingPurchaseOrder' => $editing];
     }
 

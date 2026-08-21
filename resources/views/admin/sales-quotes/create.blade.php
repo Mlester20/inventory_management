@@ -135,6 +135,7 @@
 @section('scripts')
 <script>
     const GENERIC_NAMES = @json($genericNamesForJs);
+    const prefillLines = @json($prefillLines);
 
     let rowIndex = 0;
 
@@ -187,7 +188,8 @@
         });
     }
 
-    function addRow() {
+    function addRow(prefill = {}) {
+        const { genericLabel: prefillGenericLabel = '', qty = '', price = null } = prefill;
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -226,6 +228,15 @@
         document.getElementById('lineItemsBody').appendChild(card);
         bindRowEvents(card);
         renumberRows();
+
+        if (prefillGenericLabel) {
+            const genericSearchInput = card.querySelector('.generic-search-input');
+            genericSearchInput.value = prefillGenericLabel;
+            genericSearchInput.dispatchEvent(new Event('input'));
+            if (qty) card.querySelector('.qty-input').value = qty;
+            if (price !== null && price !== undefined) card.querySelector('.price-input').value = Number(price).toFixed(2);
+        }
+
         computeTotals();
     }
 
@@ -290,7 +301,18 @@
         computeTotals();
     });
 
-    // Start with one empty row
-    addRow();
+    // Repopulate from a failed validation redirect's flashed items, or
+    // start with one blank row for a fresh form.
+    if (prefillLines.length > 0) {
+        prefillLines.forEach(line => {
+            addRow({
+                genericLabel: line.generic_label,
+                qty: line.qty,
+                price: line.price,
+            });
+        });
+    } else {
+        addRow();
+    }
 </script>
 @endsection

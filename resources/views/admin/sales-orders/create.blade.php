@@ -95,6 +95,19 @@
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
+
+                    <div class="col-md-8 mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea
+                            name="notes"
+                            id="notes"
+                            class="form-control @error('notes') is-invalid @enderror"
+                            rows="2"
+                        >{{ old('notes', $editingSalesOrder?->notes) }}</textarea>
+                        @error('notes')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
 
                 <hr>
@@ -201,7 +214,7 @@
     }
 
     function addRow(prefill = {}) {
-        const { genericLabel = '', qty = '', price = null, advanceOrderQty = '' } = prefill;
+        const { genericLabel = '', qty = '', price = null, advanceOrderQty = '', remarks = '' } = prefill;
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -234,6 +247,10 @@
                     <label class="form-label small mb-1">Advance Order Qty</label>
                     <input type="number" name="items[${index}][advance_order_qty]" class="form-control advance-input" min="0" value="0">
                 </div>
+                <div class="col-12">
+                    <label class="form-label small mb-1">Remarks <span class="text-muted">(e.g. technical specifications)</span></label>
+                    <textarea name="items[${index}][remarks]" class="form-control remarks-input" rows="2"></textarea>
+                </div>
             </div>
 
             <div class="text-end mt-2 pt-2 border-top">
@@ -257,6 +274,7 @@
             if (qty) card.querySelector('.qty-input').value = qty;
             if (price !== null && price !== undefined) card.querySelector('.price-input').value = Number(price).toFixed(2);
             if (advanceOrderQty) card.querySelector('.advance-input').value = advanceOrderQty;
+            if (remarks) card.querySelector('.remarks-input').value = remarks;
         }
 
         computeTotals();
@@ -361,6 +379,7 @@
                 qty: line.qty,
                 price: line.price,
                 advanceOrderQty: line.advance_order_qty,
+                remarks: line.remarks,
             });
         });
     } else {

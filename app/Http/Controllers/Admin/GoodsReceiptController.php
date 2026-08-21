@@ -48,7 +48,11 @@ class GoodsReceiptController extends Controller
      */
     public function create(Request $request)
     {
-        return view('admin.goods-receipts.create', $this->formData($request->query('purchase_order_id')));
+        // A failed validation redirect while the Against-PO tab was active
+        // flashes purchase_order_id via old() — fall back to that so the
+        // tab re-opens on the right Purchase Order, same as the query
+        // string does for a fresh visit.
+        return view('admin.goods-receipts.create', $this->formData($request->query('purchase_order_id') ?? old('purchase_order_id')));
     }
 
     /**
@@ -110,6 +114,42 @@ class GoodsReceiptController extends Controller
 
                 if ($item->purchase_order_item_id) {
                     $poPrefillLines[] = $shared + ['purchase_order_item_id' => $item->purchase_order_item_id];
+                } else {
+                    $directPrefillLines[] = $shared;
+                }
+            }
+        }
+
+        // A failed validation redirect flashes the submitted `items` array
+        // via old() — reuse it so the JS-built line-item rows repopulate
+        // from what the user actually typed, instead of resetting to blank.
+        // Takes precedence over the draft's own saved items. Both tabs
+        // submit into the same flat `items[]` array, split the same way the
+        // draft-prefill above does: purchase_order_item_id present or not.
+        if (old('items')) {
+            $directPrefillLines = [];
+            $poPrefillLines = [];
+
+            foreach (old('items') as $line) {
+                if (empty($line['product_id'])) {
+                    continue;
+                }
+
+                $product = $items->firstWhere('id', $line['product_id']);
+
+                $shared = [
+                    'product_id' => $line['product_id'],
+                    'label' => $product ? ($product->description ?: $product->item_name) : null,
+                    'qty' => $line['qty'] ?? null,
+                    'unit_cost' => $line['unit_cost'] ?? null,
+                    'unit' => $line['unit'] ?? null,
+                    'batch_no' => $line['batch_no'] ?? null,
+                    'expiration_date' => $line['expiration_date'] ?? null,
+                    'remarks' => $line['remarks'] ?? null,
+                ];
+
+                if (! empty($line['purchase_order_item_id'])) {
+                    $poPrefillLines[] = $shared + ['purchase_order_item_id' => $line['purchase_order_item_id']];
                 } else {
                     $directPrefillLines[] = $shared;
                 }

@@ -17,6 +17,7 @@ class SalesOrder extends Model
         'is_draft',
         'order_date',
         'prepared_by',
+        'notes',
     ];
 
     protected $casts = [

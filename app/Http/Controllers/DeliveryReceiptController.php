@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\DeliveryReceipt;
 use App\Models\GenericName;
+use App\Models\ProductBatch;
 use App\Models\SalesOrder;
 use App\Models\User;
 use App\Services\DeliveryReceiptService;
@@ -47,7 +48,12 @@ class DeliveryReceiptController extends Controller
      */
     public function create(Request $request)
     {
-        return view('admin.delivery-receipts.create', $this->formData($request->query('sales_order_id')));
+        // A failed validation redirect while the Purchase Order tab was
+        // active flashes sales_order_id via old() — fall back to that so
+        // the tab re-opens on the right Sales Order, same as the query
+        // string does for a fresh visit from Sales Order's "Create Delivery
+        // Receipt" button.
+        return view('admin.delivery-receipts.create', $this->formData($request->query('sales_order_id') ?? old('sales_order_id')));
     }
 
     /**
@@ -92,6 +98,33 @@ class DeliveryReceiptController extends Controller
                         'qty' => $item->qty,
                         'remarks' => $item->remarks,
                         'sales_order_item_id' => $item->sales_order_item_id,
+                    ];
+                })
+                ->values();
+        }
+
+        // A failed validation redirect flashes the submitted `items` array
+        // via old() — reuse it so the JS-built line-item rows repopulate
+        // from what the user actually typed, instead of resetting to blank.
+        // Takes precedence over the draft's own saved items. generic_name_id
+        // isn't itself submitted (only product_batch_id is), so it's
+        // resolved the same way the draft-prefill above does: walk the
+        // batch's own product/genericName relationship.
+        if (old('items')) {
+            $batchIds = collect(old('items'))->pluck('product_batch_id')->filter()->all();
+            $batches = ProductBatch::with('product.genericName')->whereIn('id', $batchIds)->get()->keyBy('id');
+
+            $prefillLines = collect(old('items'))
+                ->filter(fn ($line) => ! empty($line['product_batch_id']) && $batches->get($line['product_batch_id'])?->product?->genericName)
+                ->map(function ($line) use ($batches) {
+                    $generic = $batches->get($line['product_batch_id'])->product->genericName;
+
+                    return [
+                        'generic_name_id' => $generic->id,
+                        'product_batch_id' => $line['product_batch_id'],
+                        'qty' => $line['qty'] ?? null,
+                        'remarks' => $line['remarks'] ?? null,
+                        'sales_order_item_id' => $line['sales_order_item_id'] ?? null,
                     ];
                 })
                 ->values();

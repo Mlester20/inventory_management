@@ -20,6 +20,9 @@
                     </button>
                 </form>
             @else
+                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#notesModal">
+                    <i class="bx bx-note"></i> Add Notes
+                </button>
                 @if($salesOrder->status !== 'completed' && $salesOrder->status !== 'cancelled')
                     <a href="{{ route('delivery-receipts.create', ['sales_order_id' => $salesOrder->id]) }}" class="btn btn-primary">
                         <i class="bx bx-plus"></i> Create Delivery Receipt
@@ -88,7 +91,12 @@
                 <tbody>
                     @foreach ($salesOrder->items as $item)
                         <tr>
-                            <td>{{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }})</td>
+                            <td>
+                                {{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }})
+                                @if($item->remarks)
+                                    <div class="text-muted small">{{ $item->remarks }}</div>
+                                @endif
+                            </td>
                             <td class="text-end">{{ $item->qty ?? '—' }}</td>
                             <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
                             <td class="text-end">{{ $item->advance_order_qty }}</td>
@@ -117,6 +125,17 @@
             <div class="border-top pt-1">Prepared By: {{ $salesOrder->preparedBy->name ?? '—' }}</div>
         </div>
     </div>
+    </div>
+
+    <div class="card mb-4 no-print">
+        <h5 class="card-header">Notes</h5>
+        <div class="card-body">
+            @if($salesOrder->notes)
+                <p class="mb-0" style="white-space: pre-line;">{{ $salesOrder->notes }}</p>
+            @else
+                <p class="text-muted mb-0">No notes yet.</p>
+            @endif
+        </div>
     </div>
 
     <div class="card no-print">
@@ -148,6 +167,28 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="modal fade no-print" id="notesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <form action="{{ route('sales-orders.update-notes', $salesOrder) }}" method="POST">
+                @csrf
+                @method('PATCH')
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Notes — {{ $salesOrder->so_no }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <textarea name="notes" class="form-control" rows="5" placeholder="e.g. technical specifications, special instructions...">{{ $salesOrder->notes }}</textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Notes</button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 

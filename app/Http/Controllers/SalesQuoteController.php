@@ -75,7 +75,28 @@ class SalesQuoteController extends Controller
             ];
         })->values();
 
-        return view('admin.sales-quotes.create', compact('customers', 'genericNames', 'users', 'genericNamesForJs'));
+        // A failed validation redirect flashes the submitted `items` array
+        // via old() — reuse it so the JS-built line-item rows repopulate
+        // from what the user actually typed, instead of resetting to blank.
+        $prefillLines = [];
+        if (old('items')) {
+            $prefillLines = collect(old('items'))
+                ->map(function ($line) use ($genericNames) {
+                    $genericName = $genericNames->firstWhere('id', $line['generic_name_id'] ?? null);
+
+                    return [
+                        'generic_label' => $genericName
+                            ? "{$genericName->generic_name} ({$genericName->unit}) — {$genericName->category->category_name}"
+                            : null,
+                        'generic_name_id' => $line['generic_name_id'] ?? null,
+                        'qty' => $line['qty'] ?? null,
+                        'price' => $line['price'] ?? null,
+                    ];
+                })
+                ->values();
+        }
+
+        return view('admin.sales-quotes.create', compact('customers', 'genericNames', 'users', 'genericNamesForJs', 'prefillLines'));
     }
 
     /**

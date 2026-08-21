@@ -76,6 +76,28 @@ class InventoryAdjustmentController extends Controller
             }
         }
 
+        // A failed validation redirect flashes the submitted `lines` array
+        // via old() — reuse it so the JS-built line-item rows repopulate
+        // from what the user actually typed, instead of resetting to blank.
+        // Takes precedence over the reverse-of prefill above.
+        if (old('lines')) {
+            $prefillLines = collect(old('lines'))
+                ->filter(fn ($line) => ! empty($line['product_id']))
+                ->map(function ($line) use ($products) {
+                    $product = $products->firstWhere('id', $line['product_id']);
+
+                    return [
+                        'product_id' => $line['product_id'],
+                        'product_name' => $product ? ($product->description ?: $product->item_name) : null,
+                        'batch_no' => $line['batch_no'] ?? null,
+                        'location_id' => $line['location_id'] ?? null,
+                        'qty' => $line['qty'] ?? null,
+                        'remarks' => $line['remarks'] ?? null,
+                    ];
+                })
+                ->values();
+        }
+
         return view('admin.inventory-adjustments.create', compact(
             'products', 'users', 'locations', 'preselectedProductId', 'productsForJs', 'prefillLines'
         ) + ['editingAdjustment' => null]);
@@ -208,7 +230,30 @@ class InventoryAdjustmentController extends Controller
             'batch_no' => $line->batch_no,
             'location_id' => $line->location_id,
             'qty' => $line->qty,
+            'remarks' => $line->remarks,
         ])->values();
+
+        // A failed validation redirect flashes the submitted `lines` array
+        // via old() — reuse it so the JS-built line-item rows repopulate
+        // from what the user actually typed, instead of resetting to blank.
+        // Takes precedence over the draft's own saved lines.
+        if (old('lines')) {
+            $prefillLines = collect(old('lines'))
+                ->filter(fn ($line) => ! empty($line['product_id']))
+                ->map(function ($line) use ($products) {
+                    $product = $products->firstWhere('id', $line['product_id']);
+
+                    return [
+                        'product_id' => $line['product_id'],
+                        'product_name' => $product ? ($product->description ?: $product->item_name) : null,
+                        'batch_no' => $line['batch_no'] ?? null,
+                        'location_id' => $line['location_id'] ?? null,
+                        'qty' => $line['qty'] ?? null,
+                        'remarks' => $line['remarks'] ?? null,
+                    ];
+                })
+                ->values();
+        }
 
         return view('admin.inventory-adjustments.create', compact(
             'products', 'users', 'locations', 'preselectedProductId', 'productsForJs', 'prefillLines'

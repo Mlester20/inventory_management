@@ -152,8 +152,8 @@
 <script>
     const GOODS_RECEIPTS = @json($goodsReceipts);
     const PURCHASE_ORDERS = @json($purchaseOrders);
-    const PREFILL_GOODS_RECEIPT_ID = @json($editingPurchaseInvoice?->goods_receipt_id);
-    const PREFILL_PURCHASE_ORDER_ID = @json($editingPurchaseInvoice?->purchase_order_id);
+    const PREFILL_GOODS_RECEIPT_ID = @json(old('goods_receipt_id', $editingPurchaseInvoice?->goods_receipt_id));
+    const PREFILL_PURCHASE_ORDER_ID = @json(old('purchase_order_id', $editingPurchaseInvoice?->purchase_order_id));
 
     const supplierSelect = document.getElementById('supplier_id');
     const goodsReceiptSelect = document.getElementById('goods_receipt_id');

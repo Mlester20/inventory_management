@@ -153,7 +153,7 @@
     }
 
     function addRow(prefill = {}) {
-        const { productId = '', batchNo = '', locationId = '', qty = '' } = prefill;
+        const { productId = '', batchNo = '', locationId = '', qty = '', remarks = '' } = prefill;
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -229,6 +229,10 @@
 
         if (qty) {
             card.querySelector('.qty-input').value = qty;
+        }
+
+        if (remarks) {
+            card.querySelector('input[name$="[remarks]"]').value = remarks;
         }
     }
 
@@ -312,7 +316,7 @@
     // or a single blank row otherwise.
     if (prefillLines.length > 0) {
         prefillLines.forEach(line => {
-            addRow({ productId: line.product_id, batchNo: line.batch_no, locationId: line.location_id, qty: line.qty });
+            addRow({ productId: line.product_id, batchNo: line.batch_no, locationId: line.location_id, qty: line.qty, remarks: line.remarks });
         });
     } else {
         addRow({ productId: preselectedProductId });

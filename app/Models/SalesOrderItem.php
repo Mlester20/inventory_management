@@ -15,6 +15,7 @@ class SalesOrderItem extends Model
         'price',
         'advance_order_qty',
         'delivered_qty',
+        'remarks',
     ];
 
     protected $casts = [

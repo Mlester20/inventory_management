@@ -23,6 +23,7 @@ class SalesOrderService
                 'is_draft' => false,
                 'order_date' => $data['order_date'],
                 'prepared_by' => $data['prepared_by'] ?? null,
+                'notes' => $data['notes'] ?? null,
             ]);
 
             $this->applyItems($salesOrder, $data['items']);
@@ -51,6 +52,7 @@ class SalesOrderService
                 'order_date' => $data['order_date'] ?? now()->toDateString(),
                 'prepared_by' => $data['prepared_by'] ?? null,
                 'is_draft' => true,
+                'notes' => $data['notes'] ?? null,
             ]);
             $salesOrder->save();
 
@@ -67,6 +69,7 @@ class SalesOrderService
                     'qty' => $line['qty'] ?? null,
                     'price' => $line['price'] ?? null,
                     'advance_order_qty' => $line['advance_order_qty'] ?? 0,
+                    'remarks' => $line['remarks'] ?? null,
                 ]);
             }
 
@@ -89,6 +92,7 @@ class SalesOrderService
                 'is_draft' => false,
                 'order_date' => $data['order_date'],
                 'prepared_by' => $data['prepared_by'] ?? null,
+                'notes' => $data['notes'] ?? null,
             ]);
             $draft->save();
 
@@ -111,6 +115,7 @@ class SalesOrderService
                 'qty' => $line['qty'],
                 'price' => $line['price'],
                 'advance_order_qty' => $line['advance_order_qty'] ?? 0,
+                'remarks' => $line['remarks'] ?? null,
             ]);
         }
     }

@@ -100,7 +100,33 @@ class SalesOrderController extends Controller
                     'qty' => $line->qty,
                     'price' => $line->price !== null ? (float) $line->price : null,
                     'advance_order_qty' => $line->advance_order_qty,
+                    'remarks' => $line->remarks,
                 ])
+                ->values();
+        }
+
+        // A failed validation redirect (e.g. a missing required field on one
+        // line) flashes the whole submitted `items` array via old() — reuse
+        // it here so the JS-built line-item rows repopulate from what the
+        // user actually typed, instead of resetting to blank. Takes
+        // precedence over the draft's own saved items, since it reflects
+        // the user's most recent (unsaved) edits.
+        if (old('items')) {
+            $prefillLines = collect(old('items'))
+                ->map(function ($line) use ($genericNames) {
+                    $genericName = $genericNames->firstWhere('id', $line['generic_name_id'] ?? null);
+
+                    return [
+                        'generic_label' => $genericName
+                            ? "{$genericName->generic_name} ({$genericName->unit}) — {$genericName->category->category_name}"
+                            : null,
+                        'generic_name_id' => $line['generic_name_id'] ?? null,
+                        'qty' => $line['qty'] ?? null,
+                        'price' => $line['price'] ?? null,
+                        'advance_order_qty' => $line['advance_order_qty'] ?? null,
+                        'remarks' => $line['remarks'] ?? null,
+                    ];
+                })
                 ->values();
         }
 
@@ -154,11 +180,13 @@ class SalesOrderController extends Controller
             'po_no' => 'nullable|string|max:255',
             'order_date' => 'nullable|date',
             'prepared_by' => 'nullable|exists:users,id',
+            'notes' => 'nullable|string',
             'items' => 'nullable|array',
             'items.*.generic_name_id' => 'nullable|exists:generic_names,id',
             'items.*.qty' => 'nullable|integer|min:1',
             'items.*.price' => 'nullable|numeric|min:0',
             'items.*.advance_order_qty' => 'nullable|integer|min:0',
+            'items.*.remarks' => 'nullable|string',
         ];
     }
 
@@ -173,11 +201,13 @@ class SalesOrderController extends Controller
             'po_no' => 'nullable|string|max:255',
             'order_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
+            'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.generic_name_id' => 'required|exists:generic_names,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.advance_order_qty' => 'nullable|integer|min:0',
+            'items.*.remarks' => 'nullable|string',
         ];
     }
 
@@ -189,6 +219,31 @@ class SalesOrderController extends Controller
         $salesOrder->load('customer', 'preparedBy', 'items.genericName', 'deliveryReceipts');
 
         return view('admin.sales-orders.show', compact('salesOrder'));
+    }
+
+    /**
+     * Update just the free-text Notes field — unlike line items/status, this
+     * is safe to edit on a Sales Order at any stage (draft or fully
+     * delivered), so it's a separate, unrestricted endpoint rather than
+     * going through update()'s draft-only gate.
+     */
+    public function updateNotes(Request $request, SalesOrder $salesOrder)
+    {
+        $validated = $request->validate([
+            'notes' => 'nullable|string',
+        ]);
+
+        $salesOrder->update($validated);
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'notes_updated',
+            loggable: $salesOrder,
+            description: "Updated notes on Sales Order {$salesOrder->so_no}",
+        );
+
+        Alert::success('Success', 'Notes updated successfully');
+        return redirect()->route('sales-orders.show', $salesOrder);
     }
 
     /**

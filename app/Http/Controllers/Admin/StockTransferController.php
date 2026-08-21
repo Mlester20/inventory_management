@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\GenericName;
 use App\Models\Location;
+use App\Models\ProductBatch;
 use App\Models\StockTransfer;
 use App\Models\User;
 use App\Services\StockTransferService;
@@ -79,6 +80,31 @@ class StockTransferController extends Controller
                         'generic_label' => "{$generic->generic_name} ({$generic->unit}) — {$generic->category->category_name}",
                         'product_batch_id' => $line->product_batch_id,
                         'qty' => $line->qty,
+                    ];
+                })
+                ->values();
+        }
+
+        // A failed validation redirect flashes the submitted `lines` array
+        // via old() — reuse it so the JS-built line-item rows repopulate
+        // from what the user actually typed, instead of resetting to blank.
+        // Takes precedence over the draft's own saved lines. generic_label
+        // isn't itself submitted (only product_batch_id is), so it's
+        // resolved the same way the draft-prefill above does: walk the
+        // batch's own product/genericName relationship.
+        if (old('lines')) {
+            $batchIds = collect(old('lines'))->pluck('product_batch_id')->filter()->all();
+            $batches = ProductBatch::with('product.genericName.category')->whereIn('id', $batchIds)->get()->keyBy('id');
+
+            $prefillLines = collect(old('lines'))
+                ->filter(fn ($line) => ! empty($line['product_batch_id']) && $batches->get($line['product_batch_id'])?->product?->genericName)
+                ->map(function ($line) use ($batches) {
+                    $generic = $batches->get($line['product_batch_id'])->product->genericName;
+
+                    return [
+                        'generic_label' => "{$generic->generic_name} ({$generic->unit}) — {$generic->category->category_name}",
+                        'product_batch_id' => $line['product_batch_id'],
+                        'qty' => $line['qty'] ?? null,
                     ];
                 })
                 ->values();

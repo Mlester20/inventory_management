@@ -34,6 +34,7 @@
                         <th>Customer</th>
                         <th>P.O. No.</th>
                         <th>Order Date</th>
+                        <th>Notes</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -46,6 +47,15 @@
                             <td>{{ $salesOrder->customer->customer_name ?? '—' }}</td>
                             <td>{{ $salesOrder->po_no ?? '—' }}</td>
                             <td>{{ $salesOrder->order_date->format('M d, Y') }}</td>
+                            <td style="max-width: 200px;">
+                                @if($salesOrder->notes)
+                                    <span class="d-inline-block text-truncate" style="max-width: 200px;" title="{{ $salesOrder->notes }}">
+                                        {{ $salesOrder->notes }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>
                                 @if($salesOrder->isDraft())
                                     <span class="badge bg-secondary">DRAFT</span>
@@ -92,7 +102,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted">No Sales Orders found.</td>
+                            <td colspan="8" class="text-center text-muted">No Sales Orders found.</td>
                         </tr>
                     @endforelse
                 </tbody>

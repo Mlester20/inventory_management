@@ -323,13 +323,18 @@
         }
     }
 
+    // item.item_name already reads as "Generic Name (Brand)" — the full
+    // Generic Description + Item Description together — so the option label
+    // no longer relies on just brand/batch, which read the same across
+    // unrelated items sharing a batch numbering scheme.
     function itemOptionsHtml(items) {
         if (items.length === 0) {
             return null;
         }
         let html = '<option value="">-- Select Item --</option>';
         items.forEach(item => {
-            html += `<option value="${item.id}" data-max="${item.quantity}" data-batch="${item.batch_no || ''}" data-exp="${item.expiration_date || ''}">${item.brand_name} — Batch ${item.batch_no || 'N/A'} (Stock: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})</option>`;
+            const label = `${item.item_name} — Batch ${item.batch_no || 'N/A'} (Stock: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})`;
+            html += `<option value="${item.id}" data-max="${item.quantity}" data-batch="${item.batch_no || ''}" data-exp="${item.expiration_date || ''}">${label}</option>`;
         });
         return html;
     }
@@ -591,11 +596,12 @@
     });
 
     // Auto-trigger the Purchase Order tab load if a sales_order_id was preselected via the URL
-    // (either from the query string, or from a resumed draft's own header).
+    // (query string, a resumed draft's own header, or a failed validation
+    // redirect's flashed old() input).
     @if($preselectedSalesOrderId)
         showTab('purchase_order');
         document.getElementById('po_sales_order_id').dispatchEvent(new Event('change'));
-    @elseif($editingDeliveryReceipt && $editingDeliveryReceipt->transaction_type === 'walk_in')
+    @elseif(($editingDeliveryReceipt && $editingDeliveryReceipt->transaction_type === 'walk_in') || old('transaction_type') === 'walk_in')
         showTab('walk_in');
     @endif
 
