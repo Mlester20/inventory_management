@@ -152,6 +152,11 @@
                   </a>
                 </li>
                 <li class="menu-item">
+                  <a href="{{ route('advance-orders.index') }}" class="menu-link">
+                    <div data-i18n="Error">Advance Orders</div>
+                  </a>
+                </li>
+                <li class="menu-item">
                   <a href="{{ route('delivery-receipts.index') }}" class="menu-link">
                     <div data-i18n="Error">Delivery Receipts</div>
                   </a>

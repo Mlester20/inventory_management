@@ -32,6 +32,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\SalesQuoteController;
 use App\Http\Controllers\DeliveryReceiptController;
+use App\Http\Controllers\AdvanceOrderController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\GoodsReceiptController;
 use App\Http\Controllers\Admin\PurchaseInvoiceController;
@@ -118,8 +119,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('admin/sales-quotes', SalesQuoteController::class)->except(['destroy']);
     Route::post('admin/sales-quotes/{salesQuote}/convert', [SalesQuoteController::class, 'convertToSalesOrder'])->name('sales-quotes.convert');
     Route::resource('admin/sales-orders', SalesOrderController::class)->except(['destroy']);
+    Route::patch('admin/sales-orders/{sales_order}/notes', [SalesOrderController::class, 'updateNotes'])->name('sales-orders.update-notes');
     Route::resource('admin/delivery-receipts', DeliveryReceiptController::class);
     Route::post('admin/delivery-receipts/{deliveryReceipt}/create-invoice', [DeliveryReceiptController::class, 'createInvoice'])->name('delivery-receipts.create-invoice');
+    Route::get('admin/advance-orders', [AdvanceOrderController::class, 'index'])->name('advance-orders.index');
+    Route::post('admin/advance-orders/create-invoice', [AdvanceOrderController::class, 'createInvoice'])->name('advance-orders.create-invoice');
     Route::post('admin/delivery-receipts/{deliveryReceipt}/mark-delivered', [DeliveryReceiptController::class, 'markDelivered'])->name('delivery-receipts.mark-delivered');
 
     // Customers are usable by both admin and regular users too — deleting

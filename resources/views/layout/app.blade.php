@@ -278,7 +278,7 @@
               </ul>
             </li>
             @php
-              $salesOrderActive = request()->routeIs('sales-orders.*') || request()->routeIs('delivery-receipts.*');
+              $salesOrderActive = request()->routeIs('sales-orders.*') || request()->routeIs('delivery-receipts.*') || request()->routeIs('advance-orders.*');
             @endphp
             <li class="menu-item {{ $salesOrderActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -294,6 +294,11 @@
                 <li class="menu-item">
                   <a href="{{ route('sales-orders.create') }}" class="menu-link">
                     <div data-i18n="Error">New Sales Order</div>
+                  </a>
+                </li>
+                <li class="menu-item {{ request()->routeIs('advance-orders.*') ? 'active' : '' }}">
+                  <a href="{{ route('advance-orders.index') }}" class="menu-link">
+                    <div data-i18n="Error">Advance Orders</div>
                   </a>
                 </li>
                 <li class="menu-item {{ request()->routeIs('delivery-receipts.*') ? 'active' : '' }}">
