@@ -12,13 +12,15 @@
                 <a href="{{ route('sales-orders.edit', $salesOrder) }}" class="btn btn-primary">
                     <i class="bx bx-edit-alt"></i> Continue Editing
                 </a>
-                <form action="{{ route('sales-orders.destroy', $salesOrder) }}" method="POST" onsubmit="return confirm('Delete draft {{ $salesOrder->so_no }}? This cannot be undone.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-outline-danger">
-                        <i class="bx bx-trash"></i> Delete Draft
-                    </button>
-                </form>
+                @if(Auth::user()->role === 'admin')
+                    <form action="{{ route('sales-orders.destroy', $salesOrder) }}" method="POST" onsubmit="return confirmSubmit(this, 'Delete draft {{ $salesOrder->so_no }}? This can be restored from the trash later.');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bx bx-trash"></i> Delete Draft
+                        </button>
+                    </form>
+                @endif
             @else
                 <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#notesModal">
                     <i class="bx bx-note"></i> Add Notes
@@ -31,6 +33,29 @@
                 <button type="button" class="btn btn-outline-primary" onclick="window.print()">
                     <i class="bx bx-printer"></i> Print
                 </button>
+                @if($salesOrder->isArchived())
+                    <form action="{{ route('sales-orders.unarchive', $salesOrder) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-secondary">
+                            <i class="bx bx-undo"></i> Unarchive
+                        </button>
+                    </form>
+                @else
+                    <form action="{{ route('sales-orders.archive', $salesOrder) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-secondary">
+                            <i class="bx bx-archive"></i> Archive
+                        </button>
+                    </form>
+                @endif
+                @if(Auth::user()->role === 'admin' && ! $salesOrder->isCancelled())
+                    <form action="{{ route('sales-orders.cancel', $salesOrder) }}" method="POST" onsubmit="return confirmSubmit(this, 'Cancel/void this Sales Order? The record and its delivery history stay, only the status changes.');">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bx bx-block"></i> Cancel/Void
+                        </button>
+                    </form>
+                @endif
             @endif
         </div>
     </div>

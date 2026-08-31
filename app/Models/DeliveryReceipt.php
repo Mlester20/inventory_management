@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DeliveryReceipt extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'customer_id',
         'sales_order_id',
@@ -18,11 +21,14 @@ class DeliveryReceipt extends Model
         'description',
         'receipt_date',
         'prepared_by',
+        'archived_at',
+        'cancellation_note',
     ];
 
     protected $casts = [
         'receipt_date' => 'date',
         'is_draft' => 'boolean',
+        'archived_at' => 'datetime',
     ];
 
     public const TRANSACTION_TYPES = [
@@ -34,11 +40,22 @@ class DeliveryReceipt extends Model
     public const STATUSES = [
         'for_delivery' => 'FOR DELIVERY',
         'delivered' => 'DELIVERED',
+        'cancelled' => 'CANCELLED',
     ];
 
     public function isDraft(): bool
     {
         return (bool) $this->is_draft;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
     }
 
     /**

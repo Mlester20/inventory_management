@@ -70,6 +70,29 @@ Also flagged as worth deciding later, not yet built: whether a proper Trash/Recy
 UI) is worth building for Customer/Supplier/Product given the delete-snapshot-in-audit-log approach already
 covers the actual recoverability risk cheaper.
 
+**Decided (2026-08-29): Trash/Recycle Bin built for GenericName, Product, SalesOrder, DeliveryReceipt,
+Invoice** — Sir's actual ask ("INV Item", SO, DR, SI), not Customer/Supplier (those keep the existing
+delete-snapshot-in-audit-log approach, unchanged). All 5 now use Laravel's `SoftDeletes` — `delete()` sets
+`deleted_at` instead of removing the row, restorable via a new `restore()` action on each controller. Same
+"per-module `show_trashed` toggle" UI shape as the existing `show_zero` toggle on the Lot/Serial tab, not a
+separate unified Trash page. V1 is restore-only — no "Permanently Delete" action yet.
+
+Alongside this, closed an existing gap: `admin_staff` previously had **no role check at all** on
+`SalesOrderController`/`DeliveryReceiptController`/`InvoiceController`/`GenericNameController::destroy()` —
+only business-state guards (delivered_qty, draft-only, sales-exist). Some Blade delete buttons were even
+gated to `admin`+`admin_staff` together, and the Sales Order/Delivery Receipt show-page "Delete Draft"
+buttons had no gate at all. All 5 `destroy()`/new `restore()` methods now reject `admin_staff` server-side
+(same pattern as `ProductController`), and every Delete/Restore button across
+`inventory-items/index.blade.php` (General Item + Products tabs), `sales-orders/index.blade.php`+`show.blade.php`,
+`delivery-receipts/index.blade.php`+`show.blade.php`, and `invoices/index.blade.php` is now `admin`-only in
+the Blade too — closing the gap Sir wanted ("admin_staff role restricted totally yung pag bura nya sa ganong
+data").
+
+Separately fixed this same session: `GenericNameController::destroy()` had no FK-error handling at all —
+deleting a generic item referenced by any Sales Order/Sales Quote line threw a raw SQLSTATE 1451 500 error
+(reproduced live). Now soft-deleted, so this no longer applies in the normal flow, but the graceful
+`QueryException` catch was kept for defense-in-depth.
+
 Verified live (2026-08-19): temp `admin_staff` account confirmed against every item above (masked cost, no
 delete option + server-side block, no supplier/customer create-edit UI + server-side block except the DR
 JSON path, which was confirmed to still succeed), a temp `admin` account confirmed unaffected (still creates

@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'code', 'generic_name_id', 'brand_name', 'item_name', 'category_id', 'supplier_id',
@@ -22,11 +23,12 @@ class Product extends Model
         'price_3_percent', 'price_3',
         'fda_reg_no', 'fda_reg_exp',
         'custom_field_1', 'custom_field_2', 'custom_field_3', 'custom_field_4',
-        'location', 'low_stock_threshold', 'image', 'tax_id',
+        'location', 'low_stock_threshold', 'image', 'tax_id', 'archived_at',
     ];
 
     protected $casts = [
         'low_stock_threshold' => 'integer',
+        'archived_at' => 'datetime',
         'unit_cost' => 'decimal:2',
         'unit_price_percent' => 'decimal:2',
         'unit_price' => 'decimal:2',
@@ -129,6 +131,11 @@ class Product extends Model
     public function isLowOnStock(): bool
     {
         return $this->quantity <= $this->low_stock_threshold;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
     }
 
     /**

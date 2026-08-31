@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Invoice extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'customer_name',
         'customer_id',
@@ -28,6 +31,8 @@ class Invoice extends Model
         'amount_due',
         'amount_paid',
         'add_vat',
+        'archived_at',
+        'cancelled_at',
     ];
 
     protected $casts = [
@@ -43,7 +48,19 @@ class Invoice extends Model
         'amount_due' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'add_vat' => 'decimal:2',
+        'archived_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->cancelled_at !== null;
+    }
 
     public function sales(): HasMany
     {

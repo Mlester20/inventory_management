@@ -2,11 +2,63 @@
 
 namespace App\Services;
 
+use App\Models\Invoice;
 use App\Models\SalesOrder;
 use Illuminate\Support\Facades\DB;
 
 class SalesOrderService
 {
+    /**
+     * Cancel/void a Sales Order — the alternative to delete() when it
+     * already has delivery history and can't just be removed. Per Sir's
+     * direction: every linked Delivery Receipt gets a note explaining why
+     * (the DR's own status is untouched — it still shows what actually
+     * happened physically), and any Invoice already created from one of
+     * those DRs is auto-cancelled too, since an invoice billing for a now
+     * -void order shouldn't stay active.
+     *
+     * @return array{delivery_receipts: \Illuminate\Support\Collection, invoices: \Illuminate\Support\Collection}
+     */
+    public function cancel(SalesOrder $salesOrder): array
+    {
+        return DB::transaction(function () use ($salesOrder) {
+            $salesOrder->update(['status' => 'cancelled']);
+
+            $affectedDeliveryReceipts = collect();
+            $affectedInvoices = collect();
+
+            foreach ($salesOrder->deliveryReceipts as $deliveryReceipt) {
+                $deliveryReceipt->update([
+                    'cancellation_note' => "Sales Order {$salesOrder->so_no} linked to this delivery was cancelled/voided on " . now()->format('M d, Y') . '.',
+                ]);
+                $affectedDeliveryReceipts->push($deliveryReceipt);
+
+                $invoiceIds = $deliveryReceipt->items()
+                    ->with('sales')
+                    ->get()
+                    ->pluck('sales')
+                    ->flatten()
+                    ->pluck('invoice_id')
+                    ->filter()
+                    ->unique();
+
+                foreach ($invoiceIds as $invoiceId) {
+                    $invoice = Invoice::find($invoiceId);
+
+                    if ($invoice && ! $invoice->isCancelled()) {
+                        $invoice->update(['cancelled_at' => now()]);
+                        $affectedInvoices->push($invoice);
+                    }
+                }
+            }
+
+            return [
+                'delivery_receipts' => $affectedDeliveryReceipts,
+                'invoices' => $affectedInvoices->unique('id'),
+            ];
+        });
+    }
+
     /**
      * Create a Sales Order with its line items.
      *

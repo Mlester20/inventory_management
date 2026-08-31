@@ -7,9 +7,34 @@
         <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Invoices
         </a>
-        <button type="button" class="btn btn-primary" onclick="window.print()">
-            <i class="bx bx-printer"></i> Print
-        </button>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary" onclick="window.print()">
+                <i class="bx bx-printer"></i> Print
+            </button>
+            @if($invoice->isArchived())
+                <form action="{{ route('invoices.unarchive', $invoice) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="bx bx-undo"></i> Unarchive
+                    </button>
+                </form>
+            @else
+                <form action="{{ route('invoices.archive', $invoice) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="bx bx-archive"></i> Archive
+                    </button>
+                </form>
+            @endif
+            @if(Auth::user()->role === 'admin' && ! $invoice->isCancelled())
+                <form action="{{ route('invoices.cancel', $invoice) }}" method="POST" onsubmit="return confirmSubmit(this, 'Cancel/void this invoice? The record and its recorded sales stay, only the status changes.');">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="bx bx-block"></i> Cancel/Void
+                    </button>
+                </form>
+            @endif
+        </div>
     </div>
 
     <div class="card" id="printableInvoice">

@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SalesOrder extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'customer_id',
         'sales_quote_id',
@@ -18,16 +21,28 @@ class SalesOrder extends Model
         'order_date',
         'prepared_by',
         'notes',
+        'archived_at',
     ];
 
     protected $casts = [
         'order_date' => 'date',
         'is_draft' => 'boolean',
+        'archived_at' => 'datetime',
     ];
 
     public function isDraft(): bool
     {
         return (bool) $this->is_draft;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
     }
 
     public function customer(): BelongsTo

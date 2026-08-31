@@ -391,12 +391,14 @@
 
             <!-- Reports -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Reports</span></li>
+            @if(Auth::user()->role === 'admin')
             <li class="menu-item">
               <a href="{{ route('admin.cogs.index') }}" class="menu-link {{ request()->routeIs('admin.cogs.*') ? 'active' : '' }}">
                 <i class="menu-icon tf-icons bx bx-chart"></i>
                 <div data-i18n="COGS Report">COGS Report</div>
               </a>
             </li>
+            @endif
             <li class="menu-item">
               <a href="{{ route('admin.reports.expiration') }}" class="menu-link {{ request()->routeIs('admin.reports.expiration') ? 'active' : '' }}">
                 <i class="menu-icon tf-icons bx bx-calendar-x"></i>
@@ -615,6 +617,36 @@
     </div>
 
     @include('sweetalert::alert')
+
+    {{-- Sweetalert's own package script tag above only loads when a flash
+    alert is already queued in the session — not guaranteed on a fresh page
+    load. Admin pages need Swal available unconditionally for confirm-before
+    -submit dialogs (Delete/Restore/Cancel/Archive, etc.), same as
+    layout.user already does. --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        /**
+         * Confirm via SweetAlert before submitting a form, instead of the
+         * browser's native confirm() dialog. Usage:
+         *   <form onsubmit="return confirmSubmit(this, 'Delete this item?')">
+         */
+        function confirmSubmit(form, text, title = 'Are you sure?') {
+            Swal.fire({
+                title: title,
+                text: text,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, proceed',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+            return false;
+        }
+    </script>
 
     {{-- yield scripts --}}
     @yield('scripts')

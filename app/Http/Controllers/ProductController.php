@@ -140,4 +140,58 @@ class ProductController extends Controller
         Alert::success('Success', 'Product deleted successfully');
         return redirect()->route('inventory-items.index', ['tab' => 'products']);
     }
+
+    /**
+     * Restore a soft-deleted product from the trash.
+     */
+    public function restore(int $id)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Restoring items is restricted to full admin accounts.');
+            return redirect()->route('inventory-items.index', ['tab' => 'products']);
+        }
+
+        $product = Product::onlyTrashed()->findOrFail($id);
+        $product->restore();
+
+        ActivityLog::record(
+            module: 'Product',
+            action: 'restored',
+            loggable: $product,
+            description: "Restored product {$product->item_name}",
+        );
+
+        Alert::success('Success', 'Product restored successfully');
+        return redirect()->route('inventory-items.index', ['tab' => 'products', 'show_trashed' => 1]);
+    }
+
+    public function archive(Product $product)
+    {
+        $product->update(['archived_at' => now()]);
+
+        ActivityLog::record(
+            module: 'Product',
+            action: 'archived',
+            loggable: $product,
+            description: "Archived product {$product->item_name}",
+        );
+
+        Alert::success('Success', 'Product archived.');
+        return redirect()->route('inventory-items.index', ['tab' => 'products']);
+    }
+
+    public function unarchive(Product $product)
+    {
+        $product->update(['archived_at' => null]);
+
+        ActivityLog::record(
+            module: 'Product',
+            action: 'unarchived',
+            loggable: $product,
+            description: "Unarchived product {$product->item_name}",
+        );
+
+        Alert::success('Success', 'Product unarchived.');
+        return redirect()->route('inventory-items.index', ['tab' => 'products', 'show_archived' => 1]);
+    }
 }

@@ -21,8 +21,8 @@ class SalesOrderController extends Controller
                 return [
                     'sales_order_item_id' => $item->id,
                     'generic_name_id' => $item->generic_name_id,
-                    'generic_name' => $item->genericName->generic_name,
-                    'unit' => $item->genericName->unit,
+                    'generic_name' => $item->genericName?->generic_name,
+                    'unit' => $item->genericName?->unit,
                     'qty' => $item->qty,
                     'delivered_qty' => $item->delivered_qty,
                     'remaining_qty' => $item->remaining_qty,

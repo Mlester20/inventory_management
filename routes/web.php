@@ -116,11 +116,18 @@ Route::middleware(['auth'])->group(function() {
 // Deleting a transaction stays admin-only (registered in the admin group).
 Route::middleware(['auth'])->group(function () {
     Route::resource('admin/invoices', InvoiceController::class)->except(['destroy']);
+    Route::post('admin/invoices/{invoice}/archive', [InvoiceController::class, 'archive'])->name('invoices.archive');
+    Route::post('admin/invoices/{invoice}/unarchive', [InvoiceController::class, 'unarchive'])->name('invoices.unarchive');
     Route::resource('admin/sales-quotes', SalesQuoteController::class)->except(['destroy']);
     Route::post('admin/sales-quotes/{salesQuote}/convert', [SalesQuoteController::class, 'convertToSalesOrder'])->name('sales-quotes.convert');
     Route::resource('admin/sales-orders', SalesOrderController::class)->except(['destroy']);
     Route::patch('admin/sales-orders/{sales_order}/notes', [SalesOrderController::class, 'updateNotes'])->name('sales-orders.update-notes');
+    Route::post('admin/sales-orders/{sales_order}/archive', [SalesOrderController::class, 'archive'])->name('sales-orders.archive');
+    Route::post('admin/sales-orders/{sales_order}/unarchive', [SalesOrderController::class, 'unarchive'])->name('sales-orders.unarchive');
     Route::resource('admin/delivery-receipts', DeliveryReceiptController::class);
+    Route::patch('admin/delivery-receipts/{id}/restore', [DeliveryReceiptController::class, 'restore'])->name('delivery-receipts.restore');
+    Route::post('admin/delivery-receipts/{deliveryReceipt}/archive', [DeliveryReceiptController::class, 'archive'])->name('delivery-receipts.archive');
+    Route::post('admin/delivery-receipts/{deliveryReceipt}/unarchive', [DeliveryReceiptController::class, 'unarchive'])->name('delivery-receipts.unarchive');
     Route::post('admin/delivery-receipts/{deliveryReceipt}/create-invoice', [DeliveryReceiptController::class, 'createInvoice'])->name('delivery-receipts.create-invoice');
     Route::get('admin/advance-orders', [AdvanceOrderController::class, 'index'])->name('advance-orders.index');
     Route::post('admin/advance-orders/create-invoice', [AdvanceOrderController::class, 'createInvoice'])->name('advance-orders.create-invoice');
@@ -151,6 +158,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::resource('admin/categories', CategoryController::class);
     Route::resource('admin/generic-names', GenericNameController::class)->only(['store', 'update', 'destroy']);
+    Route::patch('admin/generic-names/{id}/restore', [GenericNameController::class, 'restore'])->name('generic-names.restore');
+    Route::post('admin/generic-names/{genericName}/archive', [GenericNameController::class, 'archive'])->name('generic-names.archive');
+    Route::post('admin/generic-names/{genericName}/unarchive', [GenericNameController::class, 'unarchive'])->name('generic-names.unarchive');
     Route::resource('admin/suppliers', SupplierController::class);
     Route::post('admin/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
 
@@ -162,6 +172,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
         return redirect()->route('inventory-items.index', ['tab' => 'products', 'search' => $product->item_name]);
     })->name('admin.items.show');
     Route::resource('admin/products', ProductController::class)->only(['store', 'update', 'destroy']);
+    Route::patch('admin/products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
+    Route::post('admin/products/{product}/archive', [ProductController::class, 'archive'])->name('products.archive');
+    Route::post('admin/products/{product}/unarchive', [ProductController::class, 'unarchive'])->name('products.unarchive');
     Route::put('admin/product-batches/{productBatch}', [ProductBatchController::class, 'update'])->name('product-batches.update');
     Route::resource('admin/inventory-adjustments', InventoryAdjustmentController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('admin/inventory-adjustments/{inventoryAdjustment}/write-off', [InventoryAdjustmentController::class, 'writeOff'])->name('inventory-adjustments.write-off');
@@ -184,8 +197,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // both admin and regular users (see the 'auth'-only group above) —
     // deleting them is the one action that stays admin-only.
     Route::delete('admin/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
+    Route::patch('admin/invoices/{id}/restore', [InvoiceController::class, 'restore'])->name('invoices.restore');
+    Route::post('admin/invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
+    Route::post('admin/delivery-receipts/{deliveryReceipt}/cancel', [DeliveryReceiptController::class, 'cancel'])->name('delivery-receipts.cancel');
     Route::delete('admin/sales-quotes/{sales_quote}', [SalesQuoteController::class, 'destroy'])->name('sales-quotes.destroy');
     Route::delete('admin/sales-orders/{sales_order}', [SalesOrderController::class, 'destroy'])->name('sales-orders.destroy');
+    Route::patch('admin/sales-orders/{id}/restore', [SalesOrderController::class, 'restore'])->name('sales-orders.restore');
+    Route::post('admin/sales-orders/{sales_order}/cancel', [SalesOrderController::class, 'cancel'])->name('sales-orders.cancel');
     Route::delete('admin/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
 
     // Return Items Actions

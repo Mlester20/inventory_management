@@ -97,17 +97,87 @@ class GenericNameController extends Controller
      */
     public function destroy(GenericName $genericName)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting items is restricted to full admin accounts.');
+            return redirect()->route('inventory-items.index', ['tab' => 'general']);
+        }
+
         $genericNameLabel = $genericName->generic_name;
-        $genericName->delete();
+        $snapshot = $genericName->getAttributes();
+
+        try {
+            $genericName->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ((int) $e->getCode() === 23000) {
+                Alert::error('Cannot delete', "{$genericNameLabel} still has related records (sales orders, sales quotes, or products) and cannot be deleted.");
+                return redirect()->route('inventory-items.index', ['tab' => 'general']);
+            }
+            throw $e;
+        }
 
         ActivityLog::record(
             module: 'GenericName',
             action: 'deleted',
             loggable: $genericName,
             description: "Deleted generic item {$genericNameLabel}",
+            metadata: ['deleted_record' => $snapshot],
         );
 
         Alert::success('Success', 'Generic item deleted successfully');
         return redirect()->route('inventory-items.index', ['tab' => 'general']);
+    }
+
+    /**
+     * Restore a soft-deleted generic item from the trash.
+     */
+    public function restore(int $id)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Restoring items is restricted to full admin accounts.');
+            return redirect()->route('inventory-items.index', ['tab' => 'general']);
+        }
+
+        $genericName = GenericName::onlyTrashed()->findOrFail($id);
+        $genericName->restore();
+
+        ActivityLog::record(
+            module: 'GenericName',
+            action: 'restored',
+            loggable: $genericName,
+            description: "Restored generic item {$genericName->generic_name}",
+        );
+
+        Alert::success('Success', 'Generic item restored successfully');
+        return redirect()->route('inventory-items.index', ['tab' => 'general', 'show_trashed' => 1]);
+    }
+
+    public function archive(GenericName $genericName)
+    {
+        $genericName->update(['archived_at' => now()]);
+
+        ActivityLog::record(
+            module: 'GenericName',
+            action: 'archived',
+            loggable: $genericName,
+            description: "Archived generic item {$genericName->generic_name}",
+        );
+
+        Alert::success('Success', 'Generic item archived.');
+        return redirect()->route('inventory-items.index', ['tab' => 'general']);
+    }
+
+    public function unarchive(GenericName $genericName)
+    {
+        $genericName->update(['archived_at' => null]);
+
+        ActivityLog::record(
+            module: 'GenericName',
+            action: 'unarchived',
+            loggable: $genericName,
+            description: "Unarchived generic item {$genericName->generic_name}",
+        );
+
+        Alert::success('Success', 'Generic item unarchived.');
+        return redirect()->route('inventory-items.index', ['tab' => 'general', 'show_archived' => 1]);
     }
 }

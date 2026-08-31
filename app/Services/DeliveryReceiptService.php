@@ -27,8 +27,11 @@ class DeliveryReceiptService
      */
     public function getRemainingItems(SalesOrder $salesOrder): Collection
     {
+        // withTrashed() here: a Sales Order line still needs to be delivered
+        // even if its Generic Name has since been trashed — losing the label
+        // shouldn't silently drop it from the "what's left to deliver" list.
         return $salesOrder->items()
-            ->with('genericName')
+            ->with(['genericName' => fn ($q) => $q->withTrashed()])
             ->get()
             ->filter(fn (SalesOrderItem $item) => $item->remaining_qty > 0)
             ->values();

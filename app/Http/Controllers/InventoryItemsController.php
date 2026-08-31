@@ -49,9 +49,15 @@ class InventoryItemsController extends Controller
         $nextGenericCode = null;
         $nextProductCode = null;
 
+        $showTrashed = $request->boolean('show_trashed');
+        $showArchived = $request->boolean('show_archived');
+
         if ($tab === 'general') {
             $generalItems = GenericName::with('category')
                 ->withCount('products')
+                ->when($showTrashed, fn ($q) => $q->onlyTrashed())
+                ->when(! $showTrashed && $showArchived, fn ($q) => $q->whereNotNull('archived_at'))
+                ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))
                 ->when($search, fn ($q) => $q->where('generic_name', 'like', "%{$search}%"))
                 ->orderBy('generic_name')
                 ->paginate(15)
@@ -70,6 +76,9 @@ class InventoryItemsController extends Controller
 
         if ($tab === 'products') {
             $products = Product::with(['genericName', 'category'])
+                ->when($showTrashed, fn ($q) => $q->onlyTrashed())
+                ->when(! $showTrashed && $showArchived, fn ($q) => $q->whereNotNull('archived_at'))
+                ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))
                 ->withSum(['locationStocks as warehouse_qty' => fn ($q) => $q->where('location_id', $warehouseId)], 'qty')
                 ->withSum(['locationStocks as pos_qty' => fn ($q) => $q->where('location_id', $posId)], 'qty')
                 ->withSum('locationStocks as total_qty', 'qty')
@@ -155,7 +164,7 @@ class InventoryItemsController extends Controller
         return view('admin.inventory-items.index', compact(
             'tab', 'search', 'categories', 'genericNames', 'suppliers', 'taxes',
             'generalItems', 'products', 'batches', 'batchTotals', 'historyProduct', 'history',
-            'nextGenericCode', 'nextProductCode', 'warehouseId', 'posId', 'showZero'
+            'nextGenericCode', 'nextProductCode', 'warehouseId', 'posId', 'showZero', 'showTrashed', 'showArchived'
         ));
     }
 }

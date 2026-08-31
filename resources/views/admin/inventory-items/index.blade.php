@@ -40,9 +40,27 @@
 
         {{-- ============================= GENERAL ITEM TAB ============================= --}}
         @if($tab === 'general')
-            <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#genericItemModal">
-                New Generic Item
-            </button>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#genericItemModal">
+                    New Generic Item
+                </button>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'general', 'show_archived' => $showArchived ? 0 : 1, 'show_trashed' => 0])) }}" class="btn btn-outline-secondary btn-sm">
+                        @if($showArchived)
+                            <i class="bx bx-undo"></i> Hide archived
+                        @else
+                            <i class="bx bx-archive"></i> Show archived
+                        @endif
+                    </a>
+                    <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'general', 'show_trashed' => $showTrashed ? 0 : 1, 'show_archived' => 0])) }}" class="btn btn-outline-secondary btn-sm">
+                        @if($showTrashed)
+                            <i class="bx bx-undo"></i> Hide trashed
+                        @else
+                            <i class="bx bx-trash"></i> Show trashed
+                        @endif
+                    </a>
+                </div>
+            </div>
 
             <div class="card">
                 <div class="table-responsive nowrap">
@@ -66,7 +84,12 @@
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $genericName->code }}</td>
                                     <td>{{ $genericName->category->category_name ?? 'N/A' }}</td>
-                                    <td>{{ $genericName->generic_name }}</td>
+                                    <td>
+                                        {{ $genericName->generic_name }}
+                                        @if($genericName->isArchived())
+                                            <span class="badge bg-dark">ARCHIVED</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $genericName->unit }}</td>
                                     <td>{{ $genericName->vat_type }}</td>
                                     <td>{{ $genericName->products_count }}</td>
@@ -81,26 +104,56 @@
                                                 <i class="bx bx-dots-vertical-rounded"></i>
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-end">
-                                                <button type="button" class="dropdown-item edit-generic-btn"
-                                                    data-bs-toggle="modal" data-bs-target="#updateGenericItemModal"
-                                                    data-id="{{ $genericName->id }}"
-                                                    data-code="{{ $genericName->code }}"
-                                                    data-name="{{ $genericName->generic_name }}"
-                                                    data-category="{{ $genericName->category_id }}"
-                                                    data-unit="{{ $genericName->unit }}"
-                                                    data-vat-type="{{ $genericName->vat_type }}">
-                                                    <i class="bx bx-edit-alt me-1"></i> Edit
-                                                </button>
-
-                                                <div class="dropdown-divider"></div>
-
-                                                <form action="{{ route('generic-names.destroy', $genericName) }}" method="POST">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Delete this generic item?')">
-                                                        <i class="bx bx-trash me-1"></i> Delete
+                                                @if($showTrashed)
+                                                    @if(Auth::user()->role === 'admin')
+                                                        <form action="{{ route('generic-names.restore', $genericName->id) }}" method="POST">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <button type="submit" class="dropdown-item text-success" onclick="return confirmSubmit(this.form, 'Restore this generic item?')">
+                                                                <i class="bx bx-undo me-1"></i> Restore
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                @else
+                                                    <button type="button" class="dropdown-item edit-generic-btn"
+                                                        data-bs-toggle="modal" data-bs-target="#updateGenericItemModal"
+                                                        data-id="{{ $genericName->id }}"
+                                                        data-code="{{ $genericName->code }}"
+                                                        data-name="{{ $genericName->generic_name }}"
+                                                        data-category="{{ $genericName->category_id }}"
+                                                        data-unit="{{ $genericName->unit }}"
+                                                        data-vat-type="{{ $genericName->vat_type }}">
+                                                        <i class="bx bx-edit-alt me-1"></i> Edit
                                                     </button>
-                                                </form>
+
+                                                    @if($genericName->isArchived())
+                                                        <form action="{{ route('generic-names.unarchive', $genericName) }}" method="POST">
+                                                            @csrf
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="bx bx-undo me-1"></i> Unarchive
+                                                            </button>
+                                                        </form>
+                                                    @else
+                                                        <form action="{{ route('generic-names.archive', $genericName) }}" method="POST">
+                                                            @csrf
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="bx bx-archive me-1"></i> Archive
+                                                            </button>
+                                                        </form>
+                                                    @endif
+
+                                                    @if(Auth::user()->role === 'admin')
+                                                        <div class="dropdown-divider"></div>
+
+                                                        <form action="{{ route('generic-names.destroy', $genericName) }}" method="POST">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="dropdown-item text-danger" onclick="return confirmSubmit(this.form, 'Delete this generic item?')">
+                                                                <i class="bx bx-trash me-1"></i> Delete
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                @endif
                                             </div>
                                         </div>
                                     </td>
@@ -234,9 +287,27 @@
 
         {{-- ============================= PRODUCTS TAB ============================= --}}
         @if($tab === 'products')
-            <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#productModal">
-                New Item
-            </button>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
+                    New Item
+                </button>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_archived' => $showArchived ? 0 : 1, 'show_trashed' => 0])) }}" class="btn btn-outline-secondary btn-sm">
+                        @if($showArchived)
+                            <i class="bx bx-undo"></i> Hide archived
+                        @else
+                            <i class="bx bx-archive"></i> Show archived
+                        @endif
+                    </a>
+                    <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_trashed' => $showTrashed ? 0 : 1, 'show_archived' => 0])) }}" class="btn btn-outline-secondary btn-sm">
+                        @if($showTrashed)
+                            <i class="bx bx-undo"></i> Hide trashed
+                        @else
+                            <i class="bx bx-trash"></i> Show trashed
+                        @endif
+                    </a>
+                </div>
+            </div>
 
             <div class="card">
                 <div class="table-responsive nowrap">
@@ -271,7 +342,12 @@
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $product->code }}</td>
                                     <td>{{ $product->category->category_name ?? 'N/A' }}</td>
-                                    <td>{{ $product->description ?: $product->item_name }}</td>
+                                    <td>
+                                        {{ $product->description ?: $product->item_name }}
+                                        @if($product->isArchived())
+                                            <span class="badge bg-dark">ARCHIVED</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $product->barcode ?? '—' }}</td>
                                     <td>
                                         @if(Auth::user()->role === 'admin')
@@ -296,6 +372,17 @@
                                                 <i class="bx bx-dots-vertical-rounded"></i>
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-end">
+                                                @if($showTrashed)
+                                                    @if(Auth::user()->role === 'admin')
+                                                        <form action="{{ route('products.restore', $product->id) }}" method="POST">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <button type="submit" class="dropdown-item text-success" onclick="return confirmSubmit(this.form, 'Restore this product?')">
+                                                                <i class="bx bx-undo me-1"></i> Restore
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                @else
                                                 <a href="{{ route('inventory-items.index', ['tab' => 'history', 'product_id' => $product->id]) }}" class="dropdown-item">
                                                     <i class="bx bx-history me-1"></i> History
                                                 </a>
@@ -331,16 +418,33 @@
                                                     <i class="bx bx-edit-alt me-1"></i> Edit
                                                 </button>
 
+                                                @if($product->isArchived())
+                                                    <form action="{{ route('products.unarchive', $product) }}" method="POST">
+                                                        @csrf
+                                                        <button type="submit" class="dropdown-item">
+                                                            <i class="bx bx-undo me-1"></i> Unarchive
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <form action="{{ route('products.archive', $product) }}" method="POST">
+                                                        @csrf
+                                                        <button type="submit" class="dropdown-item">
+                                                            <i class="bx bx-archive me-1"></i> Archive
+                                                        </button>
+                                                    </form>
+                                                @endif
+
                                                 @if(Auth::user()->role === 'admin')
                                                 <div class="dropdown-divider"></div>
 
                                                 <form action="{{ route('products.destroy', $product) }}" method="POST">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Delete this product?')">
+                                                    <button type="submit" class="dropdown-item text-danger" onclick="return confirmSubmit(this.form, 'Delete this product?')">
                                                         <i class="bx bx-trash me-1"></i> Delete
                                                     </button>
                                                 </form>
+                                                @endif
                                                 @endif
                                             </div>
                                         </div>

@@ -25,9 +25,14 @@ class DeliveryReceiptController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $showTrashed = $request->boolean('show_trashed');
+        $showArchived = $request->boolean('show_archived');
 
         $deliveryReceipts = DeliveryReceipt::query()
             ->with('customer', 'salesOrder', 'items')
+            ->when($showTrashed, fn ($q) => $q->onlyTrashed())
+            ->when(! $showTrashed && $showArchived, fn ($q) => $q->whereNotNull('archived_at'))
+            ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('dr_no', 'like', "%{$search}%")
@@ -40,7 +45,7 @@ class DeliveryReceiptController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('admin.delivery-receipts.index', compact('deliveryReceipts', 'search'));
+        return view('admin.delivery-receipts.index', compact('deliveryReceipts', 'search', 'showTrashed', 'showArchived'));
     }
 
     /**
@@ -362,6 +367,11 @@ class DeliveryReceiptController extends Controller
      */
     public function destroy(DeliveryReceipt $deliveryReceipt)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting Delivery Receipts is restricted to full admin accounts.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
         if (! $deliveryReceipt->isDraft()) {
             Alert::info('Not supported', 'Deleting an issued Delivery Receipt is not supported.');
             return redirect()->route('delivery-receipts.show', $deliveryReceipt);
@@ -378,5 +388,92 @@ class DeliveryReceiptController extends Controller
 
         Alert::success('Deleted', "Draft {$drNo} has been deleted.");
         return redirect()->route('delivery-receipts.index');
+    }
+
+    /**
+     * Restore a soft-deleted Delivery Receipt from the trash.
+     */
+    public function restore(int $id)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Restoring Delivery Receipts is restricted to full admin accounts.');
+            return redirect()->route('delivery-receipts.index');
+        }
+
+        $deliveryReceipt = DeliveryReceipt::onlyTrashed()->findOrFail($id);
+        $deliveryReceipt->restore();
+
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'restored',
+            loggable: $deliveryReceipt,
+            description: "Restored Delivery Receipt {$deliveryReceipt->dr_no}",
+        );
+
+        Alert::success('Success', 'Delivery Receipt restored successfully');
+        return redirect()->route('delivery-receipts.index', ['show_trashed' => 1]);
+    }
+
+    /**
+     * Void a Delivery Receipt — status label only. Does NOT reverse the
+     * stock already deducted from Warehouse when this DR was posted; use
+     * an Inventory Adjustment separately if the stock itself needs
+     * correcting. This just marks the document as no longer valid.
+     */
+    public function cancel(DeliveryReceipt $deliveryReceipt)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Cancelling Delivery Receipts is restricted to full admin accounts.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        if ($deliveryReceipt->isCancelled()) {
+            Alert::info('Already cancelled', 'This Delivery Receipt is already cancelled.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        $previousStatus = $deliveryReceipt->status;
+        $deliveryReceipt->update(['status' => 'cancelled']);
+
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'cancelled',
+            loggable: $deliveryReceipt,
+            description: "Cancelled Delivery Receipt {$deliveryReceipt->dr_no}",
+            metadata: ['previous_status' => $previousStatus],
+        );
+
+        Alert::success('Success', 'Delivery Receipt cancelled.');
+        return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+    }
+
+    public function archive(DeliveryReceipt $deliveryReceipt)
+    {
+        $deliveryReceipt->update(['archived_at' => now()]);
+
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'archived',
+            loggable: $deliveryReceipt,
+            description: "Archived Delivery Receipt {$deliveryReceipt->dr_no}",
+        );
+
+        Alert::success('Success', 'Delivery Receipt archived.');
+        return redirect()->route('delivery-receipts.index');
+    }
+
+    public function unarchive(DeliveryReceipt $deliveryReceipt)
+    {
+        $deliveryReceipt->update(['archived_at' => null]);
+
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'unarchived',
+            loggable: $deliveryReceipt,
+            description: "Unarchived Delivery Receipt {$deliveryReceipt->dr_no}",
+        );
+
+        Alert::success('Success', 'Delivery Receipt unarchived.');
+        return redirect()->route('delivery-receipts.index', ['show_archived' => 1]);
     }
 }

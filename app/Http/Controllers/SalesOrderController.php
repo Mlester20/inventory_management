@@ -22,9 +22,14 @@ class SalesOrderController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $showTrashed = $request->boolean('show_trashed');
+        $showArchived = $request->boolean('show_archived');
 
         $salesOrders = SalesOrder::query()
             ->with('customer')
+            ->when($showTrashed, fn ($q) => $q->onlyTrashed())
+            ->when(! $showTrashed && $showArchived, fn ($q) => $q->whereNotNull('archived_at'))
+            ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('so_no', 'like', "%{$search}%")
@@ -38,7 +43,7 @@ class SalesOrderController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('admin.sales-orders.index', compact('salesOrders', 'search'));
+        return view('admin.sales-orders.index', compact('salesOrders', 'search', 'showTrashed', 'showArchived'));
     }
 
     /**
@@ -308,6 +313,11 @@ class SalesOrderController extends Controller
      */
     public function destroy(SalesOrder $salesOrder)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting Sales Orders is restricted to full admin accounts.');
+            return redirect()->route('sales-orders.index');
+        }
+
         if ($salesOrder->items()->where('delivered_qty', '>', 0)->exists()) {
             Alert::error('Cannot delete', 'This Sales Order already has delivered items and cannot be deleted.');
             return redirect()->route('sales-orders.index');
@@ -325,5 +335,125 @@ class SalesOrderController extends Controller
 
         Alert::success('Success', 'Sales Order deleted successfully');
         return redirect()->route('sales-orders.index');
+    }
+
+    /**
+     * Restore a soft-deleted Sales Order from the trash.
+     */
+    public function restore(int $id)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Restoring Sales Orders is restricted to full admin accounts.');
+            return redirect()->route('sales-orders.index');
+        }
+
+        $salesOrder = SalesOrder::onlyTrashed()->findOrFail($id);
+        $salesOrder->restore();
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'restored',
+            loggable: $salesOrder,
+            description: "Restored Sales Order {$salesOrder->so_no}",
+        );
+
+        Alert::success('Success', 'Sales Order restored successfully');
+        return redirect()->route('sales-orders.index', ['show_trashed' => 1]);
+    }
+
+    /**
+     * Void a Sales Order — for the case delete() rejects (delivered items
+     * already exist and can't just disappear). The record and its
+     * delivery/stock history stay exactly as-is; only status changes to
+     * 'cancelled' so it reads as no-longer-active everywhere it's shown.
+     * Per Sir's direction: cascades a note onto every linked Delivery
+     * Receipt and auto-cancels any Invoice already created from one.
+     */
+    public function cancel(SalesOrder $salesOrder)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Cancelling Sales Orders is restricted to full admin accounts.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        if ($salesOrder->isCancelled()) {
+            Alert::info('Already cancelled', 'This Sales Order is already cancelled.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        $previousStatus = $salesOrder->status;
+        $result = $this->salesOrderService->cancel($salesOrder);
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'cancelled',
+            loggable: $salesOrder,
+            description: "Cancelled Sales Order {$salesOrder->so_no}",
+            metadata: ['previous_status' => $previousStatus],
+        );
+
+        foreach ($result['delivery_receipts'] as $deliveryReceipt) {
+            ActivityLog::record(
+                module: 'DeliveryReceipt',
+                action: 'noted',
+                loggable: $deliveryReceipt,
+                description: "Noted Delivery Receipt {$deliveryReceipt->dr_no}: linked Sales Order {$salesOrder->so_no} was cancelled",
+            );
+        }
+
+        foreach ($result['invoices'] as $invoice) {
+            ActivityLog::record(
+                module: 'Invoice',
+                action: 'cancelled',
+                loggable: $invoice,
+                description: "Auto-cancelled Invoice {$invoice->sales_no} because its Sales Order {$salesOrder->so_no} was cancelled",
+            );
+        }
+
+        $extra = '';
+        if ($result['delivery_receipts']->isNotEmpty()) {
+            $extra .= " {$result['delivery_receipts']->count()} linked Delivery Receipt(s) were noted.";
+        }
+        if ($result['invoices']->isNotEmpty()) {
+            $extra .= " {$result['invoices']->count()} linked Invoice(s) were auto-cancelled.";
+        }
+
+        Alert::success('Success', "Sales Order cancelled.{$extra}");
+        return redirect()->route('sales-orders.show', $salesOrder);
+    }
+
+    /**
+     * Archive a Sales Order — purely a listing-declutter flag, no bearing on
+     * status/stock/history. Manual per-record action for now (not automatic
+     * on 'completed'), reversible via unarchive().
+     */
+    public function archive(SalesOrder $salesOrder)
+    {
+        $salesOrder->update(['archived_at' => now()]);
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'archived',
+            loggable: $salesOrder,
+            description: "Archived Sales Order {$salesOrder->so_no}",
+        );
+
+        Alert::success('Success', 'Sales Order archived.');
+        return redirect()->route('sales-orders.index');
+    }
+
+    public function unarchive(SalesOrder $salesOrder)
+    {
+        $salesOrder->update(['archived_at' => null]);
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'unarchived',
+            loggable: $salesOrder,
+            description: "Unarchived Sales Order {$salesOrder->so_no}",
+        );
+
+        Alert::success('Success', 'Sales Order unarchived.');
+        return redirect()->route('sales-orders.index', ['show_archived' => 1]);
     }
 }

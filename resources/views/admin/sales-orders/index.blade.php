@@ -18,9 +18,25 @@
             @endif
         </form>
 
-        <a href="{{ route('sales-orders.create') }}" class="btn btn-primary">
-            <i class="bx bx-plus"></i> New Sales Order
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('sales-orders.index', array_merge(request()->query(), ['show_archived' => $showArchived ? 0 : 1, 'show_trashed' => 0])) }}" class="btn btn-outline-secondary">
+                @if($showArchived)
+                    <i class="bx bx-undo"></i> Hide archived
+                @else
+                    <i class="bx bx-archive"></i> Show archived
+                @endif
+            </a>
+            <a href="{{ route('sales-orders.index', array_merge(request()->query(), ['show_trashed' => $showTrashed ? 0 : 1, 'show_archived' => 0])) }}" class="btn btn-outline-secondary">
+                @if($showTrashed)
+                    <i class="bx bx-undo"></i> Hide trashed
+                @else
+                    <i class="bx bx-trash"></i> Show trashed
+                @endif
+            </a>
+            <a href="{{ route('sales-orders.create') }}" class="btn btn-primary">
+                <i class="bx bx-plus"></i> New Sales Order
+            </a>
+        </div>
     </div>
 
     <div class="card mt-4">
@@ -64,6 +80,9 @@
                                         {{ ucfirst(str_replace('_', ' ', $salesOrder->status)) }}
                                     </span>
                                 @endif
+                                @if($salesOrder->isArchived())
+                                    <span class="badge bg-dark">ARCHIVED</span>
+                                @endif
                             </td>
                             <td>
                                 <div class="dropdown">
@@ -71,6 +90,17 @@
                                         <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
                                     <div class="dropdown-menu dropdown-menu-end">
+                                        @if($showTrashed)
+                                            @if(Auth::user()->role === 'admin')
+                                                <form action="{{ route('sales-orders.restore', $salesOrder->id) }}" method="POST">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="dropdown-item text-success" onclick="return confirmSubmit(this.form, 'Restore this Sales Order?')">
+                                                        <i class="bx bx-undo me-1"></i> Restore
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        @else
                                         <a href="{{ route('sales-orders.show', $salesOrder) }}" class="dropdown-item">
                                             <i class="bx bx-show me-1"></i> View
                                         </a>
@@ -79,8 +109,39 @@
                                                 <i class="bx bx-edit-alt me-1"></i> Continue Editing
                                             </a>
                                         @endif
-                                        @if(in_array(Auth::user()->role, ['admin', 'admin_staff'], true))
+
+                                        @if($salesOrder->isArchived())
+                                            <form action="{{ route('sales-orders.unarchive', $salesOrder) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="bx bx-undo me-1"></i> Unarchive
+                                                </button>
+                                            </form>
+                                        @elseif(! $salesOrder->isDraft())
+                                            <form action="{{ route('sales-orders.archive', $salesOrder) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="bx bx-archive me-1"></i> Archive
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        @if(Auth::user()->role === 'admin')
                                             <div class="dropdown-divider"></div>
+
+                                            @if(! $salesOrder->isDraft() && ! $salesOrder->isCancelled())
+                                                <form action="{{ route('sales-orders.cancel', $salesOrder) }}" method="POST">
+                                                    @csrf
+                                                    <button
+                                                        type="submit"
+                                                        class="dropdown-item text-danger"
+                                                        onclick="return confirmSubmit(this.form, 'Cancel/void this Sales Order? The record and its delivery history stay, only the status changes.')"
+                                                    >
+                                                        <i class="bx bx-block me-1"></i> Cancel/Void
+                                                    </button>
+                                                </form>
+                                            @endif
+
                                             <form
                                                 action="{{ route('sales-orders.destroy', $salesOrder) }}"
                                                 method="POST"
@@ -90,11 +151,12 @@
                                                 <button
                                                     type="submit"
                                                     class="dropdown-item text-danger"
-                                                    onclick="return confirm('Are you sure you want to delete this {{ $salesOrder->isDraft() ? 'draft' : 'Sales Order' }}?')"
+                                                    onclick="return confirmSubmit(this.form, 'Are you sure you want to delete this {{ $salesOrder->isDraft() ? 'draft' : 'Sales Order' }}?')"
                                                 >
                                                     <i class="bx bx-trash me-1"></i> {{ $salesOrder->isDraft() ? 'Delete Draft' : 'Delete' }}
                                                 </button>
                                             </form>
+                                        @endif
                                         @endif
                                     </div>
                                 </div>

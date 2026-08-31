@@ -25,8 +25,13 @@ class InvoiceController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $showTrashed = $request->boolean('show_trashed');
+        $showArchived = $request->boolean('show_archived');
 
         $invoices = Invoice::query()
+            ->when($showTrashed, fn ($q) => $q->onlyTrashed())
+            ->when(! $showTrashed && $showArchived, fn ($q) => $q->whereNotNull('archived_at'))
+            ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('customer_name', 'like', "%{$search}%")
@@ -37,7 +42,7 @@ class InvoiceController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('admin.invoices.index', compact('invoices', 'search'));
+        return view('admin.invoices.index', compact('invoices', 'search', 'showTrashed', 'showArchived'));
     }
 
     /**
@@ -279,6 +284,11 @@ class InvoiceController extends Controller
      */
     public function destroy(Invoice $invoice)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting invoices is restricted to full admin accounts.');
+            return redirect()->route('invoices.index');
+        }
+
         if ($invoice->sales()->exists()) {
             Alert::error('Cannot delete', 'This invoice has recorded sales and stock deductions and cannot be deleted.');
             return redirect()->route('invoices.index');
@@ -296,6 +306,91 @@ class InvoiceController extends Controller
 
         Alert::success('Success', 'Invoice deleted successfully');
         return redirect()->route('invoices.index');
+    }
+
+    /**
+     * Restore a soft-deleted Invoice from the trash.
+     */
+    public function restore(int $id)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Restoring invoices is restricted to full admin accounts.');
+            return redirect()->route('invoices.index');
+        }
+
+        $invoice = Invoice::onlyTrashed()->findOrFail($id);
+        $invoice->restore();
+
+        ActivityLog::record(
+            module: 'Invoice',
+            action: 'restored',
+            loggable: $invoice,
+            description: "Restored Invoice {$invoice->sales_no}",
+        );
+
+        Alert::success('Success', 'Invoice restored successfully');
+        return redirect()->route('invoices.index', ['show_trashed' => 1]);
+    }
+
+    /**
+     * Void an Invoice — status label only. Does NOT reverse the recorded
+     * Sales rows or the stock they already deducted; use a Return Item or
+     * Inventory Adjustment separately if the stock itself needs correcting.
+     * This just marks the document as no longer valid.
+     */
+    public function cancel(Invoice $invoice)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Cancelling invoices is restricted to full admin accounts.');
+            return redirect()->route('invoices.show', $invoice);
+        }
+
+        if ($invoice->isCancelled()) {
+            Alert::info('Already cancelled', 'This invoice is already cancelled.');
+            return redirect()->route('invoices.show', $invoice);
+        }
+
+        $invoice->update(['cancelled_at' => now()]);
+
+        ActivityLog::record(
+            module: 'Invoice',
+            action: 'cancelled',
+            loggable: $invoice,
+            description: "Cancelled Invoice {$invoice->sales_no}",
+        );
+
+        Alert::success('Success', 'Invoice cancelled.');
+        return redirect()->route('invoices.show', $invoice);
+    }
+
+    public function archive(Invoice $invoice)
+    {
+        $invoice->update(['archived_at' => now()]);
+
+        ActivityLog::record(
+            module: 'Invoice',
+            action: 'archived',
+            loggable: $invoice,
+            description: "Archived Invoice {$invoice->sales_no}",
+        );
+
+        Alert::success('Success', 'Invoice archived.');
+        return redirect()->route('invoices.index');
+    }
+
+    public function unarchive(Invoice $invoice)
+    {
+        $invoice->update(['archived_at' => null]);
+
+        ActivityLog::record(
+            module: 'Invoice',
+            action: 'unarchived',
+            loggable: $invoice,
+            description: "Unarchived Invoice {$invoice->sales_no}",
+        );
+
+        Alert::success('Success', 'Invoice unarchived.');
+        return redirect()->route('invoices.index', ['show_archived' => 1]);
     }
 
     /**
