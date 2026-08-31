@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\SuppliersTemplateExport;
+use App\Imports\SuppliersImport;
 use App\Models\ActivityLog;
 use App\Models\PurchaseInvoice;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class SupplierController extends Controller
@@ -225,5 +228,56 @@ class SupplierController extends Controller
 
         Alert::success('Success', 'Supplier deleted successfully');
         return redirect()->route('suppliers.index');
+    }
+
+    /**
+     * Bulk-import suppliers from an uploaded Excel/CSV file. Synchronous —
+     * supplier lists are small, no queue/chunking needed (unlike the much
+     * larger product-import case this package was installed for).
+     */
+    public function import(Request $request)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Importing suppliers is restricted to full admin accounts.');
+            return redirect()->route('suppliers.index');
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        $import = new SuppliersImport();
+        Excel::import($import, $request->file('file'));
+
+        $importedCount = $import->importedCount;
+        $failures = $import->failures();
+
+        ActivityLog::record(
+            module: 'Supplier',
+            action: 'imported',
+            description: "Imported {$importedCount} supplier(s) from Excel" . ($failures->isNotEmpty() ? ", {$failures->count()} row(s) skipped" : ''),
+        );
+
+        if ($failures->isEmpty()) {
+            Alert::success('Success', "Imported {$importedCount} supplier(s) successfully.");
+            return redirect()->route('suppliers.index');
+        }
+
+        $messages = $failures->map(fn ($failure) => "Row {$failure->row()}: " . implode(' ', $failure->errors()));
+
+        Alert::error(
+            'Imported with some rows skipped',
+            "{$importedCount} supplier(s) imported. {$messages->count()} row(s) skipped: " . $messages->take(5)->implode(' | ') . ($messages->count() > 5 ? ' …' : '')
+        );
+
+        return redirect()->route('suppliers.index');
+    }
+
+    /**
+     * Downloadable blank template matching SuppliersImport's expected columns.
+     */
+    public function downloadTemplate()
+    {
+        return Excel::download(new SuppliersTemplateExport(), 'suppliers-import-template.xlsx');
     }
 }
