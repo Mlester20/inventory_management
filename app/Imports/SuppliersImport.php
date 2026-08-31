@@ -50,14 +50,17 @@ class SuppliersImport implements ToModel, WithHeadingRow, WithValidation, SkipsO
             'contact_number' => 'required|string|max:255|unique:suppliers,contact_number',
             'email' => 'required|email|unique:suppliers,email',
             'delivery_address' => 'required|string',
-            'vat_type' => 'required|in:VAT,NON-VAT',
+            'vat_type' => ['required', function ($attribute, $value, $fail) {
+                if (! in_array(strtoupper(trim((string) $value)), ['VAT', 'NON-VAT'], true)) {
+                    $fail('VAT Type must be exactly "VAT" or "NON-VAT".');
+                }
+            }],
         ];
     }
 
     public function customValidationMessages(): array
     {
         return [
-            'vat_type.in' => 'VAT Type must be exactly "VAT" or "NON-VAT".',
             'supplier_name.unique' => 'A supplier with this name already exists.',
             'email.unique' => 'A supplier with this email already exists.',
             'contact_number.unique' => 'A supplier with this contact number already exists.',
