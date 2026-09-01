@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\CustomersTemplateExport;
+use App\Imports\CustomersImport;
 use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\Invoice;
 use App\Services\CustomerPaymentService;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class CustomerController extends Controller
@@ -230,5 +233,55 @@ class CustomerController extends Controller
 
         Alert::success('Success', 'Customer deleted successfully');
         return redirect()->route('customers.index');
+    }
+
+    /**
+     * Bulk-import customers from an uploaded Excel/CSV file. Synchronous —
+     * customer lists are small, no queue/chunking needed.
+     */
+    public function import(Request $request)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Importing customers is restricted to full admin accounts.');
+            return redirect()->route('customers.index');
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        $import = new CustomersImport();
+        Excel::import($import, $request->file('file'));
+
+        $importedCount = $import->importedCount;
+        $failures = $import->failures();
+
+        ActivityLog::record(
+            module: 'Customer',
+            action: 'imported',
+            description: "Imported {$importedCount} customer(s) from Excel" . ($failures->isNotEmpty() ? ", {$failures->count()} row(s) skipped" : ''),
+        );
+
+        if ($failures->isEmpty()) {
+            Alert::success('Success', "Imported {$importedCount} customer(s) successfully.");
+            return redirect()->route('customers.index');
+        }
+
+        $messages = $failures->map(fn ($failure) => "Row {$failure->row()}: " . implode(' ', $failure->errors()));
+
+        Alert::error(
+            'Imported with some rows skipped',
+            "{$importedCount} customer(s) imported. {$messages->count()} row(s) skipped: " . $messages->take(5)->implode(' | ') . ($messages->count() > 5 ? ' …' : '')
+        );
+
+        return redirect()->route('customers.index');
+    }
+
+    /**
+     * Downloadable blank template matching CustomersImport's expected columns.
+     */
+    public function downloadTemplate()
+    {
+        return Excel::download(new CustomersTemplateExport(), 'customers-import-template.xlsx');
     }
 }

@@ -187,6 +187,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('admin/sales-quotes/{sales_quote}', [SalesQuoteController::class, 'destroy'])->name('sales-quotes.destroy');
     Route::delete('admin/sales-orders/{sales_order}', [SalesOrderController::class, 'destroy'])->name('sales-orders.destroy');
     Route::delete('admin/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
+    Route::post('admin/customers/import', [CustomerController::class, 'import'])->name('customers.import');
+    Route::get('admin/customers/import/template', [CustomerController::class, 'downloadTemplate'])->name('customers.import.template');
 
     // Return Items Actions
     Route::post('admin/return-items/{returnItem}/approve', [ReturnItemController::class, 'approve'])->name('return-items.approve');

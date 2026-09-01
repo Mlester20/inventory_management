@@ -6,7 +6,15 @@
     <div class="mt-3">
         @if(Auth::user()->role === 'admin')
         <!-- Button trigger modal -->
-        <div class="text-end">
+        <div class="text-end d-flex justify-content-end gap-2">
+            <button
+                type="button"
+                class="btn btn-outline-secondary"
+                data-bs-toggle="modal"
+                data-bs-target="#importCustomersModal"
+            >
+                <i class="bx bx-upload me-1"></i> Import Customers
+            </button>
             <button
             type="button"
             class="btn btn-primary"
@@ -15,6 +23,42 @@
             >
                 New Customer
             </button>
+        </div>
+
+        <!-- Import Customers Modal -->
+        <div class="modal fade" id="importCustomersModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form action="{{ route('customers.import') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Import Customers</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">
+                                Upload an Excel (.xlsx/.xls) or CSV file with columns: Customer Name, Customer Type,
+                                Contact Person, Contact Number, Email, Delivery Address, Price Level
+                                ({{ implode(', ', \App\Models\Customer::PRICE_LEVELS) }}), VAT Type (VAT or NON-VAT).
+                                <a href="{{ route('customers.import.template') }}">Download the template</a>.
+                            </p>
+                            <div class="mb-3">
+                                <label for="import_file" class="form-label">File</label>
+                                <input type="file" name="file" id="import_file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                            </div>
+                            <div class="alert alert-info small mb-0">
+                                Only Customer Name, Customer Type, Price Level, and VAT Type are required — same as the
+                                "New Customer" form. Rows that already exist (matching name or email) or fail
+                                validation are skipped and reported — nothing gets overwritten.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Import</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
         @endif
 
