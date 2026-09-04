@@ -163,6 +163,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('admin/generic-names/{genericName}/unarchive', [GenericNameController::class, 'unarchive'])->name('generic-names.unarchive');
     Route::resource('admin/suppliers', SupplierController::class);
     Route::post('admin/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
+    Route::post('admin/suppliers/import', [SupplierController::class, 'import'])->name('suppliers.import');
+    Route::get('admin/suppliers/import/template', [SupplierController::class, 'downloadTemplate'])->name('suppliers.import.template');
 
     // Products & Inventory module — a single tabbed screen (General Item /
     // Products / Lot-Serial & Expiry / Product History); see

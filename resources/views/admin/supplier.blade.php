@@ -5,7 +5,15 @@
 @section('content')
     <div class="mt-3">
         @if(Auth::user()->role === 'admin')
-        <div class="text-end">
+        <div class="text-end d-flex justify-content-end gap-2">
+            <button
+                type="button"
+                class="btn btn-outline-secondary"
+                data-bs-toggle="modal"
+                data-bs-target="#importSuppliersModal"
+            >
+                <i class="bx bx-upload me-1"></i> Import Suppliers
+            </button>
             <!-- Button trigger modal -->
             <button
                 type="button"
@@ -15,6 +23,40 @@
             >
                 New Supplier
             </button>
+        </div>
+
+        <!-- Import Suppliers Modal -->
+        <div class="modal fade" id="importSuppliersModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form action="{{ route('suppliers.import') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Import Suppliers</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">
+                                Upload an Excel (.xlsx/.xls) or CSV file with columns: Supplier Name, Contact Person,
+                                Contact Number, Email, Delivery Address, VAT Type (VAT or NON-VAT).
+                                <a href="{{ route('suppliers.import.template') }}">Download the template</a>.
+                            </p>
+                            <div class="mb-3">
+                                <label for="import_file" class="form-label">File</label>
+                                <input type="file" name="file" id="import_file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                            </div>
+                            <div class="alert alert-info small mb-0">
+                                Rows that already exist (matching name, email, or contact number) or are missing a
+                                required field are skipped and reported — nothing gets overwritten.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Import</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
         @endif
 
