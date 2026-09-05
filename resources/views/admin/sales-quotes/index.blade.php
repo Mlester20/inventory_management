@@ -18,9 +18,18 @@
             @endif
         </form>
 
-        <a href="{{ route('sales-quotes.create') }}" class="btn btn-primary">
-            <i class="bx bx-plus"></i> New Sales Quote
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('sales-quotes.index', array_merge(request()->query(), ['show_archived' => $showArchived ? 0 : 1])) }}" class="btn btn-outline-secondary">
+                @if($showArchived)
+                    <i class="bx bx-undo"></i> Hide archived
+                @else
+                    <i class="bx bx-archive"></i> Show archived
+                @endif
+            </a>
+            <a href="{{ route('sales-quotes.create') }}" class="btn btn-primary">
+                <i class="bx bx-plus"></i> New Sales Quote
+            </a>
+        </div>
     </div>
 
     <div class="card mt-4">
@@ -50,6 +59,9 @@
                                 <span class="badge bg-{{ ['open' => 'warning', 'converted' => 'success', 'cancelled' => 'danger'][$salesQuote->status] ?? 'secondary' }}">
                                     {{ ucfirst($salesQuote->status) }}
                                 </span>
+                                @if($salesQuote->isArchived())
+                                    <span class="badge bg-dark">ARCHIVED</span>
+                                @endif
                             </td>
                             <td>
                                 <div class="dropdown">
@@ -60,7 +72,24 @@
                                         <a href="{{ route('sales-quotes.show', $salesQuote) }}" class="dropdown-item">
                                             <i class="bx bx-show me-1"></i> View
                                         </a>
-                                        @if(in_array(Auth::user()->role, ['admin', 'admin_staff'], true))
+
+                                        @if($salesQuote->isArchived())
+                                            <form action="{{ route('sales-quotes.unarchive', $salesQuote) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="bx bx-undo me-1"></i> Unarchive
+                                                </button>
+                                            </form>
+                                        @else
+                                            <form action="{{ route('sales-quotes.archive', $salesQuote) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="bx bx-archive me-1"></i> Archive
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        @if(Auth::user()->role === 'admin')
                                             <div class="dropdown-divider"></div>
                                             <form
                                                 action="{{ route('sales-quotes.destroy', $salesQuote) }}"
@@ -71,7 +100,7 @@
                                                 <button
                                                     type="submit"
                                                     class="dropdown-item text-danger"
-                                                    onclick="return confirm('Are you sure you want to delete this Sales Quote?')"
+                                                    onclick="return confirmSubmit(this.form, 'Are you sure you want to delete this Sales Quote?')"
                                                 >
                                                     <i class="bx bx-trash me-1"></i> Delete
                                                 </button>

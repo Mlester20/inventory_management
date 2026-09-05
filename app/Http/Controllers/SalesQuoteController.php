@@ -23,9 +23,12 @@ class SalesQuoteController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $showArchived = $request->boolean('show_archived');
 
         $salesQuotes = SalesQuote::query()
             ->with('customer')
+            ->when($showArchived, fn ($q) => $q->whereNotNull('archived_at'))
+            ->when(! $showArchived, fn ($q) => $q->whereNull('archived_at'))
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('quote_no', 'like', "%{$search}%")
@@ -38,7 +41,7 @@ class SalesQuoteController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('admin.sales-quotes.index', compact('salesQuotes', 'search'));
+        return view('admin.sales-quotes.index', compact('salesQuotes', 'search', 'showArchived'));
     }
 
     /**
@@ -190,6 +193,11 @@ class SalesQuoteController extends Controller
      */
     public function destroy(SalesQuote $salesQuote)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting Sales Quotes is restricted to full admin accounts.');
+            return redirect()->route('sales-quotes.index');
+        }
+
         if ($salesQuote->status === 'converted') {
             Alert::error('Cannot delete', 'This Sales Quote has already been converted to a Sales Order and cannot be deleted.');
             return redirect()->route('sales-quotes.index');
@@ -207,5 +215,39 @@ class SalesQuoteController extends Controller
 
         Alert::success('Success', 'Sales Quote deleted successfully');
         return redirect()->route('sales-quotes.index');
+    }
+
+    /**
+     * Archive a Sales Quote — purely a listing-declutter flag, no bearing on
+     * status/history. Manual per-record action, reversible via unarchive().
+     */
+    public function archive(SalesQuote $salesQuote)
+    {
+        $salesQuote->update(['archived_at' => now()]);
+
+        ActivityLog::record(
+            module: 'SalesQuote',
+            action: 'archived',
+            loggable: $salesQuote,
+            description: "Archived Sales Quote {$salesQuote->quote_no}",
+        );
+
+        Alert::success('Success', 'Sales Quote archived.');
+        return redirect()->route('sales-quotes.index');
+    }
+
+    public function unarchive(SalesQuote $salesQuote)
+    {
+        $salesQuote->update(['archived_at' => null]);
+
+        ActivityLog::record(
+            module: 'SalesQuote',
+            action: 'unarchived',
+            loggable: $salesQuote,
+            description: "Unarchived Sales Quote {$salesQuote->quote_no}",
+        );
+
+        Alert::success('Success', 'Sales Quote unarchived.');
+        return redirect()->route('sales-quotes.index', ['show_archived' => 1]);
     }
 }

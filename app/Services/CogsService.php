@@ -44,6 +44,15 @@ class CogsService
             'revenue' => $revenue,
             'gross_profit' => $grossProfit,
             'margin_percent' => $marginPercent,
+            // Per-channel breakdown — not used in the summary cards, only by
+            // the "How these numbers are calculated" explainer so it can
+            // show the actual numbers plugged into the formula, not just
+            // the formula's shape.
+            'pos_cogs' => $posCogs,
+            'pos_revenue' => $posRevenue,
+            'wholesale_cogs' => $wholesaleCogs,
+            'wholesale_revenue' => $wholesaleRevenue,
+            'return_refunds' => $returnRefunds,
         ];
     }
 

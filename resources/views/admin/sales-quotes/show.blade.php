@@ -7,11 +7,28 @@
         <a href="{{ route('sales-quotes.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Sales Quotes
         </a>
-        @if($salesQuote->status === 'open')
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#convertModal">
-                <i class="bx bx-transfer"></i> Convert to Sales Order
-            </button>
-        @endif
+        <div class="d-flex gap-2">
+            @if($salesQuote->status === 'open')
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#convertModal">
+                    <i class="bx bx-transfer"></i> Convert to Sales Order
+                </button>
+            @endif
+            @if($salesQuote->isArchived())
+                <form action="{{ route('sales-quotes.unarchive', $salesQuote) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="bx bx-undo"></i> Unarchive
+                    </button>
+                </form>
+            @else
+                <form action="{{ route('sales-quotes.archive', $salesQuote) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="bx bx-archive"></i> Archive
+                    </button>
+                </form>
+            @endif
+        </div>
     </div>
 
     @if ($errors->any())

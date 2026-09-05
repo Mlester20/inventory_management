@@ -16,12 +16,19 @@ class SalesQuote extends Model
         'quote_date',
         'valid_until',
         'prepared_by',
+        'archived_at',
     ];
 
     protected $casts = [
         'quote_date' => 'date',
         'valid_until' => 'date',
+        'archived_at' => 'datetime',
     ];
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
 
     public function customer(): BelongsTo
     {

@@ -120,6 +120,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('admin/invoices/{invoice}/unarchive', [InvoiceController::class, 'unarchive'])->name('invoices.unarchive');
     Route::resource('admin/sales-quotes', SalesQuoteController::class)->except(['destroy']);
     Route::post('admin/sales-quotes/{salesQuote}/convert', [SalesQuoteController::class, 'convertToSalesOrder'])->name('sales-quotes.convert');
+    Route::post('admin/sales-quotes/{salesQuote}/archive', [SalesQuoteController::class, 'archive'])->name('sales-quotes.archive');
+    Route::post('admin/sales-quotes/{salesQuote}/unarchive', [SalesQuoteController::class, 'unarchive'])->name('sales-quotes.unarchive');
     Route::resource('admin/sales-orders', SalesOrderController::class)->except(['destroy']);
     Route::patch('admin/sales-orders/{sales_order}/notes', [SalesOrderController::class, 'updateNotes'])->name('sales-orders.update-notes');
     Route::post('admin/sales-orders/{sales_order}/archive', [SalesOrderController::class, 'archive'])->name('sales-orders.archive');

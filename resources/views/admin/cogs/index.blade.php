@@ -207,32 +207,39 @@
                 <div class="row">
                     <div class="col-12">
                         <p class="text-muted mb-3">
-                            <strong>Cost of Goods Sold (COGS)</strong> represents the direct cost of inventory sold during a period, combined across <strong>both</strong> sales channels — POS and Wholesale (Invoices). It's calculated using the following formula:
+                            <strong>Cost of Goods Sold (COGS)</strong> represents the direct cost of inventory sold during a period, combined across <strong>both</strong> sales channels — POS and Wholesale (Invoices). Here's the actual computation for the period currently shown above:
                         </p>
 
                         <div class="bg-light p-3 rounded mb-3">
                             <div class="font-monospace small mb-2">
                                 <strong>Gross COGS</strong> = SUM(qty × unit_cost) <br>
+                                POS ₱{{ number_format($summary['pos_cogs'], 2) }} + Wholesale ₱{{ number_format($summary['wholesale_cogs'], 2) }}
+                                = <strong>₱{{ number_format($summary['gross_cogs'], 2) }}</strong> <br>
                                 <span class="text-muted">→ POS: from <code>purchases</code>. Wholesale: from <code>sales</code> joined to non-cancelled <code>invoices</code>.</span>
                             </div>
 
                             <div class="font-monospace small mb-2">
-                                <strong>Return Deductions</strong> = SUM(approved returns × unit_cost) <br>
+                                <strong>Return Deductions</strong> = SUM(approved returns × unit_cost) = <strong>₱{{ number_format($summary['return_deductions'], 2) }}</strong> <br>
                                 <span class="text-muted">→ from <code>return_items</code> where status = 'approved'</span>
                             </div>
 
                             <div class="font-monospace small mb-2">
-                                <strong class="text-success">Net COGS</strong> = Gross COGS − Return Deductions
+                                <strong class="text-success">Net COGS</strong> = ₱{{ number_format($summary['gross_cogs'], 2) }} − ₱{{ number_format($summary['return_deductions'], 2) }}
+                                = <strong class="text-success">₱{{ number_format($summary['net_cogs'], 2) }}</strong>
                             </div>
 
                             <hr class="my-2">
 
                             <div class="font-monospace small mb-2">
-                                <strong>Revenue</strong> = POS total_price + Wholesale sale amount − approved return refunds
+                                <strong>Revenue</strong> = POS ₱{{ number_format($summary['pos_revenue'], 2) }} + Wholesale ₱{{ number_format($summary['wholesale_revenue'], 2) }} − Refunds ₱{{ number_format($summary['return_refunds'], 2) }}
+                                = <strong>₱{{ number_format($summary['revenue'], 2) }}</strong> <br>
+                                <span class="text-muted">→ POS: <code>purchases.total_price</code>. Wholesale: <code>sales.amount</code>. Refunds: <code>return_items.refund_amount</code> where status = 'approved'.</span>
                             </div>
 
                             <div class="font-monospace small">
-                                <strong class="text-success">Gross Profit / Margin</strong> = Revenue − Net COGS, as % of Revenue
+                                <strong class="text-success">Gross Profit</strong> = ₱{{ number_format($summary['revenue'], 2) }} − ₱{{ number_format($summary['net_cogs'], 2) }}
+                                = <strong class="text-success">₱{{ number_format($summary['gross_profit'], 2) }}</strong>
+                                (<strong class="text-success">{{ number_format($summary['margin_percent'], 1) }}%</strong> of Revenue)
                             </div>
                         </div>
 
