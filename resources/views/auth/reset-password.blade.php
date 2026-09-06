@@ -105,7 +105,13 @@
                 </div>
 
                 <div class="auth-form-meta">
-                  <a href="{{ route('password.request') }}" class="auth-forgot-link">Request a new code</a>
+                  <form action="{{ route('password.email') }}" method="POST" class="d-inline">
+                    @csrf
+                    <input type="hidden" name="email" value="{{ old('email', $email) }}" />
+                    <button type="submit" id="resend-code-btn" class="auth-forgot-link auth-resend-btn">
+                      Resend code
+                    </button>
+                  </form>
                 </div>
 
                 <button class="auth-submit-btn" type="submit">
@@ -193,5 +199,28 @@
     <script src="{{ asset('assets/vendor/js/menu.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
     <script src="{{ asset('assets/js/auth-custom.js') }}"></script>
+    <script>
+      (function () {
+        var resendBtn = document.getElementById('resend-code-btn');
+        if (!resendBtn) return;
+
+        var seconds = {{ \App\Http\Controllers\Auth\PasswordResetLinkController::RESEND_THROTTLE_SECONDS }};
+        var defaultLabel = 'Resend code';
+
+        function tick() {
+          if (seconds <= 0) {
+            resendBtn.disabled = false;
+            resendBtn.textContent = defaultLabel;
+            return;
+          }
+          resendBtn.disabled = true;
+          resendBtn.textContent = defaultLabel + ' (' + seconds + 's)';
+          seconds--;
+          setTimeout(tick, 1000);
+        }
+
+        tick();
+      })();
+    </script>
 </body>
 </html>

@@ -20,7 +20,7 @@ class PasswordResetLinkController extends Controller
      * Minimum seconds between code requests for the same email, so this
      * endpoint can't be used to spam someone's inbox.
      */
-    public const RESEND_THROTTLE_SECONDS = 15;
+    public const RESEND_THROTTLE_SECONDS = 60;
 
     /**
      * Display the password reset code request view.
