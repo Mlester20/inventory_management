@@ -148,7 +148,7 @@
                                         data-bs-toggle="modal" data-bs-target="#logDetailsModal"
                                         data-description="{{ $log->description }}"
                                         data-loggable="{{ $log->loggable_type ? class_basename($log->loggable_type) . ' #' . $log->loggable_id : '' }}"
-                                        data-metadata="{{ $log->metadata ? json_encode($log->metadata, JSON_PRETTY_PRINT) : '' }}"
+                                        data-metadata="{{ $log->metadata ? json_encode($log->metadata) : '' }}"
                                         onclick="showLogDetails(this)">
                                         Details
                                     </button>
@@ -237,7 +237,7 @@
             <div class="modal-body">
                 <p id="logDetailsDescription" class="mb-2"></p>
                 <p id="logDetailsLoggable" class="text-muted small mb-3"></p>
-                <pre id="logDetailsMetadata" class="bg-light p-2 rounded small" style="white-space: pre-wrap;"></pre>
+                <div id="logDetailsMetadata" class="bg-light p-2 rounded small"></div>
             </div>
         </div>
     </div>
@@ -250,7 +250,111 @@
         document.getElementById('logDetailsDescription').textContent = button.dataset.description || '';
         const loggable = button.dataset.loggable;
         document.getElementById('logDetailsLoggable').textContent = loggable ? `Affected record: ${loggable}` : '';
-        document.getElementById('logDetailsMetadata').textContent = button.dataset.metadata || 'No additional metadata.';
+
+        let metadata = null;
+        try {
+            metadata = button.dataset.metadata ? JSON.parse(button.dataset.metadata) : null;
+        } catch (e) {
+            metadata = null;
+        }
+        document.getElementById('logDetailsMetadata').innerHTML = renderMetadata(metadata);
+    }
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+    }
+
+    // "generic_description" -> "Generic Description", with a couple of
+    // acronyms fixed up so they don't read as "Id"/"Sku".
+    function humanizeKey(key) {
+        return key
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase())
+            .replace(/\bIds\b/g, 'IDs')
+            .replace(/\bId\b/g, 'ID')
+            .replace(/\bSkus\b/g, 'SKUs')
+            .replace(/\bSku\b/g, 'SKU');
+    }
+
+    function isCurrencyKey(key) {
+        return /amount|price|total|cost|tendered|change|balance|paid|due/i.test(key);
+    }
+
+    function formatValue(key, value) {
+        if (value === null || value === undefined || value === '') {
+            return '<span class="text-muted">—</span>';
+        }
+        if (typeof value === 'boolean') {
+            return value ? 'Yes' : 'No';
+        }
+        if (typeof value === 'number' && isCurrencyKey(key)) {
+            return '₱' + value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        if (Array.isArray(value)) {
+            if (value.length === 0) return '<span class="text-muted">—</span>';
+            if (value.every(v => v === null || typeof v !== 'object')) {
+                return escapeHtml(value.join(', '));
+            }
+            return value.map(v => (v && typeof v === 'object') ? JSON.stringify(v) : escapeHtml(v)).join('; ');
+        }
+        return escapeHtml(value);
+    }
+
+    // Metadata shapes vary per action (a flat POS-sale summary, a
+    // before/after diff on an update, a full deleted-record snapshot), so
+    // this renders whatever object shape it's given as readable rows
+    // instead of assuming one fixed schema.
+    function renderMetadata(metadata) {
+        if (!metadata || typeof metadata !== 'object' || Object.keys(metadata).length === 0) {
+            return '<p class="text-muted mb-0">No additional details.</p>';
+        }
+
+        const keys = Object.keys(metadata);
+        const isDiff = keys.length === 2
+            && metadata.before && typeof metadata.before === 'object' && !Array.isArray(metadata.before)
+            && metadata.after && typeof metadata.after === 'object' && !Array.isArray(metadata.after);
+
+        return isDiff ? renderDiffTable(metadata.before, metadata.after) : renderFlatTable(metadata);
+    }
+
+    function renderDiffTable(before, after) {
+        const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])];
+        const rows = fields.map(field => `
+            <tr>
+                <td class="fw-medium">${escapeHtml(humanizeKey(field))}</td>
+                <td>${formatValue(field, before[field])}</td>
+                <td>${formatValue(field, after[field])}</td>
+            </tr>
+        `).join('');
+
+        return `
+            <table class="table table-sm table-borderless mb-0">
+                <thead>
+                    <tr class="text-muted small text-uppercase">
+                        <th>Field</th><th>Before</th><th>After</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    }
+
+    function renderFlatTable(obj) {
+        const rows = Object.keys(obj).map(key => {
+            const value = obj[key];
+            const isNestedObject = value !== null && typeof value === 'object' && !Array.isArray(value);
+            return `
+                <tr>
+                    <td class="fw-medium ${isNestedObject ? 'align-top' : ''}" style="width: 40%;">${escapeHtml(humanizeKey(key))}</td>
+                    <td>${isNestedObject ? renderFlatTable(value) : formatValue(key, value)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        return `<table class="table table-sm table-borderless mb-0">${rows}</table>`;
     }
 </script>
 @endsection

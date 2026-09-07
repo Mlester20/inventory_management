@@ -36,24 +36,28 @@
                             <td>{{ $purchase->quantity_sold }}</td>
                             <td>₱{{ number_format($purchase->unit_price, 2) }}</td>
                             <td>₱{{ number_format($purchase->total_price, 2) }}</td>
-                            <td>{{ $purchase->purchase_date }}</td>
+                            <td>{{ $purchase->purchase_date->format('M d, Y') }}</td>
                             <td>
-                                <form
-                                    action="{{ route('purchases.destroy', $purchase) }}"
-                                    method="POST"
-                                    class="d-inline"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button
-                                        type="submit"
-                                        class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Are you sure you want to delete this purchase?')"
+                                @if(Auth::user()->role === 'admin')
+                                    <form
+                                        action="{{ route('purchases.destroy', $purchase) }}"
+                                        method="POST"
+                                        class="d-inline"
                                     >
-                                        Delete
-                                    </button>
-                                </form>
+                                        @csrf
+                                        @method('DELETE')
+
+                                        <button
+                                            type="submit"
+                                            class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Are you sure you want to delete this purchase?')"
+                                        >
+                                            Delete
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
                             </td>
                         </tr>
                     @empty

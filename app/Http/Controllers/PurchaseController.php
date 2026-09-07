@@ -128,6 +128,11 @@ class PurchaseController extends Controller
      */
     public function destroy(Purchase $purchase)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting purchases is restricted to full admin accounts.');
+            return redirect()->route('purchases.index');
+        }
+
         $purchaseId = $purchase->id;
         $transactionId = $purchase->transaction_id;
         $purchase->delete();
