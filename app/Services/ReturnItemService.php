@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Location;
 use App\Models\ReturnItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ReturnItemService
 {
@@ -41,6 +42,19 @@ class ReturnItemService
     public function approve(ReturnItem $returnItem, string $refundMethod, string $stockDisposition, ?int $userId = null): array
     {
         return DB::transaction(function () use ($returnItem, $refundMethod, $stockDisposition, $userId) {
+            // Re-fetch under a row lock instead of trusting the route-bound
+            // $returnItem's already-loaded status: two near-simultaneous
+            // approve requests (e.g. a double-click) would otherwise both
+            // read status='pending' before either commits, and both
+            // restock/dispose/credit the same return.
+            $returnItem = ReturnItem::lockForUpdate()->findOrFail($returnItem->id);
+
+            if ($returnItem->status !== 'pending') {
+                throw ValidationException::withMessages([
+                    'status' => 'Only pending return items can be approved.',
+                ]);
+            }
+
             $posLocation = Location::pos();
 
             $this->stockService->restock(

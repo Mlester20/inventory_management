@@ -48,6 +48,13 @@ class SalesQuoteService
     public function convertToSalesOrder(SalesQuote $salesQuote, array $data): SalesOrder
     {
         return DB::transaction(function () use ($salesQuote, $data) {
+            // Re-fetch under a row lock instead of trusting the route-bound
+            // $salesQuote's already-loaded status: two near-simultaneous
+            // convert requests (e.g. a double-click) would otherwise both
+            // read status='open' before either commits, and both create a
+            // Sales Order from the same Quote.
+            $salesQuote = SalesQuote::lockForUpdate()->findOrFail($salesQuote->id);
+
             if ($salesQuote->status !== 'open') {
                 throw ValidationException::withMessages([
                     'status' => 'This Sales Quote has already been ' . ($salesQuote->status === 'converted' ? 'converted to a Sales Order.' : 'cancelled.'),
@@ -83,8 +90,11 @@ class SalesQuoteService
         $year = now()->year;
         $prefix = "SQ-{$year}-";
 
+        // lockForUpdate() blocks a concurrent caller until this transaction
+        // commits, preventing two requests from generating the same number.
         $lastQuoteNo = SalesQuote::where('quote_no', 'like', "{$prefix}%")
             ->orderByDesc('quote_no')
+            ->lockForUpdate()
             ->value('quote_no');
 
         $nextSequence = 1;

@@ -114,6 +114,21 @@ class GoodsReceiptService
     public function finalizeDraft(GoodsReceipt $draft, array $data, ?int $userId = null): GoodsReceipt
     {
         return DB::transaction(function () use ($draft, $data, $userId) {
+            // Re-fetch under a row lock instead of trusting the route-bound
+            // $draft's already-loaded status: two near-simultaneous "Post"
+            // submissions of the same draft (e.g. a double-click) would
+            // otherwise both see status="draft" before either commits, and
+            // both restock — silently, since the second finalize's
+            // items()->delete() replaces the first's items, leaving no
+            // duplicate record behind even though stock was added twice.
+            $draft = GoodsReceipt::lockForUpdate()->findOrFail($draft->id);
+
+            if (! $draft->isDraft()) {
+                throw ValidationException::withMessages([
+                    'status' => 'This Goods Receipt has already been posted.',
+                ]);
+            }
+
             $draft->fill([
                 'supplier_id' => $data['supplier_id'],
                 'purchase_order_id' => $data['purchase_order_id'] ?? null,
@@ -244,8 +259,11 @@ class GoodsReceiptService
         $year = now()->year;
         $prefix = "GR-{$year}-";
 
+        // lockForUpdate() blocks a concurrent caller until this transaction
+        // commits, preventing two requests from generating the same number.
         $lastGrNo = GoodsReceipt::where('gr_no', 'like', "{$prefix}%")
             ->orderByDesc('gr_no')
+            ->lockForUpdate()
             ->value('gr_no');
 
         $nextSequence = 1;

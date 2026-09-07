@@ -67,21 +67,23 @@
                                                 <i class="bx bx-edit-alt me-1"></i> Continue Editing
                                             </a>
                                         @endif
-                                        <div class="dropdown-divider"></div>
-                                        <form
-                                            action="{{ route('purchase-orders.destroy', $purchaseOrder) }}"
-                                            method="POST"
-                                        >
-                                            @csrf
-                                            @method('DELETE')
-                                            <button
-                                                type="submit"
-                                                class="dropdown-item text-danger"
-                                                onclick="return confirm('Are you sure you want to delete this {{ $purchaseOrder->isDraft() ? 'draft' : 'Purchase Order' }}?')"
+                                        @if(Auth::user()->role === 'admin')
+                                            <div class="dropdown-divider"></div>
+                                            <form
+                                                action="{{ route('purchase-orders.destroy', $purchaseOrder) }}"
+                                                method="POST"
                                             >
-                                                <i class="bx bx-trash me-1"></i> {{ $purchaseOrder->isDraft() ? 'Delete Draft' : 'Delete' }}
-                                            </button>
-                                        </form>
+                                                @csrf
+                                                @method('DELETE')
+                                                <button
+                                                    type="submit"
+                                                    class="dropdown-item text-danger"
+                                                    onclick="return confirm('Are you sure you want to delete this {{ $purchaseOrder->isDraft() ? 'draft' : 'Purchase Order' }}?')"
+                                                >
+                                                    <i class="bx bx-trash me-1"></i> {{ $purchaseOrder->isDraft() ? 'Delete Draft' : 'Delete' }}
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </div>
                             </td>

@@ -262,13 +262,27 @@ class PurchaseOrderController extends Controller
      */
     public function destroy(PurchaseOrder $purchaseOrder)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting Purchase Orders is restricted to full admin accounts.');
+            return redirect()->route('purchase-orders.index');
+        }
+
         if ($purchaseOrder->items()->where('received_qty', '>', 0)->exists()) {
             Alert::error('Cannot delete', 'This Purchase Order already has received items and cannot be deleted.');
             return redirect()->route('purchase-orders.index');
         }
 
         $poNo = $purchaseOrder->po_no;
-        $purchaseOrder->delete();
+
+        try {
+            $purchaseOrder->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ((int) $e->getCode() === 23000) {
+                Alert::error('Cannot delete', "{$poNo} still has related records (goods receipts or purchase invoices) and cannot be deleted.");
+                return redirect()->route('purchase-orders.index');
+            }
+            throw $e;
+        }
 
         ActivityLog::record(
             module: 'PurchaseOrder',

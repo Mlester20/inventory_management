@@ -106,8 +106,16 @@ return new class extends Migration
             DB::table($table)->where('item_id', $itemId)->update(['product_batch_id' => $batchId]);
         }
 
-        Schema::table($table, function (Blueprint $blueprint) {
+        Schema::table($table, function (Blueprint $blueprint) use ($table) {
             $blueprint->dropForeign(['item_id']);
+            // stock_movements also has an explicit plain index on item_id
+            // (from its own creation migration) beyond the FK's own index —
+            // SQLite's dropColumn() rebuilds the table and doesn't clean
+            // that up itself, so it must be dropped first or a fresh
+            // migration (e.g. the test suite's RefreshDatabase) fails.
+            if ($table === 'stock_movements') {
+                $blueprint->dropIndex(['item_id']);
+            }
             $blueprint->dropColumn('item_id');
         });
     }

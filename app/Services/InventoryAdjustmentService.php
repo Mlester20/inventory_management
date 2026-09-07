@@ -226,8 +226,11 @@ class InventoryAdjustmentService
         $year = now()->year;
         $prefix = "ADJ-{$year}-";
 
+        // lockForUpdate() blocks a concurrent caller until this transaction
+        // commits, preventing two requests from generating the same number.
         $lastNo = InventoryAdjustment::where('adjustment_no', 'like', "{$prefix}%")
             ->orderByDesc('adjustment_no')
+            ->lockForUpdate()
             ->value('adjustment_no');
 
         $nextSequence = 1;

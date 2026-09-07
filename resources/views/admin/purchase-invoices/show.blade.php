@@ -12,13 +12,15 @@
                 <a href="{{ route('purchase-invoices.edit', $purchaseInvoice) }}" class="btn btn-primary">
                     <i class="bx bx-edit-alt"></i> Continue Editing
                 </a>
-                <form action="{{ route('purchase-invoices.destroy', $purchaseInvoice) }}" method="POST" onsubmit="return confirm('Delete draft Purchase Invoice? This cannot be undone.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-outline-danger">
-                        <i class="bx bx-trash"></i> Delete Draft
-                    </button>
-                </form>
+                @if(Auth::user()->role === 'admin')
+                    <form action="{{ route('purchase-invoices.destroy', $purchaseInvoice) }}" method="POST" onsubmit="return confirm('Delete draft Purchase Invoice? This cannot be undone.');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bx bx-trash"></i> Delete Draft
+                        </button>
+                    </form>
+                @endif
             </div>
         @endif
     </div>

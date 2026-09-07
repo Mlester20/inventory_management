@@ -21,6 +21,10 @@ class StockService
      * Receipt "Available Product?" picker and the Stock Transfer line
      * picker — both need "what can I move/deliver from location X right
      * now," just for different source locations.
+     *
+     * Ordered soonest-to-expire first (same ordering as availableFefo()),
+     * so the encoder's dropdown defaults to the batch that should be moved
+     * first — the choice still stays manual, this only fixes the ordering.
      */
     public function getAvailableBatchesForGenericName(GenericName $genericName, Location $location)
     {
@@ -32,6 +36,7 @@ class StockService
                 $q->where('location_id', $location->id);
             }])
             ->whereHas('product', fn ($q) => $q->where('generic_name_id', $genericName->id))
+            ->orderByRaw('expiration_date IS NULL, expiration_date ASC')
             ->get();
     }
 

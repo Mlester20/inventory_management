@@ -124,6 +124,21 @@ class DeliveryReceiptService
     public function finalizeDraft(DeliveryReceipt $draft, array $data, ?int $userId = null): DeliveryReceipt
     {
         return DB::transaction(function () use ($draft, $data, $userId) {
+            // Re-fetch under a row lock instead of trusting the route-bound
+            // $draft's already-loaded is_draft flag: two near-simultaneous
+            // "Post" submissions of the same draft (e.g. a double-click)
+            // would otherwise both see is_draft=true before either commits,
+            // and both deduct stock — silently, since the second finalize's
+            // items()->delete() replaces the first's items, leaving no
+            // duplicate record behind even though stock was deducted twice.
+            $draft = DeliveryReceipt::lockForUpdate()->findOrFail($draft->id);
+
+            if (! $draft->isDraft()) {
+                throw ValidationException::withMessages([
+                    'status' => 'This Delivery Receipt has already been posted.',
+                ]);
+            }
+
             $draft->fill([
                 'customer_id' => $data['customer_id'],
                 'sales_order_id' => $data['sales_order_id'] ?? null,
@@ -217,9 +232,16 @@ class DeliveryReceiptService
             $customer = $deliveryReceipt->customer;
             $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
 
+            // lockForUpdate() closes the same race as the other fixes in
+            // this file: two near-simultaneous "Create Invoice" clicks on
+            // the same line(s) would otherwise both read the pre-increment
+            // invoiced_qty under their own transaction snapshot and both
+            // invoice the full remaining qty, double-billing the customer
+            // for stock that was only delivered once.
             $lines = $deliveryReceipt->items()
                 ->with(['productBatch.product.tax', 'salesOrderItem'])
                 ->whereIn('id', $deliveryReceiptItemIds)
+                ->lockForUpdate()
                 ->get();
 
             if ($lines->isEmpty()) {
@@ -316,8 +338,14 @@ class DeliveryReceiptService
         $year = now()->year;
         $prefix = "INV-{$year}-";
 
-        $lastSalesNo = Invoice::where('sales_no', 'like', "{$prefix}%")
+        // lockForUpdate() blocks a concurrent caller until this transaction
+        // commits, preventing two requests from generating the same number.
+        // withTrashed() is required: Invoice is soft-deletable but sales_no
+        // stays unique at the DB level even for trashed rows.
+        $lastSalesNo = Invoice::withTrashed()
+            ->where('sales_no', 'like', "{$prefix}%")
             ->orderByDesc('sales_no')
+            ->lockForUpdate()
             ->value('sales_no');
 
         $nextSequence = 1;
@@ -353,8 +381,14 @@ class DeliveryReceiptService
         $year = now()->year;
         $prefix = "DR-{$year}-";
 
-        $lastDrNo = DeliveryReceipt::where('dr_no', 'like', "{$prefix}%")
+        // lockForUpdate() blocks a concurrent caller until this transaction
+        // commits, preventing two requests from generating the same number.
+        // withTrashed() is required: DeliveryReceipt is soft-deletable but
+        // dr_no stays unique at the DB level even for trashed rows.
+        $lastDrNo = DeliveryReceipt::withTrashed()
+            ->where('dr_no', 'like', "{$prefix}%")
             ->orderByDesc('dr_no')
+            ->lockForUpdate()
             ->value('dr_no');
 
         $nextSequence = 1;

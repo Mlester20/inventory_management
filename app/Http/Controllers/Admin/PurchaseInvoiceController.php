@@ -233,8 +233,22 @@ class PurchaseInvoiceController extends Controller
      */
     public function destroy(PurchaseInvoice $purchaseInvoice)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting Purchase Invoices is restricted to full admin accounts.');
+            return redirect()->route('purchase-invoices.index');
+        }
+
         $invoiceNo = $purchaseInvoice->invoice_no;
-        $purchaseInvoice->delete();
+
+        try {
+            $purchaseInvoice->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ((int) $e->getCode() === 23000) {
+                Alert::error('Cannot delete', "{$invoiceNo} still has related records and cannot be deleted.");
+                return redirect()->route('purchase-invoices.index');
+            }
+            throw $e;
+        }
 
         ActivityLog::record(
             module: 'PurchaseInvoice',

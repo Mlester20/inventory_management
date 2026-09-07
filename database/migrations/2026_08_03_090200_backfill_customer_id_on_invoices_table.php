@@ -16,9 +16,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::table('invoices as i')
-            ->join('customers as c', 'c.customer_name', '=', 'i.customer_name')
-            ->update(['i.customer_id' => DB::raw('c.id')]);
+        // A plain join-update (rather than this per-customer loop) is
+        // MySQL-only syntax — SQLite (used by the automated test suite)
+        // has no UPDATE...JOIN, and Laravel's emulation of it here produces
+        // invalid SQL. This loop reaches the identical result on both.
+        DB::table('customers')->select('id', 'customer_name')->orderBy('id')->chunk(200, function ($customers) {
+            foreach ($customers as $customer) {
+                DB::table('invoices')
+                    ->where('customer_name', $customer->customer_name)
+                    ->whereNull('customer_id')
+                    ->update(['customer_id' => $customer->id]);
+            }
+        });
 
         $unmatched = DB::table('invoices')->whereNull('customer_id')->get(['id', 'sales_no', 'customer_name']);
 

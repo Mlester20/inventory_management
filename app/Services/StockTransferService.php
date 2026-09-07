@@ -153,8 +153,11 @@ class StockTransferService
         $year = now()->year;
         $prefix = "ST-{$year}-";
 
+        // lockForUpdate() blocks a concurrent caller until this transaction
+        // commits, preventing two requests from generating the same number.
         $lastReference = StockTransfer::where('reference', 'like', "{$prefix}%")
             ->orderByDesc('reference')
+            ->lockForUpdate()
             ->value('reference');
 
         $nextSequence = 1;

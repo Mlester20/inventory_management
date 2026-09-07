@@ -129,8 +129,11 @@ class PurchaseOrderService
         $year = now()->year;
         $prefix = "PO-{$year}-";
 
+        // lockForUpdate() blocks a concurrent caller until this transaction
+        // commits, preventing two requests from generating the same number.
         $lastPoNo = PurchaseOrder::where('po_no', 'like', "{$prefix}%")
             ->orderByDesc('po_no')
+            ->lockForUpdate()
             ->value('po_no');
 
         $nextSequence = 1;

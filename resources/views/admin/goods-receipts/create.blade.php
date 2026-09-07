@@ -445,7 +445,20 @@
         // brand actually delivered, since the supplier may not send the
         // exact same brand the PO was raised against.
         const brandSiblings = ITEMS.filter(i => i.generic_name_id != null && i.generic_name_id === line.generic_name_id);
-        const initialItem = ITEMS.find(i => String(i.id) === String(line.product_id));
+        let initialItem = ITEMS.find(i => String(i.id) === String(line.product_id));
+
+        // A PO line ordered at the generic level (the normal case — POs
+        // are raised by generic item, not brand) has no product_id yet.
+        // The Brand field below still shows a pre-filled label either way
+        // (the generic's own name), which looks identical whether or not
+        // it actually resolved to a real product — so when there's only
+        // one registered brand for this generic, resolve it here instead
+        // of leaving product_id silently empty behind a field that looks
+        // already filled in.
+        if (!initialItem && !line.product_id && brandSiblings.length === 1) {
+            initialItem = brandSiblings[0];
+        }
+
         const defaultQty = Math.max(0, line.remaining_qty - poGroupQtyExcluding(line.purchase_order_item_id, null));
 
         card.innerHTML = `
@@ -462,9 +475,11 @@
             <div class="row g-2">
                 <div class="col-md-6">
                     <label class="form-label small mb-1">Brand</label>
-                    <input type="text" class="form-control po-brand-input" list="po-brand-list-${index}"
-                        value="${line.description}" autocomplete="off">
+                    <input type="text" class="form-control po-brand-input${initialItem ? '' : ' is-invalid'}" list="po-brand-list-${index}"
+                        value="${initialItem ? initialItem.name : line.description}" autocomplete="off"
+                        placeholder="${initialItem ? '' : 'Select the brand actually received'}">
                     <datalist id="po-brand-list-${index}">${brandSiblings.map(i => `<option value="${i.name}"></option>`).join('')}</datalist>
+                    ${initialItem ? '' : '<div class="invalid-feedback d-block">Pick the brand received for this item before saving.</div>'}
                 </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Qty</label>
@@ -494,7 +509,7 @@
                     <input type="text" name="items[${index}][remarks]" class="form-control">
                 </div>
             </div>
-            <input type="hidden" name="items[${index}][product_id]" value="${line.product_id || ''}" class="po-product-id-input">
+            <input type="hidden" name="items[${index}][product_id]" value="${initialItem ? initialItem.id : ''}" class="po-product-id-input">
             <input type="hidden" name="items[${index}][purchase_order_item_id]" value="${line.purchase_order_item_id}">
         `;
         body.appendChild(card);
@@ -553,13 +568,18 @@
         brandInput.addEventListener('input', function () {
             // Only re-match against this generic's siblings — a
             // half-typed or unmatched brand leaves product_id untouched
-            // at its last valid value rather than clearing it, since
-            // this field always starts pre-filled with a valid brand.
+            // at its last valid value rather than clearing it. The field
+            // only starts pre-filled with a genuinely resolved brand when
+            // there was exactly one candidate; otherwise it starts empty
+            // (is-invalid) until the receiver picks one here.
             const match = brandSiblings.find(i => i.name === this.value);
             if (match) {
                 productIdInput.value = match.id;
                 costInput.value = match.unit_cost.toFixed(2);
                 refreshBatchOptions(match);
+                this.classList.remove('is-invalid');
+            } else {
+                this.classList.add('is-invalid');
             }
         });
 
@@ -580,6 +600,32 @@
     @else
         showTab('direct');
     @endif
+
+    // Belt-and-suspenders: a PO line with more than one candidate brand
+    // (or none at all) is left unresolved (is-invalid, see renderPoLine())
+    // for the receiver to pick — this catches anyone who saves anyway
+    // without noticing, before the server ever sees an empty product_id.
+    // Drafts are exempt — a draft is allowed to stay incomplete and get
+    // resumed later, same as every other field on this form.
+    document.getElementById('goodsReceiptForm').addEventListener('submit', function (e) {
+        const isDraft = e.submitter && e.submitter.value === 'draft';
+        const poActive = document.getElementById('purchase_order_tab').style.display !== 'none';
+        if (isDraft || !poActive) return;
+
+        const unresolved = Array.from(document.querySelectorAll('#poLineItemsBody .po-product-id-input'))
+            .filter(input => !input.disabled && !input.value);
+
+        if (unresolved.length > 0) {
+            e.preventDefault();
+            unresolved.forEach(input => input.closest('.line-item-card').querySelector('.po-brand-input').classList.add('is-invalid'));
+            unresolved[0].closest('.line-item-card').querySelector('.po-brand-input').focus();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Pick a brand first',
+                text: 'One or more received items don\'t have a brand selected yet. Pick the brand actually delivered for each highlighted line before saving.',
+            });
+        }
+    });
 
     // Direct Receipt rows: one per line of a resumed draft (self-disables
     // if the Direct tab isn't active), or a single blank row otherwise. A

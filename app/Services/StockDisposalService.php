@@ -91,8 +91,11 @@ class StockDisposalService
         $year = now()->year;
         $prefix = "SD-{$year}-";
 
+        // lockForUpdate() blocks a concurrent caller until this transaction
+        // commits, preventing two requests from generating the same number.
         $lastReference = StockDisposal::where('reference', 'like', "{$prefix}%")
             ->orderByDesc('reference')
+            ->lockForUpdate()
             ->value('reference');
 
         $nextSequence = 1;

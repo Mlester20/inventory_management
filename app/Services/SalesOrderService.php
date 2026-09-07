@@ -175,14 +175,28 @@ class SalesOrderService
     /**
      * Generate the next sequential Sales Order number for the current year,
      * e.g. SO-2026-00001.
+     *
+     * lockForUpdate() holds a row/gap lock on this SELECT until the caller's
+     * transaction commits, so two concurrent requests (e.g. a double-click
+     * submit) can't both read the same "last number" and try to insert the
+     * same so_no — the second waits, then reads the freshly-inserted row.
+     * Only correct when called inside DB::transaction(), true for every
+     * caller of this method.
+     *
+     * withTrashed() is required: SalesOrder is soft-deletable, but so_no
+     * stays unique at the DB level even for trashed rows, so a plain query
+     * (which hides trashed rows) would think a taken number is free and
+     * collide with it on insert.
      */
     public function generateSoNo(): string
     {
         $year = now()->year;
         $prefix = "SO-{$year}-";
 
-        $lastSoNo = SalesOrder::where('so_no', 'like', "{$prefix}%")
+        $lastSoNo = SalesOrder::withTrashed()
+            ->where('so_no', 'like', "{$prefix}%")
             ->orderByDesc('so_no')
+            ->lockForUpdate()
             ->value('so_no');
 
         $nextSequence = 1;

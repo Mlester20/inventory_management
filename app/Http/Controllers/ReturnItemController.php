@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Services\ReturnItemService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ReturnItemController extends Controller
 {
@@ -218,6 +219,8 @@ class ReturnItemController extends Controller
             }
 
             return back()->with('success', 'Return item approved successfully and stock updated.');
+        } catch (ValidationException $e) {
+            return back()->with('error', $e->validator->errors()->first());
         } catch (\Exception $e) {
             return back()->with('error', 'Error approving return item: ' . $e->getMessage());
         }

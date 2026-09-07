@@ -21,8 +21,6 @@ class ProductBatchFactory extends Factory
             'product_id' => Product::factory(),
             'batch_no' => strtoupper($this->faker->bothify('LOT###')),
             'expiration_date' => $this->faker->dateTimeBetween('+1 month', '+2 years'),
-            'qty' => $this->faker->numberBetween(10, 500),
-            'reserved_qty' => 0,
         ];
     }
 }

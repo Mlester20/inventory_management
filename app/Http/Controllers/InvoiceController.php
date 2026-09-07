@@ -402,8 +402,16 @@ class InvoiceController extends Controller
         $year = now()->year;
         $prefix = "INV-{$year}-";
 
-        $lastSalesNo = Invoice::where('sales_no', 'like', "{$prefix}%")
+        // lockForUpdate() blocks a concurrent caller until this transaction
+        // commits, preventing two requests from generating the same number.
+        // (The create()-page call isn't inside a transaction — that copy is
+        // display-only and store() always regenerates the real number.)
+        // withTrashed() is required: Invoice is soft-deletable but sales_no
+        // stays unique at the DB level even for trashed rows.
+        $lastSalesNo = Invoice::withTrashed()
+            ->where('sales_no', 'like', "{$prefix}%")
             ->orderByDesc('sales_no')
+            ->lockForUpdate()
             ->value('sales_no');
 
         $nextSequence = 1;

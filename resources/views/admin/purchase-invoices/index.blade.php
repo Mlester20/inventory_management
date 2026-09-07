@@ -66,22 +66,24 @@
                                             </a>
                                         @endif
 
-                                        <div class="dropdown-divider"></div>
+                                        @if(Auth::user()->role === 'admin')
+                                            <div class="dropdown-divider"></div>
 
-                                        <form
-                                            action="{{ route('purchase-invoices.destroy', $purchaseInvoice) }}"
-                                            method="POST"
-                                        >
-                                            @csrf
-                                            @method('DELETE')
-                                            <button
-                                                type="submit"
-                                                class="dropdown-item text-danger"
-                                                onclick="return confirm('Are you sure you want to delete this {{ $purchaseInvoice->isDraft() ? 'draft' : 'Purchase Invoice' }}?')"
+                                            <form
+                                                action="{{ route('purchase-invoices.destroy', $purchaseInvoice) }}"
+                                                method="POST"
                                             >
-                                                <i class="bx bx-trash me-1"></i> {{ $purchaseInvoice->isDraft() ? 'Delete Draft' : 'Delete' }}
-                                            </button>
-                                        </form>
+                                                @csrf
+                                                @method('DELETE')
+                                                <button
+                                                    type="submit"
+                                                    class="dropdown-item text-danger"
+                                                    onclick="return confirm('Are you sure you want to delete this {{ $purchaseInvoice->isDraft() ? 'draft' : 'Purchase Invoice' }}?')"
+                                                >
+                                                    <i class="bx bx-trash me-1"></i> {{ $purchaseInvoice->isDraft() ? 'Delete Draft' : 'Delete' }}
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </div>
                             </td>
