@@ -131,14 +131,20 @@ class GoodsReceiptController extends Controller
             $poPrefillLines = [];
 
             foreach (old('items') as $line) {
-                if (empty($line['product_id'])) {
+                // A PO-tab line is still identifiable (and worth restoring
+                // qty/batch/expiry for) via purchase_order_item_id even when
+                // product_id is empty — that's exactly the shape of the
+                // "pick a brand first" validation failure this is meant to
+                // recover from. A Direct-tab line has no such identifier, so
+                // it's only restorable once product_id itself resolved.
+                if (empty($line['product_id']) && empty($line['purchase_order_item_id'])) {
                     continue;
                 }
 
-                $product = $items->firstWhere('id', $line['product_id']);
+                $product = ! empty($line['product_id']) ? $items->firstWhere('id', $line['product_id']) : null;
 
                 $shared = [
-                    'product_id' => $line['product_id'],
+                    'product_id' => $line['product_id'] ?? null,
                     'label' => $product ? ($product->description ?: $product->item_name) : null,
                     'qty' => $line['qty'] ?? null,
                     'unit_cost' => $line['unit_cost'] ?? null,

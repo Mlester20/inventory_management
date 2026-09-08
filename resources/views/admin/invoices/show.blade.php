@@ -42,7 +42,7 @@
 
             <div class="invoice-letterhead row g-0 pb-2 mb-0">
                 <div class="col-4 d-flex align-items-center">
-                    <img src="{{ asset('assets/img/favicon/icon.png') }}" alt="SAIMS" class="invoice-logo me-2">
+                    <img src="{{ asset(config('company.logo')) }}" alt="{{ config('company.name') }}" class="invoice-logo me-2">
                     <div>
                         <div class="invoice-company-name">{{ strtoupper(config('company.name')) }}</div>
                         <div class="invoice-company-detail">{{ config('company.address') }}</div>
@@ -57,7 +57,7 @@
                             <td colspan="2" class="label invoice-to-header">INVOICE TO</td>
                             <td rowspan="5" class="invoice-doc-title">
                                 <div class="invoice-title">SALES INVOICE</div>
-                                <div class="invoice-no">No. <span>{{ $invoice->sales_no }}</span></div>
+                                <div class="invoice-no">No. <span class="invoice-no-blank"></span></div>
                                 <div class="invoice-date">Date {{ $invoice->created_at->format('m/d/Y') }}</div>
                             </td>
                         </tr>
@@ -186,7 +186,7 @@
 
             <div class="invoice-disclaimer mt-4">
                 This sales invoice is made under agreement that above goods will not be sold for transshipment to either
-                contraries or trades without written authorization of SAIMS Inventory &amp; General Merchandise. Violation
+                contraries or trades without written authorization of {{ config('company.name') }}. Violation
                 of this condition shall entitle to latter collect from buyer and/or penalty and/or liquidated damages
                 and amount equivalent to 100% of value goods purchased. This invoice shall be valid for five (5) years
                 from the date of issue.
@@ -238,6 +238,12 @@
     .invoice-doc-title .invoice-no span {
         font-weight: 700;
         color: #d9534f;
+    }
+
+    .invoice-no-blank {
+        display: inline-block;
+        min-width: 90px;
+        border-bottom: 1px solid #333;
     }
 
     .invoice-to-table td,
@@ -348,11 +354,13 @@
         }
 
         .invoice-totals,
-        .table-responsive,
         .signature-block,
-        table,
         tr {
             page-break-inside: avoid;
+        }
+
+        thead {
+            display: table-header-group;
         }
 
         h4 {

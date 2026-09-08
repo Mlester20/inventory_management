@@ -30,8 +30,11 @@
                         <i class="bx bx-plus"></i> Create Delivery Receipt
                     </a>
                 @endif
-                <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                <button type="button" class="btn btn-outline-primary" onclick="printSalesOrder()">
                     <i class="bx bx-printer"></i> Print
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="printSalesOrderList()">
+                    <i class="bx bx-list-ul"></i> Print (Packing List)
                 </button>
                 @if($salesOrder->isArchived())
                     <form action="{{ route('sales-orders.unarchive', $salesOrder) }}" method="POST">
@@ -220,125 +223,148 @@
     <div class="card so-print-only" id="printableSalesOrderSheet">
         <div class="card-body p-4 so-sheet">
 
-            <div class="so-letterhead row g-0 pb-2 mb-0">
-                <div class="col-4 d-flex align-items-center">
-                    <img src="{{ asset('assets/img/favicon/icon.png') }}" alt="SAIMS" class="so-logo me-2">
-                    <div>
-                        <div class="so-company-name">{{ strtoupper(config('company.name')) }}</div>
-                        <div class="so-company-detail">{{ config('company.address') }}</div>
-                        <div class="so-company-detail">{{ config('company.proprietor') }} - Proprietor</div>
-                        <div class="so-company-detail">VAT Reg Tin: {{ config('company.tin') }}</div>
-                        <div class="so-company-detail">Email: {{ config('company.email') }}</div>
-                    </div>
-                </div>
-                <div class="col-8">
-                    <table class="table table-bordered table-sm so-to-table mb-0">
-                        <tr>
-                            <td colspan="2" class="label so-to-header">ORDER TO</td>
-                            <td rowspan="5" class="so-doc-title">
-                                <div class="so-title">SALES ORDER</div>
-                                <div class="so-no">No. <span>{{ $salesOrder->so_no }}</span></div>
-                                <div class="so-date">Date {{ $salesOrder->order_date->format('m/d/Y') }}</div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label" style="width: 90px;">Name</td>
-                            <td>{{ $salesOrder->customer->customer_name ?? '—' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">Address</td>
-                            <td>{{ $salesOrder->customer?->delivery_address ?? '—' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">TIN</td>
-                            <td>—</td>
-                        </tr>
-                        <tr>
-                            <td class="label">Business Style</td>
-                            <td>—</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
+            @include('partials.print.letterhead', [
+                'docTitle' => 'SALES ORDER',
+                'docNoLabel' => 'S.O No.',
+                'docNo' => $salesOrder->so_no,
+                'docNoLabel2' => 'P.O No.',
+                'docNo2' => $salesOrder->po_no ?? null,
+                'docDate' => $salesOrder->order_date->format('m/d/Y'),
+                'toHeader' => 'Customer',
+                'toRows' => [
+                    'Name' => $salesOrder->customer->customer_name ?? '',
+                    'Address' => $salesOrder->customer?->delivery_address ?? '',
+                ],
+            ])
 
-            <table class="table table-bordered table-sm so-strip-table mb-0">
-                <thead>
-                    <tr>
-                        <th>S.O. No.</th>
-                        <th>Order Date</th>
-                        <th>Customer P.O. No.</th>
-                        <th>Status</th>
-                        <th>Page</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>{{ $salesOrder->so_no }}</td>
-                        <td>{{ $salesOrder->order_date->format('m/d/Y') }}</td>
-                        <td>{{ $salesOrder->po_no ?? '—' }}</td>
-                        <td>{{ $salesOrder->isDraft() ? 'Draft' : ucfirst(str_replace('_', ' ', $salesOrder->status)) }}</td>
-                        <td>1 of 1</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="so-body d-flex">
-                <div class="table-responsive flex-grow-1">
-                    <table class="table table-bordered table-sm so-items-table mb-0">
-                        <thead>
-                            <tr>
-                                <th>Generic Description</th>
-                                <th class="text-end" style="width: 8%;">Qty</th>
-                                <th class="text-end" style="width: 11%;">Price</th>
-                                <th class="text-end" style="width: 11%;">Advance Qty</th>
-                                <th class="text-end" style="width: 11%;">Delivered</th>
-                                <th class="text-end" style="width: 11%;">Remaining</th>
-                                <th class="text-end" style="width: 13%;">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($salesOrder->items as $item)
-                                <tr>
-                                    <td>{{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }})</td>
-                                    <td class="text-end">{{ $item->qty ?? '—' }}</td>
-                                    <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
-                                    <td class="text-end">{{ $item->advance_order_qty }}</td>
-                                    <td class="text-end">{{ $item->delivered_qty }}</td>
-                                    <td class="text-end">{{ $item->remaining_qty }}</td>
-                                    <td class="text-end">{{ ($item->qty !== null && $item->price !== null) ? number_format($item->qty * $item->price, 2) : '—' }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
-                <table class="table table-bordered table-sm so-totals mb-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm print-items-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 4%;">#</th>
+                            <th>Generic Description</th>
+                            <th>Remarks</th>
+                            <th style="width: 7%;">Unit</th>
+                            <th class="text-end" style="width: 7%;">Qty</th>
+                            <th class="text-end" style="width: 10%;">Unit Cost</th>
+                            <th class="text-end" style="width: 12%;">Amount</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        <tr><td>Total Qty</td></tr>
-                        <tr><td class="text-end">{{ $salesOrder->items->sum('qty') }}</td></tr>
-                        <tr><td>Remaining Qty</td></tr>
-                        <tr><td class="text-end">{{ $salesOrder->items->sum('remaining_qty') }}</td></tr>
-                        <tr class="total-due-row"><td class="fw-bold">Total Amount</td></tr>
-                        <tr class="total-due-row"><td class="text-end fw-bold">₱{{ number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2) }}</td></tr>
+                        @foreach ($salesOrder->items as $item)
+                            <tr>
+                                <td class="text-center">{{ $loop->iteration }}</td>
+                                <td>{{ $item->genericName->generic_name ?? '—' }}</td>
+                                <td>{{ $item->remarks ?? '—' }}</td>
+                                <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
+                                <td class="text-end">{{ $item->qty ?? '—' }}</td>
+                                <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
+                                <td class="text-end">{{ ($item->qty !== null && $item->price !== null) ? number_format($item->qty * $item->price, 2) : '—' }}</td>
+                            </tr>
+                        @endforeach
                     </tbody>
                 </table>
             </div>
 
-            <div class="row mt-4 signature-block">
-                <div class="col-4 text-center">
-                    <div class="border-top pt-1">Prepared By: {{ $salesOrder->preparedBy->name ?? '—' }}</div>
+            @include('partials.print.sales-totals-footer', [
+                'totalAmountDue' => number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2),
+                'preparedByValue' => $salesOrder->preparedBy->name ?? '',
+            ])
+        </div>
+    </div>
+
+    {{--
+        Second print variant of this same Sales Order: a quantity-only
+        "packing list" for warehouse/preparation staff (Order Qty/Advance/
+        Balance/Remarks/Qty, no pricing at all) — matches the "Sales Order
+        List" page in the client-approved final layout. Toggled via the
+        body.print-mode-list class (see printSalesOrderList() below) so
+        only one of the two print sheets is visible at print time.
+    --}}
+    <div class="card so-print-only" id="printableSalesOrderListSheet">
+        <div class="card-body p-4 so-sheet">
+
+            <div class="row g-0 print-list-header">
+                <div class="col-3">
+                    <img src="{{ asset(config('company.logo')) }}" alt="{{ config('company.name') }}" class="print-logo-full mb-2">
                 </div>
-                <div class="col-4 text-center">
-                    <div class="border-top pt-1">Noted By: ____________________</div>
+                <div class="col-6">
+                    <table class="table table-bordered table-sm print-list-customer-table mb-0">
+                        <tr><td colspan="2" class="fw-bold">Customer</td></tr>
+                        <tr>
+                            <td class="fw-bold" style="width: 90px;">Name</td>
+                            <td>{{ $salesOrder->customer->customer_name ?? '' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Address</td>
+                            <td>{{ $salesOrder->customer?->delivery_address ?? '' }}</td>
+                        </tr>
+                    </table>
                 </div>
-                <div class="col-4 text-center">
-                    <div class="border-top pt-1">Received By: ____________________</div>
+                <div class="col-3 text-end">
+                    <div class="print-doc-title">Sales Order List</div>
+                    <div class="print-doc-page">Page {{ '___' }} of {{ '___' }}</div>
+                    <div class="print-doc-no-row">
+                        <span class="print-doc-no-label">S.O No.:</span>
+                        <span class="print-doc-no-value">{{ $salesOrder->so_no }}</span>
+                    </div>
+                    <div class="print-doc-no-row">
+                        <span class="print-doc-no-label">P.O No.:</span>
+                        <span class="print-doc-no-value">{{ $salesOrder->po_no ?? '' }}</span>
+                    </div>
+                    <div class="print-doc-no-row">
+                        <span class="print-doc-no-label">Date:</span>
+                        <span class="print-doc-no-value">{{ $salesOrder->order_date->format('m/d/Y') }}</span>
+                    </div>
                 </div>
             </div>
+
+            <div class="print-company-detail">{{ config('company.address') }}</div>
+            <div class="print-company-detail">{{ config('company.proprietor') }} -Proprietor</div>
+            <div class="print-company-detail">VAT Reg Tin: {{ config('company.tin') }}</div>
+            <div class="print-company-detail mb-2">Email: {{ config('company.email') }}</div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm print-items-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 4%;">#</th>
+                            <th>Generic Description</th>
+                            <th style="width: 8%;">Unit</th>
+                            <th class="text-end" style="width: 9%;">Order Qty</th>
+                            <th class="text-end" style="width: 8%;">Adv</th>
+                            <th class="text-end" style="width: 9%;">Balance</th>
+                            <th>Remarks</th>
+                            <th class="text-end" style="width: 8%;">Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($salesOrder->items as $item)
+                            <tr>
+                                <td class="text-center">{{ $loop->iteration }}</td>
+                                <td>{{ $item->genericName->generic_name ?? '—' }}</td>
+                                <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
+                                <td class="text-end">{{ $item->qty ?? '—' }}</td>
+                                <td class="text-end">{{ $item->advance_order_qty }}</td>
+                                <td class="text-end">{{ $item->remaining_qty }}</td>
+                                <td>{{ $item->remarks ?? '—' }}</td>
+                                <td class="text-end"></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            @include('partials.print.signature-block', [
+                'columns' => 1,
+                'label1' => 'Prepared By', 'value1' => $salesOrder->preparedBy->name ?? '—',
+            ])
         </div>
     </div>
 
 <style>
+    @include('partials.print.base-print')
+
     .table-header-bg {
         background-color: #f7f8fa;
     }
@@ -354,137 +380,14 @@
         font-size: 0.85rem;
     }
 
-    .so-letterhead {
-        border-bottom: 2px solid #333;
-    }
-
-    .so-logo {
-        width: 56px;
-        height: 56px;
-        object-fit: contain;
-        flex-shrink: 0;
-    }
-
-    .so-company-name {
-        font-weight: 700;
-        font-size: 1rem;
-        letter-spacing: 0.3px;
-    }
-
-    .so-company-detail {
-        font-size: 0.7rem;
-        line-height: 1.3;
-        color: #333;
-    }
-
-    .so-doc-title {
-        width: 190px;
-        text-align: center;
-        vertical-align: middle !important;
-    }
-
-    .so-doc-title .so-title {
-        font-weight: 700;
-        font-size: 1.1rem;
-    }
-
-    .so-doc-title .so-no span {
-        font-weight: 700;
-        color: #d9534f;
-    }
-
-    .so-to-table td,
-    .so-strip-table th,
-    .so-strip-table td,
-    .so-items-table th,
-    .so-items-table td,
-    .so-totals td {
+    .print-list-customer-table td {
         border-color: #333;
+        font-size: 0.78rem;
+        padding: 0.25rem 0.5rem;
         vertical-align: middle;
     }
 
-    .so-to-table td {
-        padding: 0.2rem 0.4rem;
-        font-size: 0.72rem;
-    }
-
-    .so-to-table .label {
-        font-weight: 700;
-        background-color: #f5f5f5;
-    }
-
-    .so-to-header {
-        font-weight: 700;
-        text-align: center;
-        background-color: #eee;
-    }
-
-    .so-strip-table th,
-    .so-strip-table td {
-        font-size: 0.62rem;
-        text-align: center;
-        padding: 0.2rem 0.3rem;
-        white-space: nowrap;
-    }
-
-    .so-strip-table thead th {
-        background-color: #eee;
-        font-weight: 700;
-    }
-
-    .so-items-table thead th {
-        background-color: #eee;
-        font-weight: 700;
-        text-align: center;
-        white-space: nowrap;
-    }
-
-    .so-totals {
-        width: 170px;
-        flex-shrink: 0;
-        margin-left: -1px;
-    }
-
-    .so-totals td {
-        font-size: 0.68rem;
-        padding: 0.15rem 0.4rem;
-        text-align: center;
-    }
-
-    .so-totals td.text-end {
-        text-align: right;
-    }
-
-    .so-totals tr:nth-child(odd) td {
-        background-color: #f5f5f5;
-    }
-
-    .so-totals .total-due-row td {
-        font-size: 0.85rem;
-        background-color: #eee;
-    }
-
     @media print {
-        @page {
-            size: auto;
-            margin: 10mm;
-        }
-
-        .no-print,
-        #layout-menu,
-        #layout-navbar,
-        .content-footer {
-            display: none !important;
-        }
-
-        .layout-page {
-            margin-left: 0 !important;
-        }
-
-        body {
-            font-size: 12px;
-        }
-
         #printableSalesOrder {
             display: none !important;
         }
@@ -493,39 +396,48 @@
             display: block !important;
         }
 
-        #printableSalesOrderSheet {
+        #printableSalesOrderSheet,
+        #printableSalesOrderListSheet {
             box-shadow: none !important;
             border: none !important;
         }
 
-        #printableSalesOrderSheet .card-body {
+        #printableSalesOrderSheet .card-body,
+        #printableSalesOrderListSheet .card-body {
             padding: 0 !important;
-        }
-
-        .so-totals,
-        .table-responsive,
-        .signature-block,
-        table,
-        tr {
-            page-break-inside: avoid;
-        }
-
-        .table-sm td,
-        .table-bordered td,
-        .table-bordered th {
-            padding: 0.25rem 0.4rem;
         }
 
         .table-header-bg,
         .table-info,
-        .so-items-table thead th,
-        .so-to-table .label,
-        .so-to-header,
-        .so-strip-table thead th,
-        .so-totals .total-due-row td {
+        .print-list-customer-table td:first-child {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
+
+        /* Only one of the two print sheets shows at a time, chosen by
+           whichever "Print" button was clicked (see printSalesOrder() /
+           printSalesOrderList() below). */
+        body.print-mode-list #printableSalesOrderSheet {
+            display: none !important;
+        }
+
+        body:not(.print-mode-list) #printableSalesOrderListSheet {
+            display: none !important;
+        }
     }
 </style>
+@endsection
+
+@section('scripts')
+<script>
+    function printSalesOrder() {
+        document.body.classList.remove('print-mode-list');
+        window.print();
+    }
+
+    function printSalesOrderList() {
+        document.body.classList.add('print-mode-list');
+        window.print();
+    }
+</script>
 @endsection

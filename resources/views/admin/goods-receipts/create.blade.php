@@ -167,13 +167,20 @@
     // Item is a searchable text field (native <datalist>, matching the same
     // technique already used for Generic Description pickers) instead of a
     // long <select> — the label the user types/picks is matched back to the
-    // real product_id, still scoped to the currently chosen supplier.
+    // real product_id.
     function itemLabel(item) {
         return item.name;
     }
 
+    // Not actually scoped by supplier: a Product's own supplier_id records
+    // who it's *normally* sourced from, but the same item can legitimately
+    // arrive from a different supplier too — filtering the picker down to
+    // an exact supplier_id match made those receipts impossible to encode
+    // (the item just never appeared). The chosen Supplier here still
+    // records who physically delivered this shipment; it no longer
+    // constrains which items can be received from them.
     function itemsForSupplier(supplierId) {
-        return supplierId ? ITEMS.filter(i => String(i.supplier_id) === String(supplierId)) : ITEMS;
+        return ITEMS;
     }
 
     function itemDatalistOptions() {
@@ -359,9 +366,11 @@
         }
     });
 
-    // Refresh each row's item datalist when the supplier changes, since items
-    // are filtered to that supplier's catalog. A row's current selection is
-    // cleared if it no longer belongs to the newly chosen supplier.
+    // The item list itself no longer depends on which supplier is chosen
+    // (see itemsForSupplier() above), so this is now just a safety net in
+    // case that ever changes again — it re-syncs each row's datalist and
+    // drops a selection that no longer resolves, without otherwise
+    // affecting normal use.
     document.getElementById('direct_supplier_id').addEventListener('change', function () {
         document.querySelectorAll('#directLineItemsBody .line-item-card').forEach(card => {
             const itemSearchInput = card.querySelector('.item-search-input');

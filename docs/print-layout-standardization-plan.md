@@ -1,9 +1,27 @@
 # Print Layout Standardization — All Document Types
 
-**Status: Inventory Adjustment's print built and live (2026-08-13, done ahead of the phase order below,
-per direct request) — modeled directly on Invoice's layout but built inline in that file rather than via
-the shared partials described below, since Phase A (extracting those partials) hasn't happened yet.
-Rest of this plan (Phase A/B and the remaining 5 of Phase C) still not started.**
+**Status (2026-09-08): Phase A done. Phase B done for Sales Order and Delivery Receipt (Stock Disposal
+still not retrofitted — no "final" layout spec was provided for it, so left alone). Phase C done for
+Purchase Order, Goods Receipt, and Sales Quote, driven by client-approved final layouts (5 .docx files
+under `docs/print _layouts/`: DR, GOODS-RECEIPT, SALES-ORDER, SALES-QUOTE, SUPPLIER-PO). Purchase Invoice
+and Stock Transfer remain unbuilt — no final layout was supplied for either. Inventory Adjustment's print
+(built 2026-08-13, ahead of this plan) still hasn't been migrated onto the shared partials — same
+"working, no visual-regression testing available" caution as Invoice below, so left as its own inline
+implementation for now.**
+
+**Real company identity now wired in**: `config/company.php` defaults and `public/assets/img/company/logo.png`
+were placeholders (SAIMS Inventory & General Merchandise / generic favicon) until this pass — now CfB
+Marketing & General Merchandise's real details/logo (extracted from the .docx letterheads), reflected on
+every print view that reads `config('company.*')`, including Invoice and Inventory Adjustment.
+
+**Known gap, needs Sir's input**: the Sales Order and Sales Quote "final" layouts specify a full VAT
+breakdown (VATable/VAT-Exempt/VAT Zero-Rated Sales, Add VAT, Less Withholding Tax, Total Amount Due) —
+identical in shape to Invoice's. Neither SalesOrderItem nor SalesQuoteItem currently records a per-line
+tax classification (they're keyed by `generic_name_id`, not a specific taxed `product_id`, since the
+brand/product isn't chosen until Delivery Receipt/Goods-Receipt-equivalent time) — so that breakdown
+can't be computed correctly from current data without guessing a product's tax status. Both prints ship
+with the simpler pre-existing "Total Amount" total instead for now; flagging rather than fabricating VAT
+figures on a compliance-relevant document.
 
 ## Context
 

@@ -3,7 +3,7 @@
 @section('title', 'Sales Quote ' . $salesQuote->quote_no)
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-3 no-print">
         <a href="{{ route('sales-quotes.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Sales Quotes
         </a>
@@ -13,6 +13,9 @@
                     <i class="bx bx-transfer"></i> Convert to Sales Order
                 </button>
             @endif
+            <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                <i class="bx bx-printer"></i> Print
+            </button>
             @if($salesQuote->isArchived())
                 <form action="{{ route('sales-quotes.unarchive', $salesQuote) }}" method="POST">
                     @csrf
@@ -32,7 +35,7 @@
     </div>
 
     @if ($errors->any())
-        <div class="alert alert-danger">
+        <div class="alert alert-danger no-print">
             <ul class="mb-0">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -41,6 +44,7 @@
         </div>
     @endif
 
+    <div id="printableSalesQuote" class="no-print">
     <div class="card mb-4">
         <div class="card-body">
             <div class="row mb-3">
@@ -117,6 +121,58 @@
             </table>
         </div>
     </div>
+    </div>
+
+    <div class="card sq-print-only" id="printableSalesQuoteSheet">
+        <div class="card-body p-4 sq-sheet">
+
+            @include('partials.print.letterhead', [
+                'docTitle' => 'QUOTATION',
+                'docNoLabel' => 'R.F.Q No.',
+                'docNo' => $salesQuote->quote_no,
+                'docDate' => $salesQuote->quote_date->format('m/d/Y'),
+                'toHeader' => 'Customer',
+                'toRows' => [
+                    'Name' => $salesQuote->customer->customer_name ?? '',
+                    'Address' => $salesQuote->customer->delivery_address ?? '',
+                ],
+            ])
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm print-items-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 4%;">#</th>
+                            <th>Generic Description</th>
+                            <th>Remarks</th>
+                            <th style="width: 7%;">Unit</th>
+                            <th class="text-end" style="width: 8%;">Qty</th>
+                            <th class="text-end" style="width: 11%;">Unit Cost</th>
+                            <th class="text-end" style="width: 13%;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($salesQuote->items as $item)
+                            <tr>
+                                <td class="text-center">{{ $loop->iteration }}</td>
+                                <td>{{ $item->genericName->generic_name ?? '—' }}</td>
+                                <td>{{ $item->remarks ?? '—' }}</td>
+                                <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
+                                <td class="text-end">{{ $item->qty }}</td>
+                                <td class="text-end">{{ number_format($item->price, 2) }}</td>
+                                <td class="text-end">{{ number_format($item->qty * $item->price, 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            @include('partials.print.sales-totals-footer', [
+                'totalAmountDue' => number_format($salesQuote->items->sum(fn($i) => $i->qty * $i->price), 2),
+                'preparedByValue' => $salesQuote->preparedBy->name ?? '',
+            ])
+        </div>
+    </div>
 
     @if($salesQuote->status === 'open')
         <div class="modal fade" id="convertModal" tabindex="-1" aria-hidden="true">
@@ -163,11 +219,42 @@
     @endif
 
 <style>
+    @include('partials.print.base-print')
+
     .table-header-bg {
         background-color: #f7f8fa;
     }
     .table-info {
         background-color: #e7f3ff;
+    }
+
+    .sq-print-only {
+        display: none;
+    }
+
+    .sq-sheet {
+        font-size: 0.85rem;
+    }
+
+    @media print {
+        #printableSalesQuoteSheet {
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        #printableSalesQuoteSheet .card-body {
+            padding: 0 !important;
+        }
+
+        .sq-print-only {
+            display: block !important;
+        }
+
+        .table-header-bg,
+        .table-info {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
     }
 </style>
 @endsection

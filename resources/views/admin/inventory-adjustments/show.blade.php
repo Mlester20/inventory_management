@@ -326,11 +326,13 @@
             padding: 0 !important;
         }
 
-        .table-responsive,
         .signature-block,
-        table,
         tr {
             page-break-inside: avoid;
+        }
+
+        thead {
+            display: table-header-group;
         }
 
         .table-sm td,

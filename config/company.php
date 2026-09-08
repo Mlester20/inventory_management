@@ -1,9 +1,11 @@
 <?php
 
 return [
-    'name' => env('COMPANY_NAME', 'SAIMS Inventory & General Merchandise'),
-    'address' => env('COMPANY_ADDRESS', 'Business Address, City'),
-    'proprietor' => env('COMPANY_PROPRIETOR', 'Proprietor Name'),
-    'tin' => env('COMPANY_TIN', '000-000-000-0000'),
-    'email' => env('COMPANY_EMAIL', 'business@example.com'),
+    'name' => env('COMPANY_NAME', 'CfB Marketing & General Merchandise'),
+    'tagline' => env('COMPANY_TAGLINE', 'Medical Distributor'),
+    'address' => env('COMPANY_ADDRESS', 'Poblacion, Bontoc, Mountain Province'),
+    'proprietor' => env('COMPANY_PROPRIETOR', 'Charito F. Bacullo'),
+    'tin' => env('COMPANY_TIN', '168-058-942'),
+    'email' => env('COMPANY_EMAIL', 'cfbmarketingbontoc@gmail.com'),
+    'logo' => env('COMPANY_LOGO', 'assets/img/company/logo.png'),
 ];
