@@ -319,6 +319,7 @@
                                 <th>Category</th>
                                 <th>Item Description</th>
                                 <th>Barcode</th>
+                                <th>Unit</th>
                                 <th>Cost</th>
                                 <th>Retail</th>
                                 <th>WS</th>
@@ -349,6 +350,7 @@
                                         @endif
                                     </td>
                                     <td>{{ $product->barcode ?? '—' }}</td>
+                                    <td>{{ $product->genericName->unit ?? '—' }}</td>
                                     <td>
                                         @if(Auth::user()->role === 'admin')
                                             {{ number_format($product->unit_cost ?? 0, 2) }}
