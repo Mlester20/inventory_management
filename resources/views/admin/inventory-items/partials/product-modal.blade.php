@@ -72,7 +72,7 @@
 
                     <div class="mb-3">
                         <label class="form-label">Item Description</label>
-                        <textarea name="description" id="{{ $prefix }}description" class="form-control" rows="2" placeholder="e.g., Pain reliever and fever reducer"></textarea>
+                        <textarea name="description" id="{{ $prefix }}description" class="form-control" rows="2" placeholder="e.g., Pain reliever and fever reducer" required></textarea>
                     </div>
 
                     <div class="row">
