@@ -16,6 +16,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class InventoryItemsController extends Controller
 {
+    protected const PER_PAGE = 10;
+
     public function __construct(protected InventoryReportService $inventoryReportService) {}
 
     /**
@@ -71,7 +73,7 @@ class InventoryItemsController extends Controller
                 ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))
                 ->when($search, fn ($q) => $q->where('generic_name', 'like', "%{$search}%"))
                 ->orderBy('generic_name')
-                ->paginate(15)
+                ->paginate(self::PER_PAGE)
                 ->withQueryString();
 
             foreach ($generalItems as $genericName) {
@@ -99,7 +101,7 @@ class InventoryItemsController extends Controller
                         ->orWhere('code', 'like', "%{$search}%");
                 })
                 ->orderBy('item_name')
-                ->paginate(15)
+                ->paginate(self::PER_PAGE)
                 ->withQueryString();
 
             $nextProductCode = str_pad((string) (Product::max('id') + 1), 5, '0', STR_PAD_LEFT);
@@ -129,7 +131,7 @@ class InventoryItemsController extends Controller
                 ->with(['product.category', 'locationStocks'])
                 ->orderBy('product_id')
                 ->orderBy('expiration_date')
-                ->paginate(15)
+                ->paginate(self::PER_PAGE)
                 ->withQueryString();
 
             // Grand totals across every matching batch, not just the current
@@ -160,7 +162,7 @@ class InventoryItemsController extends Controller
                 // over the full, ordered movement list before slicing, so
                 // this can't just be a paginated query like the other tabs.
                 $page = (int) $request->query('page', 1);
-                $perPage = 15;
+                $perPage = self::PER_PAGE;
 
                 $history = new LengthAwarePaginator(
                     $fullHistory->forPage($page, $perPage),

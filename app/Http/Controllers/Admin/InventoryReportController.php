@@ -45,7 +45,7 @@ class InventoryReportController extends Controller
         // Low-stock filtering and the grand total both need the full result
         // set, so pagination is applied afterward, over the already-computed
         // collection, rather than at the query level.
-        $perPage = 15;
+        $perPage = 10;
         $page = (int) $request->query('page', 1);
         $items = new LengthAwarePaginator(
             $allItems->forPage($page, $perPage),

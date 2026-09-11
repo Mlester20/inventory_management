@@ -37,7 +37,7 @@ class ProductExpirationReportService
     /**
      * Batches expiring within the given number of days (including already expired).
      */
-    public function getExpiringItems(int $daysThreshold = 30, ?int $categoryId = null, ?int $supplierId = null, int $perPage = 15): LengthAwarePaginator
+    public function getExpiringItems(int $daysThreshold = 30, ?int $categoryId = null, ?int $supplierId = null, int $perPage = 10): LengthAwarePaginator
     {
         $batches = $this->baseQuery($categoryId, $supplierId)
             ->whereDate('expiration_date', '<=', Carbon::today()->addDays($daysThreshold))
