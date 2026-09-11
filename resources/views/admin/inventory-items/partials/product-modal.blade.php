@@ -36,16 +36,14 @@
 
                     <div class="mb-3">
                         <label class="form-label">Generic Description</label>
-                        <select name="generic_name_id" id="{{ $prefix }}generic_name_id" class="form-select" required>
-                            <option value="">-- Select Generic Description --</option>
+                        <input type="text" class="form-control generic-name-search" id="{{ $prefix }}generic_name_search"
+                            list="{{ $prefix }}generic-name-datalist" placeholder="Search generic name..." autocomplete="off" required>
+                        <datalist id="{{ $prefix }}generic-name-datalist">
                             @foreach ($genericNames as $genericName)
-                                <option value="{{ $genericName->id }}"
-                                    data-category="{{ $genericName->category->category_name }}"
-                                    data-unit="{{ $genericName->unit }}">
-                                    {{ $genericName->generic_name }}
-                                </option>
+                                <option value="{{ $genericName->generic_name }} ({{ $genericName->unit }}) — {{ $genericName->category->category_name }}"></option>
                             @endforeach
-                        </select>
+                        </datalist>
+                        <input type="hidden" name="generic_name_id" id="{{ $prefix }}generic_name_id">
                     </div>
 
                     <div class="row">
@@ -179,18 +177,44 @@
     </div>
 </div>
 
+@once
+<script>
+    // Shared by both the create and update instances of this modal (each
+    // include renders its own <datalist>, but the lookup data only needs
+    // to exist once per page).
+    const PRODUCT_GENERIC_NAMES = @json($genericNamesForJs);
+
+    function productGenericLabel(g) {
+        return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
+    }
+
+    function findProductGenericByLabel(label) {
+        return PRODUCT_GENERIC_NAMES.find(g => productGenericLabel(g) === label);
+    }
+
+    function findProductGenericById(id) {
+        return PRODUCT_GENERIC_NAMES.find(g => String(g.id) === String(id));
+    }
+</script>
+@endonce
+
 <script>
 (function () {
     const prefix = '{{ $prefix }}';
-    const genericSelect = document.getElementById(prefix + 'generic_name_id');
+    const genericSearchInput = document.getElementById(prefix + 'generic_name_search');
+    const genericIdInput = document.getElementById(prefix + 'generic_name_id');
     const categoryDisplay = document.getElementById(prefix + 'category_display');
     const unitDisplay = document.getElementById(prefix + 'unit_display');
 
-    if (genericSelect) {
-        genericSelect.addEventListener('change', function () {
-            const selected = genericSelect.options[genericSelect.selectedIndex];
-            categoryDisplay.value = selected ? (selected.getAttribute('data-category') || '') : '';
-            unitDisplay.value = selected ? (selected.getAttribute('data-unit') || '') : '';
+    function applyGeneric(generic) {
+        genericIdInput.value = generic ? generic.id : '';
+        categoryDisplay.value = generic ? generic.category_name : '';
+        unitDisplay.value = generic ? generic.unit : '';
+    }
+
+    if (genericSearchInput) {
+        genericSearchInput.addEventListener('input', function () {
+            applyGeneric(findProductGenericByLabel(this.value));
         });
     }
 
@@ -226,9 +250,9 @@
             const get = (attr) => this.getAttribute(attr);
 
             document.getElementById('update_code').value = get('data-code') || '';
-            const select = document.getElementById('update_generic_name_id');
-            select.value = get('data-generic-name-id') || '';
-            select.dispatchEvent(new Event('change'));
+            const generic = findProductGenericById(get('data-generic-name-id'));
+            genericSearchInput.value = generic ? productGenericLabel(generic) : '';
+            applyGeneric(generic);
 
             document.getElementById('update_brand_name').value = get('data-brand-name') || '';
             document.getElementById('update_description').value = get('data-description') || '';
@@ -261,6 +285,60 @@
             document.getElementById('updateProductForm').action = `{{ url('admin/products') }}/${get('data-id')}`;
         });
     });
+    @else
+    // Clone reuses the exact same data-* attributes the Edit button
+    // already carries per row — everything copies over except Code
+    // (keeps its own auto-suggested next value) and Barcode (blank),
+    // since both must stay unique per product. Brand and the price
+    // tiers copy over too, editable like every other field — those are
+    // simply the ones expected to actually change between brand variants
+    // of the same generic item.
+    document.querySelectorAll('.clone-product-btn').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const get = (attr) => this.getAttribute(attr);
+
+            document.getElementById('barcode').value = '';
+            const generic = findProductGenericById(get('data-generic-name-id'));
+            genericSearchInput.value = generic ? productGenericLabel(generic) : '';
+            applyGeneric(generic);
+
+            document.getElementById('brand_name').value = get('data-brand-name') || '';
+            document.getElementById('description').value = get('data-description') || '';
+            document.getElementById('supplier_id').value = get('data-supplier-id') || '';
+            document.getElementById('tax_id').value = get('data-tax-id') || '';
+            if (document.getElementById('unit_cost')) {
+                document.getElementById('unit_cost').value = get('data-unit-cost') || '';
+            }
+            document.getElementById('unit_price_percent').value = get('data-unit-price-percent') || '';
+            document.getElementById('unit_price').value = get('data-unit-price') || '';
+            document.getElementById('wholesale_percent').value = get('data-wholesale-percent') || '';
+            document.getElementById('wholesale_price').value = get('data-wholesale-price') || '';
+            document.getElementById('price_1_percent').value = get('data-price-1-percent') || '';
+            document.getElementById('price_1').value = get('data-price-1') || '';
+            document.getElementById('price_2_percent').value = get('data-price-2-percent') || '';
+            document.getElementById('price_2').value = get('data-price-2') || '';
+            document.getElementById('price_3_percent').value = get('data-price-3-percent') || '';
+            document.getElementById('price_3').value = get('data-price-3') || '';
+            document.getElementById('fda_reg_no').value = get('data-fda-reg-no') || '';
+            document.getElementById('fda_reg_exp').value = get('data-fda-reg-exp') || '';
+            document.getElementById('custom_field_1').value = get('data-custom-1') || '';
+            document.getElementById('custom_field_2').value = get('data-custom-2') || '';
+            document.getElementById('custom_field_3').value = get('data-custom-3') || '';
+            document.getElementById('custom_field_4').value = get('data-custom-4') || '';
+            document.getElementById('location').value = get('data-location') || '';
+            document.getElementById('low_stock_threshold').value = get('data-threshold') || '';
+            document.getElementById('image').value = '';
+        });
+    });
+
+    // A clone leaves the form pre-filled — a genuine "New Item" open right
+    // after must not inherit that leftover data.
+    const newProductBtn = document.getElementById('newProductBtn');
+    if (newProductBtn) {
+        newProductBtn.addEventListener('click', function () {
+            document.getElementById('productModal').querySelector('form').reset();
+        });
+    }
     @endif
 })();
 </script>

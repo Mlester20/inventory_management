@@ -288,7 +288,7 @@
         {{-- ============================= PRODUCTS TAB ============================= --}}
         @if($tab === 'products')
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
+                <button type="button" id="newProductBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
                     New Item
                 </button>
                 <div class="d-flex gap-2">
@@ -418,6 +418,34 @@
                                                     data-location="{{ $product->location }}"
                                                     data-threshold="{{ $product->low_stock_threshold }}">
                                                     <i class="bx bx-edit-alt me-1"></i> Edit
+                                                </button>
+                                                <button type="button" class="dropdown-item clone-product-btn"
+                                                    data-bs-toggle="modal" data-bs-target="#productModal"
+                                                    data-generic-name-id="{{ $product->generic_name_id }}"
+                                                    data-brand-name="{{ $product->brand_name }}"
+                                                    data-description="{{ $product->description }}"
+                                                    data-supplier-id="{{ $product->supplier_id }}"
+                                                    data-tax-id="{{ $product->tax_id }}"
+                                                    data-unit-cost="{{ Auth::user()->role === 'admin' ? $product->unit_cost : '' }}"
+                                                    data-unit-price-percent="{{ $product->unit_price_percent }}"
+                                                    data-unit-price="{{ $product->unit_price }}"
+                                                    data-wholesale-percent="{{ $product->wholesale_percent }}"
+                                                    data-wholesale-price="{{ $product->wholesale_price }}"
+                                                    data-price-1-percent="{{ $product->price_1_percent }}"
+                                                    data-price-1="{{ $product->price_1 }}"
+                                                    data-price-2-percent="{{ $product->price_2_percent }}"
+                                                    data-price-2="{{ $product->price_2 }}"
+                                                    data-price-3-percent="{{ $product->price_3_percent }}"
+                                                    data-price-3="{{ $product->price_3 }}"
+                                                    data-fda-reg-no="{{ $product->fda_reg_no }}"
+                                                    data-fda-reg-exp="{{ $product->fda_reg_exp?->format('Y-m-d') }}"
+                                                    data-custom-1="{{ $product->custom_field_1 }}"
+                                                    data-custom-2="{{ $product->custom_field_2 }}"
+                                                    data-custom-3="{{ $product->custom_field_3 }}"
+                                                    data-custom-4="{{ $product->custom_field_4 }}"
+                                                    data-location="{{ $product->location }}"
+                                                    data-threshold="{{ $product->low_stock_threshold }}">
+                                                    <i class="bx bx-copy me-1"></i> Clone
                                                 </button>
 
                                                 @if($product->isArchived())

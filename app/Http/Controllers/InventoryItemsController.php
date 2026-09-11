@@ -30,6 +30,17 @@ class InventoryItemsController extends Controller
 
         $categories = Category::orderBy('category_name')->get();
         $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
+        // Flat lookup array for the Products tab's Generic Description
+        // search box (New/Edit/Clone item modal) — built once here rather
+        // than inline in the Blade @json() directive, since a closure
+        // with array literals inside @json's parens trips Blade's
+        // directive-argument parser.
+        $genericNamesForJs = $genericNames->map(fn ($g) => [
+            'id' => $g->id,
+            'generic_name' => $g->generic_name,
+            'unit' => $g->unit,
+            'category_name' => $g->category->category_name,
+        ]);
         $suppliers = Supplier::orderBy('supplier_name')->get();
         $warehouseId = Location::warehouse()->id;
         $posId = Location::pos()->id;
@@ -162,7 +173,7 @@ class InventoryItemsController extends Controller
         }
 
         return view('admin.inventory-items.index', compact(
-            'tab', 'search', 'categories', 'genericNames', 'suppliers', 'taxes',
+            'tab', 'search', 'categories', 'genericNames', 'genericNamesForJs', 'suppliers', 'taxes',
             'generalItems', 'products', 'batches', 'batchTotals', 'historyProduct', 'history',
             'nextGenericCode', 'nextProductCode', 'warehouseId', 'posId', 'showZero', 'showTrashed', 'showArchived'
         ));
