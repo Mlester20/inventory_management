@@ -252,7 +252,15 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($lowStockItems->take(5) as $item)
+                            {{-- Out-of-stock items are their own bucket from
+                                getLowStockAlert() (qty <= 0, not qty <= threshold),
+                                so this widget merges both — otherwise a
+                                Warehouse with only out-of-stock products (no
+                                low-stock-but-not-empty ones) rendered as
+                                "no items" here despite the banners above
+                                showing a real alert. Out-of-stock first since
+                                it's the more urgent case. --}}
+                            @forelse ($outOfStockItems->concat($lowStockItems)->take(5) as $item)
                             <tr>
                                 <td>{{ $item->item_name }}</td>
                                 <td>{{ $item->barcode ?? $item->code ?? '—' }}</td>
@@ -261,7 +269,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">No low-stock items right now.</td>
+                                <td colspan="4" class="text-center text-muted py-4">No low-stock or out-of-stock items right now.</td>
                             </tr>
                             @endforelse
                         </tbody>
