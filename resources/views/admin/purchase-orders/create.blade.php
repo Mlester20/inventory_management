@@ -211,7 +211,7 @@
             <div class="row g-2 mt-1">
                 <div class="col-md-3">
                     <label class="form-label small mb-1">Unit</label>
-                    <input type="text" name="items[${index}][unit]" class="form-control unit-input" placeholder="e.g. Box, Bottle">
+                    <input type="text" name="items[${index}][unit]" class="form-control unit-input" readonly>
                 </div>
                 <div class="col-md-9">
                     <label class="form-label small mb-1">Remarks</label>
@@ -230,15 +230,17 @@
 
         // A draft's saved line is re-typed straight into the search input
         // to resolve generic_name_id (same as a manual pick), then
-        // qty/cost/unit/remarks are overlaid — everything here is already
-        // client-side in GENERIC_NAMES, no fetch needed.
+        // qty/cost/remarks are overlaid — everything here is already
+        // client-side in GENERIC_NAMES, no fetch needed. Unit is not
+        // separately restored here — the dispatchEvent() above already
+        // derived it from the resolved item, which is this field's only
+        // source of truth (read-only, see the input's own definition above).
         if (genericLabel) {
             const itemSearchInput = card.querySelector('.item-search-input');
             itemSearchInput.value = genericLabel;
             itemSearchInput.dispatchEvent(new Event('input'));
             if (qty) card.querySelector('.qty-input').value = qty;
             if (unitCost !== null && unitCost !== undefined) card.querySelector('.cost-input').value = Number(unitCost).toFixed(2);
-            if (unit) card.querySelector('.unit-input').value = unit;
             if (remarks) card.querySelector('input[name$="[remarks]"]').value = remarks;
         }
 
@@ -256,11 +258,11 @@
             itemIdInput.value = item ? item.id : '';
             // No unit_cost auto-fill — a Generic Item has no single cost of
             // its own (different brands under it can cost differently), so
-            // the user enters it manually. Unit still comes straight from
-            // the Generic Item's own unit field.
-            if (item && !unitInput.value) {
-                unitInput.value = item.unit || '';
-            }
+            // the user enters it manually. Unit is read-only and always
+            // mirrors whatever's currently selected, instead of only
+            // filling in when blank (which could leave it out of sync
+            // after picking a different item).
+            unitInput.value = item ? (item.unit || '') : '';
             computeTotals();
         });
 
