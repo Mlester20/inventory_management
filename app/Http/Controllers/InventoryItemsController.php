@@ -86,7 +86,7 @@ class InventoryItemsController extends Controller
         }
 
         if ($tab === 'products') {
-            $products = Product::with(['genericName', 'category'])
+            $products = Product::with(['genericName', 'category', 'supplier', 'tax'])
                 ->when($showTrashed, fn ($q) => $q->onlyTrashed())
                 ->when(! $showTrashed && $showArchived, fn ($q) => $q->whereNotNull('archived_at'))
                 ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))

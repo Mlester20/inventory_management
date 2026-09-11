@@ -344,7 +344,40 @@
                                     <td>{{ $product->code }}</td>
                                     <td>{{ $product->category->category_name ?? 'N/A' }}</td>
                                     <td>
-                                        {{ $product->description ?: $product->item_name }}
+                                        <span class="view-product-trigger text-primary" style="cursor: pointer;"
+                                            data-bs-toggle="modal" data-bs-target="#viewProductModal"
+                                            data-code="{{ $product->code }}"
+                                            data-barcode="{{ $product->barcode }}"
+                                            data-generic-description="{{ $product->genericName ? $product->genericName->generic_name . ' (' . $product->genericName->unit . ') — ' . ($product->category->category_name ?? '') : '' }}"
+                                            data-brand="{{ $product->brand_name }}"
+                                            data-description="{{ $product->description }}"
+                                            data-supplier="{{ $product->supplier->supplier_name ?? '' }}"
+                                            data-tax="{{ $product->tax ? $product->tax->name . ' (' . $product->tax->rate . '%)' : '' }}"
+                                            data-can-see-cost="{{ Auth::user()->role === 'admin' ? '1' : '0' }}"
+                                            data-cost="{{ Auth::user()->role === 'admin' ? $product->unit_cost : '' }}"
+                                            data-unit-price-percent="{{ $product->unit_price_percent }}"
+                                            data-unit-price="{{ $product->unit_price }}"
+                                            data-wholesale-percent="{{ $product->wholesale_percent }}"
+                                            data-wholesale-price="{{ $product->wholesale_price }}"
+                                            data-price-1-percent="{{ $product->price_1_percent }}"
+                                            data-price-1="{{ $product->price_1 }}"
+                                            data-price-2-percent="{{ $product->price_2_percent }}"
+                                            data-price-2="{{ $product->price_2 }}"
+                                            data-price-3-percent="{{ $product->price_3_percent }}"
+                                            data-price-3="{{ $product->price_3 }}"
+                                            data-fda-reg-no="{{ $product->fda_reg_no }}"
+                                            data-fda-reg-exp="{{ $product->fda_reg_exp?->format('M d, Y') }}"
+                                            data-custom-1="{{ $product->custom_field_1 }}"
+                                            data-custom-2="{{ $product->custom_field_2 }}"
+                                            data-custom-3="{{ $product->custom_field_3 }}"
+                                            data-custom-4="{{ $product->custom_field_4 }}"
+                                            data-location="{{ $product->location }}"
+                                            data-threshold="{{ $product->low_stock_threshold }}"
+                                            data-warehouse-qty="{{ $warehouseQty }}"
+                                            data-pos-qty="{{ $posQty }}"
+                                            data-total-qty="{{ $totalQty }}"
+                                            data-image-url="{{ $product->image ? asset('storage/' . $product->image) : '' }}"
+                                        >{{ $product->description ?: $product->item_name }}</span>
                                         @if($product->isArchived())
                                             <span class="badge bg-dark">ARCHIVED</span>
                                         @endif
@@ -495,6 +528,7 @@
 
             @include('admin.inventory-items.partials.product-modal', ['mode' => 'create', 'nextProductCode' => $nextProductCode])
             @include('admin.inventory-items.partials.product-modal', ['mode' => 'update'])
+            @include('admin.inventory-items.partials.view-product-modal')
         @endif
 
         {{-- ============================= LOT/SERIAL & EXPIRY TAB ============================= --}}
