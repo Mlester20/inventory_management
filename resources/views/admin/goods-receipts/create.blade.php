@@ -262,7 +262,7 @@
             <div class="row g-2 mt-1">
                 <div class="col-md-3">
                     <label class="form-label small mb-1">Unit</label>
-                    <input type="text" name="items[${index}][unit]" class="form-control unit-input" placeholder="e.g. Box, Bottle">
+                    <input type="text" name="items[${index}][unit]" class="form-control unit-input" readonly>
                 </div>
                 <div class="col-md-9">
                     <label class="form-label small mb-1">Remarks</label>
@@ -284,11 +284,12 @@
             const item = findItemByLabel(this.value);
             itemIdInput.value = item ? item.id : '';
             batchDatalist.innerHTML = '';
+            // Unit is a fixed attribute of the item (read-only field — see
+            // the input above), so it always mirrors whatever's currently
+            // selected instead of only filling in when blank.
+            unitInput.value = item ? (item.unit || '') : '';
             if (item) {
                 costInput.value = item.unit_cost.toFixed(2);
-                if (!unitInput.value) {
-                    unitInput.value = item.unit || '';
-                }
                 activeBatches(item).forEach(b => {
                     const opt = document.createElement('option');
                     opt.value = b.batch_no || '';
@@ -317,7 +318,10 @@
             itemSearchInput.dispatchEvent(new Event('input'));
             if (prefill.qty) card.querySelector('.qty-input').value = prefill.qty;
             if (prefill.unit_cost !== null && prefill.unit_cost !== undefined) costInput.value = Number(prefill.unit_cost).toFixed(2);
-            if (prefill.unit) unitInput.value = prefill.unit;
+            // Unit is not separately restored here — the dispatchEvent()
+            // above already derived it from the resolved item, which is
+            // now this field's only source of truth (read-only, see the
+            // input's own definition above).
             if (prefill.batch_no) {
                 batchInput.value = prefill.batch_no;
                 batchInput.dispatchEvent(new Event('input'));
@@ -333,7 +337,11 @@
         card.querySelectorAll('input, select').forEach(el => el.disabled = !directVisible);
     }
 
-    document.getElementById('addDirectRowBtn').addEventListener('click', addDirectRow);
+    // Not addEventListener('click', addDirectRow) directly — that passes the
+    // click's MouseEvent as addDirectRow's first argument (prefill), which
+    // is truthy, so the function reads event.label (undefined) and writes
+    // the literal string "undefined" into the item search box.
+    document.getElementById('addDirectRowBtn').addEventListener('click', () => addDirectRow());
 
     // "Generate N Lines" — reuses the exact same addDirectRow() the Add Item
     // button calls, just N times in a row, so a batch-generated line is
