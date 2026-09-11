@@ -14,9 +14,17 @@ class ActivityLogController extends Controller
      */
     public function index(Request $request)
     {
+        // admin_staff only ever sees their own actions — the user/role
+        // filters below are for the full admin's cross-account view, so
+        // they're ignored entirely for admin_staff rather than merely
+        // hidden client-side (a manually-edited query string could
+        // otherwise still pull another account's history).
+        $ownOnly = auth()->user()->role === 'admin_staff';
+
         $activityLogs = ActivityLog::with('user')
-            ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->user_id))
-            ->when($request->filled('role'), fn ($q) => $q->where('role', $request->role))
+            ->when($ownOnly, fn ($q) => $q->where('user_id', auth()->id()))
+            ->when(! $ownOnly && $request->filled('user_id'), fn ($q) => $q->where('user_id', $request->user_id))
+            ->when(! $ownOnly && $request->filled('role'), fn ($q) => $q->where('role', $request->role))
             ->when($request->filled('module'), fn ($q) => $q->where('module', $request->module))
             ->when($request->filled('source'), fn ($q) => $q->where('source', $request->source))
             ->when($request->filled('date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->date_from))
@@ -25,10 +33,10 @@ class ActivityLogController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $users = User::orderBy('name')->get(['id', 'name', 'email']);
+        $users = $ownOnly ? collect() : User::orderBy('name')->get(['id', 'name', 'email']);
         $modules = ActivityLog::whereNotNull('module')->distinct()->orderBy('module')->pluck('module');
         $sources = [ActivityLog::SOURCE_ADMIN, ActivityLog::SOURCE_POS, ActivityLog::SOURCE_SYSTEM];
-        $roles = ActivityLog::whereNotNull('role')->distinct()->orderBy('role')->pluck('role');
+        $roles = $ownOnly ? collect() : ActivityLog::whereNotNull('role')->distinct()->orderBy('role')->pluck('role');
 
         return view('admin.activitiesLog', compact('activityLogs', 'users', 'modules', 'sources', 'roles'));
     }

@@ -6,25 +6,30 @@
 <div class="card shadow-sm mt-3">
     <div class="card-header">
         <h5 class="mb-3">Audit Trail</h5>
+        @if(Auth::user()->role === 'admin_staff')
+            <p class="text-muted small mb-2">Showing your own activity only.</p>
+        @endif
         <form action="{{ route('activity-logs.index') }}" method="GET" class="row g-2 align-items-end">
-            <div class="col-md-2">
-                <label class="form-label small text-muted mb-1">User</label>
-                <select name="user_id" class="form-select form-select-sm">
-                    <option value="">All users</option>
-                    @foreach($users as $user)
-                        <option value="{{ $user->id }}" @selected(request('user_id') == $user->id)>{{ $user->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small text-muted mb-1">Role</label>
-                <select name="role" class="form-select form-select-sm">
-                    <option value="">All roles</option>
-                    @foreach($roles as $role)
-                        <option value="{{ $role }}" @selected(request('role') === $role)>{{ ucfirst(str_replace('_', ' ', $role)) }}</option>
-                    @endforeach
-                </select>
-            </div>
+            @if(Auth::user()->role === 'admin')
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">User</label>
+                    <select name="user_id" class="form-select form-select-sm">
+                        <option value="">All users</option>
+                        @foreach($users as $user)
+                            <option value="{{ $user->id }}" @selected(request('user_id') == $user->id)>{{ $user->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">Role</label>
+                    <select name="role" class="form-select form-select-sm">
+                        <option value="">All roles</option>
+                        @foreach($roles as $role)
+                            <option value="{{ $role }}" @selected(request('role') === $role)>{{ ucfirst(str_replace('_', ' ', $role)) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <div class="col-md-2">
                 <label class="form-label small text-muted mb-1">Module</label>
                 <select name="module" class="form-select form-select-sm">
