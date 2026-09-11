@@ -116,24 +116,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
-                            <thead>
-                                <tr>
-                                    <th style="width:3%">#</th>
-                                    <th style="width:18%">Generic Description</th>
-                                    <th style="width:16%">Item Description</th>
-                                    <th style="width:9%">Lot/Batch No.</th>
-                                    <th style="width:9%">Expiry Date</th>
-                                    <th style="width:14%">Remarks</th>
-                                    <th style="width:12%">Qty</th>
-                                    <th style="width:8%">Unit</th>
-                                    <th style="width:4%"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="aoLineItemsBody"></tbody>
-                        </table>
-                    </div>
+                    <div id="aoLineItemsBody"></div>
                 </div>
 
                 <!-- Purchase Order Tab -->
@@ -163,23 +146,7 @@
                     </div>
 
                     <h6 class="mb-2">Remaining Generic Lines</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
-                            <thead>
-                                <tr>
-                                    <th style="width:3%">#</th>
-                                    <th style="width:18%">Generic Description</th>
-                                    <th style="width:16%">Item Description</th>
-                                    <th style="width:9%">Lot/Batch No.</th>
-                                    <th style="width:9%">Expiry Date</th>
-                                    <th style="width:14%">Remarks</th>
-                                    <th style="width:12%">Qty</th>
-                                    <th style="width:8%">Unit</th>
-                                </tr>
-                            </thead>
-                            <tbody id="poLineItemsBody"></tbody>
-                        </table>
-                    </div>
+                    <div id="poLineItemsBody"></div>
                     <div id="poEmptyMessage" class="alert alert-info d-none">Select a Sales Order to load its remaining lines.</div>
                 </div>
 
@@ -354,28 +321,61 @@
     // ---------- Advance Order / Walk-in tab ----------
 
     function renumberAoRows() {
-        document.querySelectorAll('#aoLineItemsBody tr').forEach((row, i) => {
-            row.querySelector('.row-number').textContent = i + 1;
+        document.querySelectorAll('#aoLineItemsBody .line-item-card').forEach((card, i) => {
+            card.querySelector('.line-item-number').textContent = 'Item #' + (i + 1);
         });
     }
 
     function addAoRow(prefill = null) {
         const index = aoRowIndex++;
-        const row = document.createElement('tr');
+        const row = document.createElement('div');
+        row.className = 'line-item-card border rounded p-3 mb-3';
         row.innerHTML = `
-            <td class="row-number"></td>
-            <td>
-                <input type="text" class="form-control form-control-sm ao-generic-search-input" list="ao-generic-list-${index}"
-                    placeholder="Search generic name..." autocomplete="off" required>
-                <datalist id="ao-generic-list-${index}">${genericDatalistOptions()}</datalist>
-            </td>
-            <td class="item-select-cell"><span class="text-muted small">Select a generic first</span></td>
-            <td class="batch-cell"></td>
-            <td class="expiry-cell"></td>
-            <td class="remarks-cell"></td>
-            <td class="qty-cell"></td>
-            <td class="unit-cell"></td>
-            <td><button type="button" class="btn btn-sm btn-outline-danger remove-row-btn"><i class="bx bx-trash"></i></button></td>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold text-muted line-item-number">Item</span>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn">
+                    <i class="bx bx-trash"></i> Remove
+                </button>
+            </div>
+
+            <div class="row g-2">
+                <div class="col-md-12">
+                    <label class="form-label small mb-1">Generic Description</label>
+                    <input type="text" class="form-control form-control-sm ao-generic-search-input" list="ao-generic-list-${index}"
+                        placeholder="Search generic name..." autocomplete="off" required>
+                    <datalist id="ao-generic-list-${index}">${genericDatalistOptions()}</datalist>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-12">
+                    <label class="form-label small mb-1">Item Description</label>
+                    <div class="item-select-cell"><span class="text-muted small">Select a generic first</span></div>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Lot/Batch No.</label>
+                    <div class="batch-cell"></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Expiry Date</label>
+                    <div class="expiry-cell"></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Qty</label>
+                    <div class="qty-cell"></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Unit</label>
+                    <div class="unit-cell"></div>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-12">
+                    <label class="form-label small mb-1">Remarks</label>
+                    <div class="remarks-cell"></div>
+                </div>
+            </div>
         `;
         document.getElementById('aoLineItemsBody').appendChild(row);
         renumberAoRows();
@@ -421,6 +421,7 @@
         }
 
         genericSearchInput.addEventListener('input', function () {
+            this.title = this.value;
             loadAoAvailability(this.value);
         });
 
@@ -432,6 +433,7 @@
             const generic = GENERIC_NAMES.find(g => g.id === prefill.generic_name_id);
             if (generic) {
                 genericSearchInput.value = genericLabel(generic);
+                genericSearchInput.title = genericLabel(generic);
                 loadAoAvailability(genericLabel(generic), prefill);
             }
         }
@@ -471,6 +473,10 @@
 
         function syncSelected() {
             const selected = itemSelect.options[itemSelect.selectedIndex];
+            // Long item descriptions get visually clipped by the column
+            // width — a native hover tooltip keeps the full text reachable
+            // without needing to widen the table indefinitely.
+            itemSelect.title = selected ? selected.textContent : '';
             batchDisplay.value = selected ? (selected.getAttribute('data-batch') || 'N/A') : '';
             expiryDisplay.value = selected ? (selected.getAttribute('data-exp') || 'N/A') : '';
 
@@ -565,16 +571,43 @@
 
         for (const line of data.items) {
             const index = poRowIndex++;
-            const row = document.createElement('tr');
+            const row = document.createElement('div');
+            row.className = 'line-item-card border rounded p-3 mb-3';
             row.innerHTML = `
-                <td>${body.children.length + 1}</td>
-                <td>${line.generic_name} <span class="badge bg-warning text-dark">Remaining: ${line.remaining_qty}</span></td>
-                <td class="item-select-cell"><span class="text-muted small">Checking availability…</span></td>
-                <td class="batch-cell"></td>
-                <td class="expiry-cell"></td>
-                <td class="remarks-cell"></td>
-                <td class="qty-cell"></td>
-                <td class="unit-cell"></td>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-semibold">${line.generic_name}</span>
+                    <span class="badge bg-warning text-dark">Remaining: ${line.remaining_qty}</span>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-12">
+                        <label class="form-label small mb-1">Item Description</label>
+                        <div class="item-select-cell"><span class="text-muted small">Checking availability…</span></div>
+                    </div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small mb-1">Lot/Batch No.</label>
+                        <div class="batch-cell"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small mb-1">Expiry Date</label>
+                        <div class="expiry-cell"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small mb-1">Qty</label>
+                        <div class="qty-cell"></div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small mb-1">Unit</label>
+                        <div class="unit-cell"></div>
+                    </div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-12">
+                        <label class="form-label small mb-1">Remarks</label>
+                        <div class="remarks-cell"></div>
+                    </div>
+                </div>
             `;
             body.appendChild(row);
 

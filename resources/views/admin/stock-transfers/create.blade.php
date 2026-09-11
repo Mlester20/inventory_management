@@ -68,22 +68,7 @@
                         <i class="bx bx-plus"></i> Add Generic
                     </button>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle">
-                        <thead>
-                            <tr>
-                                <th style="width:3%">#</th>
-                                <th style="width:24%">Generic Description</th>
-                                <th style="width:24%">Item / Lot</th>
-                                <th style="width:14%">Available</th>
-                                <th style="width:14%">Qty</th>
-                                <th style="width:8%">Unit</th>
-                                <th style="width:4%"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="lineItemsBody"></tbody>
-                    </table>
-                </div>
+                <div id="lineItemsBody"></div>
 
                 <div class="mt-3">
                     <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
@@ -136,27 +121,52 @@
     }
 
     function renumberRows() {
-        document.querySelectorAll('#lineItemsBody tr').forEach((row, i) => {
-            row.querySelector('.row-number').textContent = i + 1;
+        document.querySelectorAll('#lineItemsBody .line-item-card').forEach((card, i) => {
+            card.querySelector('.line-item-number').textContent = 'Item #' + (i + 1);
         });
     }
 
     function addRow(prefill = {}) {
         const { genericLabel: prefillGenericLabel = '', productBatchId = '', qty = '' } = prefill;
         const index = rowIndex++;
-        const row = document.createElement('tr');
+        const row = document.createElement('div');
+        row.className = 'line-item-card border rounded p-3 mb-3';
         row.innerHTML = `
-            <td class="row-number"></td>
-            <td>
-                <input type="text" class="form-control form-control-sm generic-search-input" list="generic-list-${index}"
-                    placeholder="Search generic name..." autocomplete="off" required>
-                <datalist id="generic-list-${index}">${genericDatalistOptions()}</datalist>
-            </td>
-            <td class="item-select-cell"><span class="text-muted small">Select a generic first</span></td>
-            <td class="available-cell"></td>
-            <td class="qty-cell"></td>
-            <td class="unit-cell"></td>
-            <td><button type="button" class="btn btn-sm btn-outline-danger remove-row-btn"><i class="bx bx-trash"></i></button></td>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold text-muted line-item-number">Item</span>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn">
+                    <i class="bx bx-trash"></i> Remove
+                </button>
+            </div>
+
+            <div class="row g-2">
+                <div class="col-md-12">
+                    <label class="form-label small mb-1">Generic Description</label>
+                    <input type="text" class="form-control form-control-sm generic-search-input" list="generic-list-${index}"
+                        placeholder="Search generic name..." autocomplete="off" required>
+                    <datalist id="generic-list-${index}">${genericDatalistOptions()}</datalist>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-12">
+                    <label class="form-label small mb-1">Item / Lot</label>
+                    <div class="item-select-cell"><span class="text-muted small">Select a generic first</span></div>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-6 col-md-4">
+                    <label class="form-label small mb-1">Available</label>
+                    <div class="available-cell"></div>
+                </div>
+                <div class="col-6 col-md-4">
+                    <label class="form-label small mb-1">Qty</label>
+                    <div class="qty-cell"></div>
+                </div>
+                <div class="col-6 col-md-4">
+                    <label class="form-label small mb-1">Unit</label>
+                    <div class="unit-cell"></div>
+                </div>
+            </div>
         `;
         document.getElementById('lineItemsBody').appendChild(row);
         renumberRows();
@@ -168,6 +178,7 @@
 
         const genericSearchInput = row.querySelector('.generic-search-input');
         genericSearchInput.addEventListener('input', async function () {
+            this.title = this.value;
             await loadItemsForRow(row, this.value);
         });
 
@@ -178,6 +189,7 @@
         // the matching batch/qty are preselected once the options render.
         if (prefillGenericLabel) {
             genericSearchInput.value = prefillGenericLabel;
+            genericSearchInput.title = prefillGenericLabel;
             loadItemsForRow(row, prefillGenericLabel, { productBatchId, qty });
         }
     }
@@ -205,7 +217,7 @@
     }
 
     function renderAvailability(row, cells, items, unit, preselect = null) {
-        const index = [...document.querySelectorAll('#lineItemsBody tr')].indexOf(row);
+        const index = [...document.querySelectorAll('#lineItemsBody .line-item-card')].indexOf(row);
         const optionsHtml = itemOptionsHtml(items);
 
         if (!optionsHtml) {
@@ -228,6 +240,7 @@
 
         function syncSelected() {
             const selected = itemSelect.options[itemSelect.selectedIndex];
+            itemSelect.title = selected ? selected.textContent : '';
             const maxStock = selected ? parseInt(selected.getAttribute('data-max') || '0', 10) : 0;
             availableDisplay.textContent = selected ? maxStock : '—';
             qtyInput.max = maxStock || 1;
@@ -253,7 +266,7 @@
     // changes, every already-picked row needs its availability refetched
     // (a batch available at Warehouse may not exist at all at POS, etc.).
     document.getElementById('from_location_id').addEventListener('change', function () {
-        document.querySelectorAll('#lineItemsBody tr').forEach(row => {
+        document.querySelectorAll('#lineItemsBody .line-item-card').forEach(row => {
             if (row.dataset.genericLabel) {
                 loadItemsForRow(row, row.dataset.genericLabel);
             }
