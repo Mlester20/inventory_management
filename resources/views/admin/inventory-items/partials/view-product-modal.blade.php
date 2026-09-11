@@ -126,6 +126,9 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="vp_clone_btn">
+                    <i class="bx bx-copy"></i> Clone
+                </button>
             </div>
         </div>
     </div>
@@ -133,11 +136,14 @@
 
 <script>
 (function () {
+    let currentViewTrigger = null;
+
     // Every field here is read directly off the clicked trigger's data-*
     // attributes (already rendered server-side per row) — a pure display,
     // no fetch needed.
     document.querySelectorAll('.view-product-trigger').forEach(function (trigger) {
         trigger.addEventListener('click', function () {
+            currentViewTrigger = this;
             const get = (attr) => this.getAttribute(attr) || '';
             const money = (v) => v === '' ? '—' : '₱' + parseFloat(v).toFixed(2);
             const percent = (v) => v === '' ? '—' : parseFloat(v).toFixed(2) + '%';
@@ -184,6 +190,23 @@
                 imageWrapper.hidden = true;
             }
         });
+    });
+
+    // Hands off to the same row's existing Clone button rather than
+    // duplicating its data-* attributes and population logic here —
+    // waits for the View modal to finish closing first so the two
+    // modals don't briefly stack.
+    document.getElementById('vp_clone_btn').addEventListener('click', function () {
+        if (!currentViewTrigger) return;
+        const cloneBtn = currentViewTrigger.closest('tr')?.querySelector('.clone-product-btn');
+        if (!cloneBtn) return;
+
+        const viewModalEl = document.getElementById('viewProductModal');
+        viewModalEl.addEventListener('hidden.bs.modal', function onHidden() {
+            viewModalEl.removeEventListener('hidden.bs.modal', onHidden);
+            cloneBtn.click();
+        });
+        bootstrap.Modal.getInstance(viewModalEl).hide();
     });
 })();
 </script>
