@@ -49,6 +49,18 @@ class SalesQuoteController extends Controller
      */
     public function create()
     {
+        return view('admin.sales-quotes.create', $this->formData());
+    }
+
+    /**
+     * Data shared by the create and edit-draft forms. When editing a draft,
+     * its own items are mapped back into the shape the item picker's JS
+     * expects to prefill (generic_label so it can be typed straight into
+     * the search input — everything is already client-side, no fetch
+     * needed, same as Sales Order's picker).
+     */
+    protected function formData(?SalesQuote $editing = null): array
+    {
         $customers = Customer::orderBy('customer_name')->get();
         $genericNames = GenericName::with(['category', 'products' => function ($query) {
             $query->withSum('locationStocks', 'qty');
@@ -78,10 +90,27 @@ class SalesQuoteController extends Controller
             ];
         })->values();
 
+        $prefillLines = [];
+
+        if ($editing) {
+            $editing->load('items.genericName.category');
+
+            $prefillLines = $editing->items
+                ->filter(fn ($line) => $line->genericName)
+                ->map(fn ($line) => [
+                    'generic_label' => "{$line->genericName->generic_name} ({$line->genericName->unit}) — {$line->genericName->category->category_name}",
+                    'generic_name_id' => $line->generic_name_id,
+                    'qty' => $line->qty,
+                    'price' => $line->price !== null ? (float) $line->price : null,
+                ])
+                ->values();
+        }
+
         // A failed validation redirect flashes the submitted `items` array
         // via old() — reuse it so the JS-built line-item rows repopulate
         // from what the user actually typed, instead of resetting to blank.
-        $prefillLines = [];
+        // Takes precedence over the draft's own saved items, since it
+        // reflects the user's most recent (unsaved) edits.
         if (old('items')) {
             $prefillLines = collect(old('items'))
                 ->map(function ($line) use ($genericNames) {
@@ -99,7 +128,7 @@ class SalesQuoteController extends Controller
                 ->values();
         }
 
-        return view('admin.sales-quotes.create', compact('customers', 'genericNames', 'users', 'genericNamesForJs', 'prefillLines'));
+        return compact('customers', 'genericNames', 'users', 'genericNamesForJs', 'prefillLines') + ['editingSalesQuote' => $editing];
     }
 
     /**
@@ -107,16 +136,23 @@ class SalesQuoteController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'quote_date' => 'required|date',
-            'valid_until' => 'nullable|date',
-            'prepared_by' => 'nullable|exists:users,id',
-            'items' => 'required|array|min:1',
-            'items.*.generic_name_id' => 'required|exists:generic_names,id',
-            'items.*.qty' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0',
-        ]);
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+
+            $salesQuote = $this->salesQuoteService->saveDraft($validated);
+
+            ActivityLog::record(
+                module: 'SalesQuote',
+                action: 'draft_saved',
+                loggable: $salesQuote,
+                description: "Saved draft Sales Quote {$salesQuote->quote_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
+            return redirect()->route('sales-quotes.show', $salesQuote);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
 
         $salesQuote = $this->salesQuoteService->createSalesQuote($validated);
 
@@ -129,6 +165,42 @@ class SalesQuoteController extends Controller
 
         Alert::success('Success', 'Sales Quote created successfully');
         return redirect()->route('sales-quotes.show', $salesQuote);
+    }
+
+    /**
+     * Loose rules for a draft — an interrupted encoder can leave anything
+     * blank or half-typed, so nothing here can block the save.
+     */
+    protected function draftValidationRules(): array
+    {
+        return [
+            'customer_id' => 'nullable|exists:customers,id',
+            'quote_date' => 'nullable|date',
+            'valid_until' => 'nullable|date',
+            'prepared_by' => 'nullable|exists:users,id',
+            'items' => 'nullable|array',
+            'items.*.generic_name_id' => 'nullable|exists:generic_names,id',
+            'items.*.qty' => 'nullable|integer|min:1',
+            'items.*.price' => 'nullable|numeric|min:0',
+        ];
+    }
+
+    /**
+     * Strict rules for the moment the quote is actually issued — whether
+     * that's a direct Save or finalizing a draft, the data must be complete.
+     */
+    protected function postedValidationRules(): array
+    {
+        return [
+            'customer_id' => 'required|exists:customers,id',
+            'quote_date' => 'required|date',
+            'valid_until' => 'nullable|date',
+            'prepared_by' => 'nullable|exists:users,id',
+            'items' => 'required|array|min:1',
+            'items.*.generic_name_id' => 'required|exists:generic_names,id',
+            'items.*.qty' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
+        ];
     }
 
     /**
@@ -171,20 +243,62 @@ class SalesQuoteController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show the form for editing the specified resource. Only a draft can be
+     * edited — an issued quote is final.
      */
     public function edit(SalesQuote $salesQuote)
     {
-        Alert::info('Not supported', 'Editing an issued Sales Quote is not supported.');
-        return redirect()->route('sales-quotes.show', $salesQuote);
+        if (! $salesQuote->isDraft()) {
+            Alert::info('Not supported', 'Editing an issued Sales Quote is not supported.');
+            return redirect()->route('sales-quotes.show', $salesQuote);
+        }
+
+        return view('admin.sales-quotes.create', $this->formData($salesQuote));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified resource in storage. Only a draft can be updated —
+     * either re-saved as a draft, or finalized into an issued quote.
      */
     public function update(Request $request, SalesQuote $salesQuote)
     {
-        Alert::info('Not supported', 'Editing an issued Sales Quote is not supported.');
+        if (! $salesQuote->isDraft()) {
+            Alert::info('Not supported', 'Editing an issued Sales Quote is not supported.');
+            return redirect()->route('sales-quotes.show', $salesQuote);
+        }
+
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+
+            $salesQuote = $this->salesQuoteService->saveDraft($validated, $salesQuote);
+
+            ActivityLog::record(
+                module: 'SalesQuote',
+                action: 'draft_saved',
+                loggable: $salesQuote,
+                description: "Saved draft Sales Quote {$salesQuote->quote_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
+            return redirect()->route('sales-quotes.show', $salesQuote);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
+
+        try {
+            $salesQuote = $this->salesQuoteService->finalizeDraft($salesQuote, $validated);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        ActivityLog::record(
+            module: 'SalesQuote',
+            action: 'created',
+            loggable: $salesQuote,
+            description: "Created Sales Quote {$salesQuote->quote_no}",
+        );
+
+        Alert::success('Success', 'Sales Quote created successfully');
         return redirect()->route('sales-quotes.show', $salesQuote);
     }
 

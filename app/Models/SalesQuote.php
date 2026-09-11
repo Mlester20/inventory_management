@@ -13,6 +13,7 @@ class SalesQuote extends Model
         'customer_id',
         'quote_no',
         'status',
+        'is_draft',
         'quote_date',
         'valid_until',
         'prepared_by',
@@ -22,12 +23,18 @@ class SalesQuote extends Model
     protected $casts = [
         'quote_date' => 'date',
         'valid_until' => 'date',
+        'is_draft' => 'boolean',
         'archived_at' => 'datetime',
     ];
 
     public function isArchived(): bool
     {
         return $this->archived_at !== null;
+    }
+
+    public function isDraft(): bool
+    {
+        return (bool) $this->is_draft;
     }
 
     public function customer(): BelongsTo

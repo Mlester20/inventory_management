@@ -1,10 +1,10 @@
 @extends(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? 'layout.app' : 'layout.user')
 
-@section('title', 'New Sales Quote')
+@section('title', isset($editingSalesQuote) && $editingSalesQuote ? 'Edit Draft Sales Quote' : 'New Sales Quote')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Sales Quote</h5>
+        <h5 class="card-header">{{ isset($editingSalesQuote) && $editingSalesQuote ? 'Edit Draft Sales Quote — ' . $editingSalesQuote->quote_no : 'New Sales Quote' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,8 +16,15 @@
                 </div>
             @endif
 
-            <form action="{{ route('sales-quotes.store') }}" method="POST" id="salesQuoteForm">
+            <form
+                action="{{ isset($editingSalesQuote) && $editingSalesQuote ? route('sales-quotes.update', $editingSalesQuote) : route('sales-quotes.store') }}"
+                method="POST"
+                id="salesQuoteForm"
+            >
                 @csrf
+                @if (isset($editingSalesQuote) && $editingSalesQuote)
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -30,7 +37,7 @@
                         >
                             <option value="">-- Select Customer --</option>
                             @foreach ($customers as $customer)
-                                <option value="{{ $customer->id }}" data-price-level="{{ $customer->price_level }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+                                <option value="{{ $customer->id }}" data-price-level="{{ $customer->price_level }}" {{ old('customer_id', $editingSalesQuote?->customer_id) == $customer->id ? 'selected' : '' }}>
                                     {{ $customer->customer_name }}
                                 </option>
                             @endforeach
@@ -50,7 +57,7 @@
                             name="quote_date"
                             id="quote_date"
                             class="form-control @error('quote_date') is-invalid @enderror"
-                            value="{{ old('quote_date', now()->toDateString()) }}"
+                            value="{{ old('quote_date', $editingSalesQuote?->quote_date?->toDateString() ?? now()->toDateString()) }}"
                             required
                         >
                         @error('quote_date')
@@ -65,7 +72,7 @@
                             name="valid_until"
                             id="valid_until"
                             class="form-control @error('valid_until') is-invalid @enderror"
-                            value="{{ old('valid_until') }}"
+                            value="{{ old('valid_until', $editingSalesQuote?->valid_until?->toDateString()) }}"
                         >
                         @error('valid_until')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -83,7 +90,7 @@
                         >
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingSalesQuote?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                                     {{ $user->name }}
                                 </option>
                             @endforeach
@@ -124,7 +131,10 @@
                     <button type="button" class="btn btn-secondary" id="addRowBtn">
                         <i class="bx bx-plus"></i> Add Item
                     </button>
-                    <button type="submit" class="btn btn-primary">Save Sales Quote</button>
+                    <button type="submit" name="save_action" value="draft" class="btn btn-outline-secondary" formnovalidate>
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="post" class="btn btn-primary">Save Sales Quote</button>
                     <a href="{{ route('sales-quotes.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>

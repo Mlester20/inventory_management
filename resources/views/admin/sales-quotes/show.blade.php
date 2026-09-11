@@ -8,14 +8,29 @@
             <i class="bx bx-arrow-back"></i> Back to Sales Quotes
         </a>
         <div class="d-flex gap-2">
-            @if($salesQuote->status === 'open')
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#convertModal">
-                    <i class="bx bx-transfer"></i> Convert to Sales Order
+            @if($salesQuote->isDraft())
+                <a href="{{ route('sales-quotes.edit', $salesQuote) }}" class="btn btn-primary">
+                    <i class="bx bx-edit-alt"></i> Continue Editing
+                </a>
+                @if(Auth::user()->role === 'admin')
+                    <form action="{{ route('sales-quotes.destroy', $salesQuote) }}" method="POST" onsubmit="return confirmSubmit(this, 'Delete draft {{ $salesQuote->quote_no }}?');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bx bx-trash"></i> Delete Draft
+                        </button>
+                    </form>
+                @endif
+            @else
+                @if($salesQuote->status === 'open')
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#convertModal">
+                        <i class="bx bx-transfer"></i> Convert to Sales Order
+                    </button>
+                @endif
+                <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                    <i class="bx bx-printer"></i> Print
                 </button>
             @endif
-            <button type="button" class="btn btn-outline-primary" onclick="window.print()">
-                <i class="bx bx-printer"></i> Print
-            </button>
             @if($salesQuote->isArchived())
                 <form action="{{ route('sales-quotes.unarchive', $salesQuote) }}" method="POST">
                     @csrf
@@ -54,7 +69,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="text-muted small">Customer</label>
-                    <p class="fw-bold mb-0">{{ $salesQuote->customer->customer_name }}</p>
+                    <p class="fw-bold mb-0">{{ $salesQuote->customer?->customer_name ?? '—' }}</p>
                 </div>
                 <div class="col-md-3">
                     <label class="text-muted small">Valid Until</label>
@@ -63,16 +78,20 @@
                 <div class="col-md-3">
                     <label class="text-muted small">Status</label>
                     <p class="mb-0">
-                        <span class="badge bg-{{ ['open' => 'warning', 'converted' => 'success', 'cancelled' => 'danger'][$salesQuote->status] ?? 'secondary' }}">
-                            {{ ucfirst($salesQuote->status) }}
-                        </span>
+                        @if($salesQuote->isDraft())
+                            <span class="badge bg-secondary">DRAFT</span>
+                        @else
+                            <span class="badge bg-{{ ['open' => 'warning', 'converted' => 'success', 'cancelled' => 'danger'][$salesQuote->status] ?? 'secondary' }}">
+                                {{ ucfirst($salesQuote->status) }}
+                            </span>
+                        @endif
                     </p>
                 </div>
             </div>
             <div class="row">
                 <div class="col-md-3">
                     <label class="text-muted small">Quote Date</label>
-                    <p class="mb-0">{{ $salesQuote->quote_date->format('M d, Y') }}</p>
+                    <p class="mb-0">{{ $salesQuote->quote_date?->format('M d, Y') ?? '—' }}</p>
                 </div>
                 <div class="col-md-3">
                     <label class="text-muted small">Prepared By</label>
@@ -105,17 +124,17 @@
                 <tbody>
                     @foreach ($salesQuote->items as $item)
                         <tr>
-                            <td>{{ $item->genericName->generic_name }} ({{ $item->genericName->unit }})</td>
-                            <td class="text-end">{{ $item->qty }}</td>
-                            <td class="text-end">{{ number_format($item->price, 2) }}</td>
-                            <td class="text-end">{{ number_format($item->qty * $item->price, 2) }}</td>
+                            <td>{{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }})</td>
+                            <td class="text-end">{{ $item->qty ?? '—' }}</td>
+                            <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
+                            <td class="text-end">{{ ($item->qty !== null && $item->price !== null) ? number_format($item->qty * $item->price, 2) : '—' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
                     <tr class="table-info fw-bold">
                         <td colspan="3">TOTAL</td>
-                        <td class="text-end">{{ number_format($salesQuote->items->sum(fn($i) => $i->qty * $i->price), 2) }}</td>
+                        <td class="text-end">{{ number_format($salesQuote->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2) }}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -168,13 +187,13 @@
             </div>
 
             @include('partials.print.sales-totals-footer', [
-                'totalAmountDue' => number_format($salesQuote->items->sum(fn($i) => $i->qty * $i->price), 2),
+                'totalAmountDue' => number_format($salesQuote->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2),
                 'preparedByValue' => $salesQuote->preparedBy->name ?? '',
             ])
         </div>
     </div>
 
-    @if($salesQuote->status === 'open')
+    @if($salesQuote->status === 'open' && ! $salesQuote->isDraft())
         <div class="modal fade" id="convertModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog" role="document">
                 <form action="{{ route('sales-quotes.convert', $salesQuote) }}" method="POST">

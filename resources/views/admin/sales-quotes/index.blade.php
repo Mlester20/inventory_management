@@ -52,13 +52,17 @@
                         <tr>
                             <td>{{ $salesQuote->id }}</td>
                             <td>{{ $salesQuote->quote_no }}</td>
-                            <td>{{ $salesQuote->customer->customer_name }}</td>
-                            <td>{{ $salesQuote->quote_date->format('M d, Y') }}</td>
+                            <td>{{ $salesQuote->customer?->customer_name ?? '—' }}</td>
+                            <td>{{ $salesQuote->quote_date?->format('M d, Y') ?? '—' }}</td>
                             <td>{{ $salesQuote->valid_until?->format('M d, Y') ?? '—' }}</td>
                             <td>
-                                <span class="badge bg-{{ ['open' => 'warning', 'converted' => 'success', 'cancelled' => 'danger'][$salesQuote->status] ?? 'secondary' }}">
-                                    {{ ucfirst($salesQuote->status) }}
-                                </span>
+                                @if($salesQuote->isDraft())
+                                    <span class="badge bg-secondary">DRAFT</span>
+                                @else
+                                    <span class="badge bg-{{ ['open' => 'warning', 'converted' => 'success', 'cancelled' => 'danger'][$salesQuote->status] ?? 'secondary' }}">
+                                        {{ ucfirst($salesQuote->status) }}
+                                    </span>
+                                @endif
                                 @if($salesQuote->isArchived())
                                     <span class="badge bg-dark">ARCHIVED</span>
                                 @endif
@@ -72,6 +76,11 @@
                                         <a href="{{ route('sales-quotes.show', $salesQuote) }}" class="dropdown-item">
                                             <i class="bx bx-show me-1"></i> View
                                         </a>
+                                        @if($salesQuote->isDraft())
+                                            <a href="{{ route('sales-quotes.edit', $salesQuote) }}" class="dropdown-item">
+                                                <i class="bx bx-edit-alt me-1"></i> Continue Editing
+                                            </a>
+                                        @endif
 
                                         @if($salesQuote->isArchived())
                                             <form action="{{ route('sales-quotes.unarchive', $salesQuote) }}" method="POST">
@@ -80,7 +89,7 @@
                                                     <i class="bx bx-undo me-1"></i> Unarchive
                                                 </button>
                                             </form>
-                                        @else
+                                        @elseif(! $salesQuote->isDraft())
                                             <form action="{{ route('sales-quotes.archive', $salesQuote) }}" method="POST">
                                                 @csrf
                                                 <button type="submit" class="dropdown-item">
@@ -100,9 +109,9 @@
                                                 <button
                                                     type="submit"
                                                     class="dropdown-item text-danger"
-                                                    onclick="return confirmSubmit(this.form, 'Are you sure you want to delete this Sales Quote?')"
+                                                    onclick="return confirmSubmit(this.form, 'Are you sure you want to delete this {{ $salesQuote->isDraft() ? 'draft' : 'Sales Quote' }}?')"
                                                 >
-                                                    <i class="bx bx-trash me-1"></i> Delete
+                                                    <i class="bx bx-trash me-1"></i> {{ $salesQuote->isDraft() ? 'Delete Draft' : 'Delete' }}
                                                 </button>
                                             </form>
                                         @endif
