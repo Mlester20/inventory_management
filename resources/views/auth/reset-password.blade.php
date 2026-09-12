@@ -104,19 +104,17 @@
                   </div>
                 </div>
 
-                <div class="auth-form-meta">
-                  <form action="{{ route('password.email') }}" method="POST" class="d-inline">
-                    @csrf
-                    <input type="hidden" name="email" value="{{ old('email', $email) }}" />
-                    <button type="submit" id="resend-code-btn" class="auth-forgot-link auth-resend-btn">
-                      Resend code
-                    </button>
-                  </form>
-                </div>
-
                 <button class="auth-submit-btn" type="submit">
                   <span class="auth-submit-label">Verify Code</span>
                   <span class="auth-submit-spinner" aria-hidden="true"></span>
+                </button>
+              </form>
+
+              <form action="{{ route('password.email') }}" method="POST" class="auth-form-meta mt-3">
+                @csrf
+                <input type="hidden" name="email" value="{{ old('email', $email) }}" />
+                <button type="submit" id="resend-code-btn" class="auth-forgot-link auth-resend-btn">
+                  Resend code
                 </button>
               </form>
             @else

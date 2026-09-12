@@ -11,6 +11,7 @@ use App\Models\Supplier;
 use App\Models\Taxes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Exceptions\SheetNotFoundException;
 use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -217,7 +218,16 @@ class ProductController extends Controller
         ]);
 
         $import = new ProductsCatalogImport();
-        Excel::import($import, $request->file('file'));
+
+        try {
+            Excel::import($import, $request->file('file'));
+        } catch (SheetNotFoundException $e) {
+            Alert::error(
+                'Import failed',
+                'The uploaded file needs a sheet/tab named exactly "PRODUCTS". Please check the tab name in your Excel file and try again.'
+            );
+            return redirect()->route('inventory-items.index', ['tab' => 'products']);
+        }
 
         ActivityLog::record(
             module: 'Product',
