@@ -8,14 +8,15 @@
             <form action="{{ route('advance-orders.index') }}" method="GET" class="row g-2 align-items-end">
                 <div class="col-md-5">
                     <label class="form-label">Customer</label>
-                    <select name="customer_id" class="form-select">
-                        <option value="">-- All Customers --</option>
+                    <input type="text" id="ao_filter_customer_search" class="form-control" list="ao_filter_customer_datalist"
+                        placeholder="Search customer, or leave blank for all customers" autocomplete="off"
+                        value="{{ optional($customer)->customer_name }}">
+                    <datalist id="ao_filter_customer_datalist">
                         @foreach($customers as $c)
-                            <option value="{{ $c->id }}" {{ optional($customer)->id == $c->id ? 'selected' : '' }}>
-                                {{ $c->customer_name }}
-                            </option>
+                            <option value="{{ $c->customer_name }}"></option>
                         @endforeach
-                    </select>
+                    </datalist>
+                    <input type="hidden" name="customer_id" id="ao_filter_customer_id" value="{{ optional($customer)->id }}">
                 </div>
                 <div class="col-md-5">
                     <label class="form-label">Delivery Address</label>
@@ -145,4 +146,15 @@
         }
     }
 </style>
+@endsection
+
+@section('scripts')
+<script>
+    const AO_FILTER_CUSTOMERS = @json($customers->map(fn ($c) => ['id' => $c->id, 'name' => $c->customer_name])->values());
+
+    document.getElementById('ao_filter_customer_search').addEventListener('input', function () {
+        const match = AO_FILTER_CUSTOMERS.find(c => c.name === this.value);
+        document.getElementById('ao_filter_customer_id').value = match ? match.id : '';
+    });
+</script>
 @endsection

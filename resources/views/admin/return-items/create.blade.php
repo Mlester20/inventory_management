@@ -25,13 +25,16 @@
                         <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', now()->toDateString()) }}" required>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label for="customer_id" class="form-label">Customer</label>
-                        <select name="customer_id" id="customer_id" class="form-select">
-                            <option value="">— No customer / no credit —</option>
+                        <label for="customer_search" class="form-label">Customer</label>
+                        <input type="text" name="customer_search" id="customer_search" class="form-control"
+                            list="customer_datalist" placeholder="Search customer, or leave blank for no customer / no credit"
+                            autocomplete="off" value="{{ old('customer_search') }}">
+                        <datalist id="customer_datalist">
                             @foreach ($customers as $customer)
-                                <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>{{ $customer->customer_name }}</option>
+                                <option value="{{ $customer->customer_name }}"></option>
                             @endforeach
-                        </select>
+                        </datalist>
+                        <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id') }}">
                         <div class="form-text" id="customerHint">Once a customer is selected, the Item field only offers what they've actually been invoiced for — so a return can't be recorded against something they never bought.</div>
                     </div>
                     <div class="col-md-4 mb-3">
@@ -104,6 +107,12 @@
     const ALL_PRODUCTS = @json($productsForJs);
     let PRODUCTS = ALL_PRODUCTS;
 
+    const CUSTOMERS = @json($customers->map(fn($c) => ['id' => $c->id, 'name' => $c->customer_name])->values());
+
+    function findCustomerByName(name) {
+        return CUSTOMERS.find(c => c.name === name) || null;
+    }
+
     function productLabel(p) {
         return p.name;
     }
@@ -170,14 +179,18 @@
     // history whenever the customer changes; revert to the full catalog
     // when the customer is cleared. Any already-picked item/batch is reset,
     // since it may no longer be valid at the new scope.
-    const customerSelect = document.getElementById('customer_id');
+    const customerSearchInput = document.getElementById('customer_search');
+    const customerIdInput = document.getElementById('customer_id');
     const noPurchasesWarning = document.getElementById('noPurchasesWarning');
 
-    customerSelect.addEventListener('change', async function () {
+    customerSearchInput.addEventListener('input', async function () {
+        const match = findCustomerByName(this.value);
+        customerIdInput.value = match ? match.id : '';
+
         clearItemSelection();
         noPurchasesWarning.classList.add('d-none');
 
-        if (!this.value) {
+        if (!match) {
             PRODUCTS = ALL_PRODUCTS;
             rebuildItemList();
             return;
@@ -187,7 +200,7 @@
         itemSearchInput.placeholder = 'Loading this customer\'s purchases…';
 
         try {
-            const res = await fetch(`/api/customers/${this.value}/purchased-items`);
+            const res = await fetch(`/api/customers/${match.id}/purchased-items`);
             const data = await res.json();
             PRODUCTS = data.items || [];
             rebuildItemList();

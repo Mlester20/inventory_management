@@ -10,6 +10,11 @@
             <i class="bx bx-plus"></i> New Return
         </a>
     </div>
+    <datalist id="customer_datalist">
+        @foreach($customers as $customer)
+            <option value="{{ $customer->customer_name }}"></option>
+        @endforeach
+    </datalist>
     <div class="table-responsive nowrap">
         <table class="table">
             <thead>
@@ -83,13 +88,12 @@
                                             @csrf
                                             <div class="modal-body">
                                                 <div class="mb-3">
-                                                    <label for="customer_id{{ $returnItem->id }}" class="form-label">Customer (optional)</label>
-                                                    <select class="form-select customer-select" id="customer_id{{ $returnItem->id }}" name="customer_id">
-                                                        <option value="">— No customer —</option>
-                                                        @foreach($customers as $customer)
-                                                            <option value="{{ $customer->id }}" {{ $returnItem->customer_id === $customer->id ? 'selected' : '' }}>{{ $customer->customer_name }}</option>
-                                                        @endforeach
-                                                    </select>
+                                                    <label for="customer_search{{ $returnItem->id }}" class="form-label">Customer (optional)</label>
+                                                    <input type="text" class="form-control customer-search-input" id="customer_search{{ $returnItem->id }}"
+                                                        list="customer_datalist" placeholder="Search customer..." autocomplete="off"
+                                                        value="{{ $returnItem->customer?->customer_name }}">
+                                                    <input type="hidden" class="customer-select" id="customer_id{{ $returnItem->id }}" name="customer_id"
+                                                        value="{{ $returnItem->customer_id }}">
                                                 </div>
                                                 <div class="mb-1">
                                                     <label class="form-label d-block">Refund Method</label>
@@ -188,6 +192,25 @@
             setTimeout(() => {
                 alert.remove();
             }, 5000);
+        });
+    });
+
+    const CUSTOMERS = @json($customers->map(fn($c) => ['id' => $c->id, 'name' => $c->customer_name])->values());
+
+    function findCustomerByName(name) {
+        return CUSTOMERS.find(c => c.name === name) || null;
+    }
+
+    // Each row's visible search input resolves back to its hidden
+    // .customer-select input and dispatches 'change' on it, so the
+    // Store-Credit hint logic below (already wired to 'change' on
+    // .customer-select) keeps working unchanged.
+    document.querySelectorAll('.customer-search-input').forEach(function (input) {
+        const hidden = input.closest('.mb-3').querySelector('.customer-select');
+        input.addEventListener('input', function () {
+            const match = findCustomerByName(this.value);
+            hidden.value = match ? match.id : '';
+            hidden.dispatchEvent(new Event('change'));
         });
     });
 

@@ -33,8 +33,8 @@ class SalesOrderController extends Controller
         return response()->json([
             'customer' => [
                 'id' => $salesOrder->customer_id,
-                'customer_name' => $salesOrder->customer->customer_name,
-                'delivery_address' => $salesOrder->customer->delivery_address,
+                'customer_name' => $salesOrder->customer?->customer_name,
+                'delivery_address' => $salesOrder->customer?->delivery_address,
             ],
             'items' => $remainingItems,
         ]);

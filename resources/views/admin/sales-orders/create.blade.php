@@ -24,20 +24,24 @@
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label for="customer_id" class="form-label">Customer</label>
-                        <select
-                            name="customer_id"
-                            id="customer_id"
-                            class="form-select @error('customer_id') is-invalid @enderror"
+                        <label for="customer_search" class="form-label">Customer</label>
+                        <input
+                            type="text"
+                            name="customer_search"
+                            id="customer_search"
+                            class="form-control @error('customer_id') is-invalid @enderror"
+                            list="customer_datalist"
+                            placeholder="Search customer..."
+                            autocomplete="off"
+                            value="{{ old('customer_search', $editingSalesOrder?->customer?->customer_name) }}"
                             required
                         >
-                            <option value="">-- Select Customer --</option>
+                        <datalist id="customer_datalist">
                             @foreach ($customers as $customer)
-                                <option value="{{ $customer->id }}" data-price-level="{{ $customer->price_level }}" {{ old('customer_id', $editingSalesOrder?->customer_id) == $customer->id ? 'selected' : '' }}>
-                                    {{ $customer->customer_name }}
-                                </option>
+                                <option value="{{ $customer->customer_name }}"></option>
                             @endforeach
-                        </select>
+                        </datalist>
+                        <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id', $editingSalesOrder?->customer_id) }}">
                         @error('customer_id')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
@@ -162,6 +166,17 @@
     const GENERIC_NAMES = @json($genericNamesForJs);
     const prefillLines = @json($prefillLines);
 
+    // Customer is a searchable text field (native <datalist>, same technique
+    // as Generic Description below) rather than a long <select> — matters
+    // once the real customer list grows past what's comfortable to scroll
+    // through. The label the user types/picks is matched back to the real
+    // customer_id via a hidden input.
+    const CUSTOMERS = @json($customers->map(fn($c) => ['id' => $c->id, 'name' => $c->customer_name, 'price_level' => $c->price_level])->values());
+
+    function findCustomerByName(name) {
+        return CUSTOMERS.find(c => c.name === name) || null;
+    }
+
     let rowIndex = 0;
 
     // Generic Description is a searchable text field (native <datalist>,
@@ -202,9 +217,8 @@
     });
 
     function currentPriceLevel() {
-        const select = document.getElementById('customer_id');
-        const selected = select.options[select.selectedIndex];
-        return selected ? (selected.getAttribute('data-price-level') || 'retail') : 'retail';
+        const match = findCustomerByName(document.getElementById('customer_search').value);
+        return match ? (match.price_level || 'retail') : 'retail';
     }
 
     function renumberRows() {
@@ -354,8 +368,12 @@
         }
     });
 
-    // Re-suggest prices for all rows when the customer (and thus customer type) changes
-    document.getElementById('customer_id').addEventListener('change', function () {
+    // Resolve the typed customer name back to its real ID, and re-suggest
+    // prices for all rows when the customer (and thus customer type) changes
+    document.getElementById('customer_search').addEventListener('input', function () {
+        const match = findCustomerByName(this.value);
+        document.getElementById('customer_id').value = match ? match.id : '';
+
         document.querySelectorAll('#lineItemsBody .line-item-card').forEach(card => {
             const genericIdInput = card.querySelector('.generic-id-input');
             const priceInput = card.querySelector('.price-input');

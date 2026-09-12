@@ -81,14 +81,17 @@
                 <div id="advance_order_tab" class="do-tab">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="ao_customer_id" class="form-label">Customer</label>
+                            <label for="ao_customer_search" class="form-label">Customer</label>
                             <div class="input-group">
-                                <select name="customer_id" id="ao_customer_id" class="form-select">
-                                    <option value="">-- Select Customer --</option>
+                                <input type="text" name="customer_search" id="ao_customer_search" class="form-control" list="ao_customer_datalist"
+                                    placeholder="Search customer..." autocomplete="off"
+                                    value="{{ old('customer_search', optional($editingDeliveryReceipt?->customer)->customer_name) }}">
+                                <datalist id="ao_customer_datalist">
                                     @foreach ($customers as $customer)
-                                        <option value="{{ $customer->id }}" data-address="{{ $customer->delivery_address }}" {{ old('customer_id', $editingDeliveryReceipt?->customer_id) == $customer->id ? 'selected' : '' }}>{{ $customer->customer_name }}</option>
+                                        <option value="{{ $customer->customer_name }}"></option>
                                     @endforeach
-                                </select>
+                                </datalist>
+                                <input type="hidden" name="customer_id" id="ao_customer_id" value="{{ old('customer_id', $editingDeliveryReceipt?->customer_id) }}">
                                 @if(in_array(Auth::user()->role, ['admin', 'admin_staff'], true))
                                     <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
                                         New?
@@ -128,7 +131,7 @@
                                 <option value="">-- Select Sales Order --</option>
                                 @foreach ($openSalesOrders as $so)
                                     <option value="{{ $so->id }}" {{ (string) $preselectedSalesOrderId === (string) $so->id ? 'selected' : '' }}>
-                                        {{ $so->so_no }} — {{ $so->customer->customer_name }}
+                                        {{ $so->so_no }} — {{ $so->customer->customer_name ?? '—' }}
                                     </option>
                                 @endforeach
                             </select>
@@ -218,6 +221,19 @@
     // in Inventory Adjustment) rather than a long <select> — the label the
     // user types/picks is matched back to the real generic_name_id.
     const GENERIC_NAMES = @json($genericNamesForJs);
+
+    // Customer gets the same searchable-text treatment for the same reason
+    // (a long <select> stops being usable once the real customer list
+    // grows) — matched back to the real customer_id via a hidden input.
+    const CUSTOMERS = @json($customers->map(fn($c) => ['id' => $c->id, 'name' => $c->customer_name, 'delivery_address' => $c->delivery_address])->values());
+
+    function findCustomerByName(name) {
+        return CUSTOMERS.find(c => c.name === name) || null;
+    }
+
+    function findCustomerById(id) {
+        return CUSTOMERS.find(c => String(c.id) === String(id)) || null;
+    }
 
     // A resumed draft's saved lines, split by whether they came from the
     // Advance Order/Walk-in tab (no sales_order_item_id) or the Purchase
@@ -313,9 +329,10 @@
 
     // ---------- Delivery Address auto-fill ----------
 
-    document.getElementById('ao_customer_id').addEventListener('change', function () {
-        const selected = this.options[this.selectedIndex];
-        document.getElementById('ao_delivery_address').value = selected ? (selected.getAttribute('data-address') || '') : '';
+    document.getElementById('ao_customer_search').addEventListener('input', function () {
+        const match = findCustomerByName(this.value);
+        document.getElementById('ao_customer_id').value = match ? match.id : '';
+        document.getElementById('ao_delivery_address').value = match ? (match.delivery_address || '') : '';
     });
 
     // ---------- Advance Order / Walk-in tab ----------
@@ -455,7 +472,7 @@
         cells.batch.innerHTML = `<input type="text" class="form-control form-control-sm batch-display" readonly>`;
         cells.expiry.innerHTML = `<input type="text" class="form-control form-control-sm expiry-display" readonly>`;
         cells.qty.innerHTML = `<input type="number" class="form-control form-control-sm qty-input" name="items[${index}][qty]" min="1" value="1">`;
-        cells.remarks.innerHTML = `<input type="text" class="form-control form-control-sm" name="items[${index}][remarks]" placeholder="Type any text here">`;
+        cells.remarks.innerHTML = `<textarea class="form-control form-control-sm" name="items[${index}][remarks]" placeholder="Type any text here" rows="3"></textarea>`;
         cells.unit.innerHTML = `<input type="text" class="form-control form-control-sm" value="${unit || ''}" readonly>`;
 
         if (salesOrderItemId) {
@@ -502,7 +519,7 @@
         if (preselect) {
             if (preselect.qty) qtyInput.value = preselect.qty;
             if (preselect.remarks) {
-                const remarksInput = cells.remarks.querySelector('input[type="text"]');
+                const remarksInput = cells.remarks.querySelector('textarea');
                 if (remarksInput) remarksInput.value = preselect.remarks;
             }
         }
@@ -671,12 +688,18 @@
         }
 
         const data = await res.json();
-        const select = document.getElementById('ao_customer_id');
+        CUSTOMERS.push({
+            id: data.customer.id,
+            name: data.customer.customer_name,
+            delivery_address: data.customer.delivery_address || '',
+        });
         const option = document.createElement('option');
-        option.value = data.customer.id;
-        option.textContent = data.customer.customer_name;
-        option.selected = true;
-        select.appendChild(option);
+        option.value = data.customer.customer_name;
+        document.getElementById('ao_customer_datalist').appendChild(option);
+
+        document.getElementById('ao_customer_search').value = data.customer.customer_name;
+        document.getElementById('ao_customer_id').value = data.customer.id;
+        document.getElementById('ao_delivery_address').value = data.customer.delivery_address || '';
 
         bootstrap.Modal.getInstance(document.getElementById('newCustomerModal')).hide();
     });
@@ -690,11 +713,12 @@
     });
 
     // A resumed draft's preselected customer needs its delivery address
-    // filled the same way the onchange handler does for a manual pick.
+    // filled the same way the input handler does for a manual pick.
     (function () {
-        const customerSelect = document.getElementById('ao_customer_id');
-        if (customerSelect.value) {
-            customerSelect.dispatchEvent(new Event('change'));
+        const customerId = document.getElementById('ao_customer_id').value;
+        const match = customerId ? findCustomerById(customerId) : null;
+        if (match) {
+            document.getElementById('ao_delivery_address').value = match.delivery_address || '';
         }
     })();
 
