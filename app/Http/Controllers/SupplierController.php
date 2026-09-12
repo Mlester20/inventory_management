@@ -122,9 +122,9 @@ class SupplierController extends Controller
         //validate the request
         $request->validate([
             'supplier_name' => 'required|unique:suppliers,supplier_name',
-            'contact_person' => 'required',
+            'contact_person' => 'nullable',
             'email' => 'nullable|email|unique:suppliers,email',
-            'contact_number' => 'required|unique:suppliers,contact_number',
+            'contact_number' => 'nullable|unique:suppliers,contact_number',
             'delivery_address' => 'required',
             'vat_type' => 'required|in:' . implode(',', array_keys(Supplier::VAT_TYPES)),
             'tin' => 'nullable|string|max:50',
@@ -163,9 +163,9 @@ class SupplierController extends Controller
         //validate the request
         $request->validate([
             'supplier_name' => 'required|unique:suppliers,supplier_name,' . $supplier->id,
-            'contact_person' => 'required',
+            'contact_person' => 'nullable',
             'email' => 'nullable|email|unique:suppliers,email,' . $supplier->id,
-            'contact_number' => 'required|unique:suppliers,contact_number,' . $supplier->id,
+            'contact_number' => 'nullable|unique:suppliers,contact_number,' . $supplier->id,
             'delivery_address' => 'required',
             'vat_type' => 'required|in:' . implode(',', array_keys(Supplier::VAT_TYPES)),
             'tin' => 'nullable|string|max:50',

@@ -37,8 +37,8 @@
                         </div>
                         <div class="modal-body">
                             <p class="text-muted small">
-                                Upload an Excel (.xlsx/.xls) or CSV file with columns: Supplier Name, Contact Person,
-                                Contact Number, Email (optional), Delivery Address, VAT Type (VAT or NON-VAT), TIN (optional).
+                                Upload an Excel (.xlsx/.xls) or CSV file with columns: Supplier Name, Contact Person (optional),
+                                Contact Number (optional), Email (optional), Delivery Address, VAT Type (VAT or NON-VAT), TIN (optional).
                                 <a href="{{ route('suppliers.import.template') }}">Download the template</a>.
                             </p>
                             <div class="mb-3">
@@ -116,7 +116,6 @@
                                         id="contact_number"
                                         class="form-control"
                                         placeholder="e.g., 0917 123 4567"
-                                        required
                                     >
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -143,7 +142,6 @@
                                         id="contact_person"
                                         class="form-control"
                                         placeholder="e.g., Juan Dela Cruz"
-                                        required
                                     >
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -436,7 +434,6 @@
                                         id="update_contact_number"
                                         class="form-control"
                                         placeholder="e.g., 0917 123 4567"
-                                        required
                                     >
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -463,7 +460,6 @@
                                         id="update_contact_person"
                                         class="form-control"
                                         placeholder="e.g., Juan Dela Cruz"
-                                        required
                                     >
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -671,8 +667,8 @@
         button.addEventListener('click', function() {
             document.getElementById('view_supplier_id').textContent = this.getAttribute('data-id');
             document.getElementById('view_supplier_name').textContent = this.getAttribute('data-name');
-            document.getElementById('view_contact_person').textContent = this.getAttribute('data-contact');
-            document.getElementById('view_contact_number').textContent = this.getAttribute('data-contact-number');
+            document.getElementById('view_contact_person').textContent = this.getAttribute('data-contact') || '—';
+            document.getElementById('view_contact_number').textContent = this.getAttribute('data-contact-number') || '—';
             document.getElementById('view_email').textContent = this.getAttribute('data-email') || '—';
             document.getElementById('view_delivery_address').textContent = this.getAttribute('data-address');
             document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type');
