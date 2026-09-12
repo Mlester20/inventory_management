@@ -288,9 +288,16 @@
         {{-- ============================= PRODUCTS TAB ============================= --}}
         @if($tab === 'products')
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <button type="button" id="newProductBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
-                    New Item
-                </button>
+                <div class="d-flex gap-2">
+                    @if(Auth::user()->role === 'admin')
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importProductsModal">
+                            <i class="bx bx-upload me-1"></i> Import Products
+                        </button>
+                    @endif
+                    <button type="button" id="newProductBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
+                        New Item
+                    </button>
+                </div>
                 <div class="d-flex gap-2">
                     <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_archived' => $showArchived ? 0 : 1, 'show_trashed' => 0])) }}" class="btn btn-outline-secondary btn-sm">
                         @if($showArchived)
@@ -529,6 +536,9 @@
             @include('admin.inventory-items.partials.product-modal', ['mode' => 'create', 'nextProductCode' => $nextProductCode])
             @include('admin.inventory-items.partials.product-modal', ['mode' => 'update'])
             @include('admin.inventory-items.partials.view-product-modal')
+            @if(Auth::user()->role === 'admin')
+                @include('admin.inventory-items.partials.import-products-modal')
+            @endif
         @endif
 
         {{-- ============================= LOT/SERIAL & EXPIRY TAB ============================= --}}

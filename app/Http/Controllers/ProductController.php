@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ProductsCatalogTemplateExport;
+use App\Imports\ProductsCatalogImport;
 use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\GenericName;
@@ -9,6 +11,7 @@ use App\Models\Supplier;
 use App\Models\Taxes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class ProductController extends Controller
@@ -193,5 +196,64 @@ class ProductController extends Controller
 
         Alert::success('Success', 'Product unarchived.');
         return redirect()->route('inventory-items.index', ['tab' => 'products', 'show_archived' => 1]);
+    }
+
+    /**
+     * Bulk-import a product catalog from an uploaded Excel/CSV file.
+     * Unlike Supplier/Customer's simple one-model-per-row import, this one
+     * also creates whatever Category/Generic Name rows a product needs
+     * underneath it — see ProductsCatalogImport for the chunked-processing
+     * approach (500 rows/transaction) this needed instead.
+     */
+    public function import(Request $request)
+    {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Importing products is restricted to full admin accounts.');
+            return redirect()->route('inventory-items.index', ['tab' => 'products']);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:20480',
+        ]);
+
+        $import = new ProductsCatalogImport();
+        Excel::import($import, $request->file('file'));
+
+        ActivityLog::record(
+            module: 'Product',
+            action: 'imported',
+            description: "Imported {$import->productsImported} product(s) from Excel "
+                . "({$import->categoriesCreated} new categories, {$import->genericNamesCreated} new generic names; "
+                . "{$import->duplicatesSkipped} duplicate row(s), " . count($import->crossCategorySkips()) . ' cross-category row(s) skipped)',
+        );
+
+        $summary = "{$import->productsImported} product(s) imported "
+            . "({$import->categoriesCreated} new categories, {$import->genericNamesCreated} new generic names).";
+
+        $skipNotes = [];
+        if ($import->duplicatesSkipped > 0) {
+            $skipNotes[] = "{$import->duplicatesSkipped} duplicate row(s) skipped";
+        }
+        if (count($import->crossCategorySkips()) > 0) {
+            $skipNotes[] = count($import->crossCategorySkips()) . ' row(s) skipped — generic description already exists under a different category: '
+                . implode('; ', array_slice($import->crossCategorySkips(), 0, 5))
+                . (count($import->crossCategorySkips()) > 5 ? ' …' : '');
+        }
+
+        if (empty($skipNotes)) {
+            Alert::success('Success', $summary);
+        } else {
+            Alert::error('Imported with some rows skipped', $summary . ' ' . implode(' | ', $skipNotes));
+        }
+
+        return redirect()->route('inventory-items.index', ['tab' => 'products']);
+    }
+
+    /**
+     * Downloadable blank template matching ProductsCatalogImport's expected columns.
+     */
+    public function downloadTemplate()
+    {
+        return Excel::download(new ProductsCatalogTemplateExport(), 'products-import-template.xlsx');
     }
 }

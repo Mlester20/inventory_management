@@ -179,6 +179,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::patch('admin/products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
     Route::post('admin/products/{product}/archive', [ProductController::class, 'archive'])->name('products.archive');
     Route::post('admin/products/{product}/unarchive', [ProductController::class, 'unarchive'])->name('products.unarchive');
+    Route::post('admin/products/import', [ProductController::class, 'import'])->name('products.import');
+    Route::get('admin/products/import/template', [ProductController::class, 'downloadTemplate'])->name('products.import.template');
     Route::put('admin/product-batches/{productBatch}', [ProductBatchController::class, 'update'])->name('product-batches.update');
     Route::resource('admin/inventory-adjustments', InventoryAdjustmentController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('admin/inventory-adjustments/{inventoryAdjustment}/write-off', [InventoryAdjustmentController::class, 'writeOff'])->name('inventory-adjustments.write-off');
