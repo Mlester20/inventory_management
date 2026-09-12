@@ -17,8 +17,10 @@ class SupplierController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+
         $suppliers = Supplier::withCount([
                 'purchaseOrders', 'goodsReceipts', 'purchaseInvoices',
                 // GRNI (Goods Received Not Invoiced): Goods Receipts already
@@ -31,8 +33,10 @@ class SupplierController extends Controller
             ->with([
                 'payments' => fn ($query) => $query->latest('payment_date')->limit(5),
             ])
+            ->when($search !== '', fn ($query) => $query->where('supplier_name', 'like', '%' . $search . '%'))
             ->orderBy('supplier_name')
-            ->paginate(15);
+            ->paginate(15)
+            ->appends($request->query());
 
         // Payables are based on recorded Purchase Invoices (the supplier's
         // actual billing document), not Goods Receipts or Purchase Orders —

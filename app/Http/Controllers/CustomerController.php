@@ -26,8 +26,10 @@ class CustomerController extends Controller
      * Invoices left unlinked by the backfill (no exact name match) are
      * excluded here — expected, see the backfill migration.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+
         $customers = Customer::withCount([
                 'salesOrders',
                 'deliveryReceipts',
@@ -36,8 +38,10 @@ class CustomerController extends Controller
                 'invoices as balances_count' => fn ($query) => $query->whereColumn('amount_paid', '<', 'amount_due'),
             ])
             ->with(['payments' => fn ($query) => $query->latest('payment_date')->limit(5)])
+            ->when($search !== '', fn ($query) => $query->where('customer_name', 'like', '%' . $search . '%'))
             ->orderBy('customer_name')
-            ->paginate(15);
+            ->paginate(15)
+            ->appends($request->query());
 
         $receivables = Invoice::whereNotNull('customer_id')
             ->whereColumn('amount_paid', '<', 'amount_due')

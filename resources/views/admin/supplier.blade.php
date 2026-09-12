@@ -514,7 +514,17 @@
     </div>
 
     <div class="card mt-4">
-        <h5 class="card-header">Suppliers</h5>
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0">Suppliers</h5>
+            <form method="GET" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control form-control-sm" style="width: 220px;"
+                    placeholder="Search supplier name..." value="{{ request('search') }}">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Search</button>
+                @if(request('search'))
+                    <a href="{{ route('suppliers.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                @endif
+            </form>
+        </div>
         <div class="table-responsive nowrap">
             <table class="table">
                 <thead>
