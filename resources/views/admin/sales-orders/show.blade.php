@@ -122,7 +122,7 @@
                             <td>
                                 {{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }})
                                 @if($item->remarks)
-                                    <div class="text-muted small">{{ $item->remarks }}</div>
+                                    <div class="text-muted small" style="white-space: pre-line;">{{ $item->remarks }}</div>
                                 @endif
                             </td>
                             <td class="text-end">{{ $item->qty ?? '—' }}</td>
@@ -255,7 +255,7 @@
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
                                 <td>{{ $item->genericName->generic_name ?? '—' }}</td>
-                                <td>{{ $item->remarks ?? '—' }}</td>
+                                <td style="white-space: pre-line;">{{ $item->remarks ?? '—' }}</td>
                                 <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $item->qty ?? '—' }}</td>
                                 <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
@@ -269,6 +269,7 @@
             @include('partials.print.sales-totals-footer', [
                 'totalAmountDue' => number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2),
                 'preparedByValue' => $salesOrder->preparedBy->name ?? '',
+                'notes' => $salesOrder->notes,
             ])
         </div>
     </div>
@@ -347,7 +348,7 @@
                                 <td class="text-end">{{ $item->qty ?? '—' }}</td>
                                 <td class="text-end">{{ $item->advance_order_qty }}</td>
                                 <td class="text-end">{{ $item->remaining_qty }}</td>
-                                <td>{{ $item->remarks ?? '—' }}</td>
+                                <td style="white-space: pre-line;">{{ $item->remarks ?? '—' }}</td>
                                 <td class="text-end"></td>
                             </tr>
                         @endforeach

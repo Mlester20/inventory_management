@@ -203,7 +203,7 @@ class DeliveryReceiptController extends Controller
             'items' => 'nullable|array',
             'items.*.product_batch_id' => 'nullable|exists:product_batches,id',
             'items.*.qty' => 'nullable|integer|min:1',
-            'items.*.remarks' => 'nullable|string|max:255',
+            'items.*.remarks' => 'nullable|string',
             'items.*.sales_order_item_id' => 'nullable|exists:sales_order_items,id',
         ];
     }
@@ -224,7 +224,7 @@ class DeliveryReceiptController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_batch_id' => 'required|exists:product_batches,id',
             'items.*.qty' => 'required|integer|min:1',
-            'items.*.remarks' => 'nullable|string|max:255',
+            'items.*.remarks' => 'nullable|string',
             'items.*.sales_order_item_id' => 'nullable|exists:sales_order_items,id',
         ];
     }

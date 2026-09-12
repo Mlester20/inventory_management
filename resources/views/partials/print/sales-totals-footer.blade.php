@@ -16,11 +16,16 @@
     - totalAmountDue (string, required): already formatted, e.g. "1,881.00"
     - preparedByLabel / preparedByValue (optional, default "Prepared By" / '')
     - acknowledgeByLabel (optional, default "Acknowledge By")
+    - notes (string, optional): printed inside the Note box; left blank
+      (for manual completion) when the document has no notes
 --}}
 <div class="row g-0 print-money-footer mb-2">
     <div class="col-7">
         <div class="print-note-box">
             <div class="print-note-label">Note:</div>
+            @if(!empty($notes))
+                <div class="print-note-content" style="white-space: pre-line;">{{ $notes }}</div>
+            @endif
         </div>
     </div>
     <div class="col-5">

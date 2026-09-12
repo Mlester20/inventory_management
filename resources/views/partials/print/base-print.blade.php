@@ -107,6 +107,11 @@
     font-size: 0.85rem;
 }
 
+.print-note-content {
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+}
+
 .print-vat-table td {
     border-color: #333;
     font-size: 0.72rem;

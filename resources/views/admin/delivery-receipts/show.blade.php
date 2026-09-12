@@ -170,7 +170,7 @@
                                     <td>{{ $line->productBatch->product->item_name }}</td>
                                     <td>{{ $line->batch_no ?? '—' }}</td>
                                     <td>{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
-                                    <td>{{ $line->remarks ?? '—' }}</td>
+                                    <td style="white-space: pre-line;">{{ $line->remarks ?? '—' }}</td>
                                     <td class="text-end">{{ $line->qty ?? '—' }}</td>
                                     <td>{{ $line->productBatch->product->genericName->unit ?? '—' }}</td>
                                     @if(!$deliveryReceipt->isDraft())
