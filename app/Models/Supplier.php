@@ -17,6 +17,7 @@ class Supplier extends Model
         'email',
         'delivery_address',
         'vat_type',
+        'tin',
     ];
 
     public const VAT_TYPES = [

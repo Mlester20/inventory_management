@@ -38,7 +38,7 @@
                         <div class="modal-body">
                             <p class="text-muted small">
                                 Upload an Excel (.xlsx/.xls) or CSV file with columns: Supplier Name, Contact Person,
-                                Contact Number, Email, Delivery Address, VAT Type (VAT or NON-VAT).
+                                Contact Number, Email (optional), Delivery Address, VAT Type (VAT or NON-VAT), TIN (optional).
                                 <a href="{{ route('suppliers.import.template') }}">Download the template</a>.
                             </p>
                             <div class="mb-3">
@@ -129,7 +129,6 @@
                                         id="email"
                                         class="form-control"
                                         placeholder="e.g., sales@medsupplyph.com"
-                                        required
                                     >
                                 </div>
                             </div>
@@ -161,6 +160,20 @@
                                             <option value="{{ $value }}">{{ $label }}</option>
                                         @endforeach
                                     </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="tin" class="form-label">
+                                        TIN
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="tin"
+                                        id="tin"
+                                        class="form-control"
+                                        placeholder="e.g., 000-123-456-000"
+                                    >
                                 </div>
                             </div>
                         </div>
@@ -225,6 +238,12 @@
                             <div class="col-md-6">
                                 <label><strong>VAT Type:</strong></label>
                                 <p id="view_vat_type" class="text-muted"></p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label><strong>TIN:</strong></label>
+                                <p id="view_tin" class="text-muted"></p>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -430,7 +449,6 @@
                                         id="update_email"
                                         class="form-control"
                                         placeholder="e.g., sales@medsupplyph.com"
-                                        required
                                     >
                                 </div>
                             </div>
@@ -464,6 +482,20 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_tin" class="form-label">
+                                        TIN
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="tin"
+                                        id="update_tin"
+                                        class="form-control"
+                                        placeholder="e.g., 000-123-456-000"
+                                    >
+                                </div>
+                            </div>
                         </div>
 
                         <div class="modal-footer">
@@ -493,6 +525,7 @@
                     <tr>
                         <th>#</th>
                         <th>Name</th>
+                        <th>Tin</th>
                         <th class="text-end">Purchase Orders</th>
                         <th class="text-end">Purchase Invoices</th>
                         <th class="text-end">Goods Receipts</th>
@@ -510,6 +543,7 @@
                         <tr>
                             <td>{{ $supplier->id }}</td>
                             <td>{{ $supplier->supplier_name }}</td>
+                            <td>{{ $supplier->tin }}</td>
                             <td class="text-end">{{ $supplier->purchase_orders_count }}</td>
                             <td class="text-end">
                                 <a href="{{ route('purchase-invoices.index', ['search' => $supplier->supplier_name]) }}">
@@ -556,6 +590,7 @@
                                             data-email="{{ $supplier->email }}"
                                             data-address="{{ $supplier->delivery_address }}"
                                             data-vat-type="{{ $supplier->vat_type }}"
+                                            data-tin="{{ $supplier->tin }}"
                                             data-grni="{{ $supplier->grni_count }}"
                                             data-advance-payments="{{ number_format($supplier->advance_payments, 2) }}"
                                             data-balance="{{ number_format($supplier->balance, 2) }}"
@@ -584,6 +619,7 @@
                                             data-email="{{ $supplier->email }}"
                                             data-address="{{ $supplier->delivery_address }}"
                                             data-vat-type="{{ $supplier->vat_type }}"
+                                            data-tin="{{ $supplier->tin }}"
                                         >
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </button>
@@ -637,9 +673,10 @@
             document.getElementById('view_supplier_name').textContent = this.getAttribute('data-name');
             document.getElementById('view_contact_person').textContent = this.getAttribute('data-contact');
             document.getElementById('view_contact_number').textContent = this.getAttribute('data-contact-number');
-            document.getElementById('view_email').textContent = this.getAttribute('data-email');
+            document.getElementById('view_email').textContent = this.getAttribute('data-email') || '—';
             document.getElementById('view_delivery_address').textContent = this.getAttribute('data-address');
             document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type');
+            document.getElementById('view_tin').textContent = this.getAttribute('data-tin') || '—';
 
             document.getElementById('view_grni').textContent = this.getAttribute('data-grni') || '0';
             document.getElementById('view_advance_payments').textContent = '₱' + (this.getAttribute('data-advance-payments') || '0.00');
@@ -703,6 +740,7 @@
             document.getElementById('update_email').value = this.getAttribute('data-email');
             document.getElementById('update_delivery_address').value = this.getAttribute('data-address');
             document.getElementById('update_vat_type').value = this.getAttribute('data-vat-type') || 'VAT';
+            document.getElementById('update_tin').value = this.getAttribute('data-tin') || '';
 
             // Set the form action to the update route
             const form = document.getElementById('updateSupplierForm');
@@ -719,6 +757,7 @@
         document.getElementById('email').value = '';
         document.getElementById('contact_person').value = '';
         document.getElementById('vat_type').value = 'VAT';
+        document.getElementById('tin').value = '';
     });
 </script>
 @endsection

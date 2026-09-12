@@ -15,14 +15,14 @@ class SuppliersTemplateExport implements FromArray, WithHeadings
     public function headings(): array
     {
         return [
-            'Supplier Name', 'Contact Person', 'Contact Number', 'Email', 'Delivery Address', 'VAT Type',
+            'Supplier Name', 'Contact Person', 'Contact Number', 'Email', 'Delivery Address', 'VAT Type', 'TIN',
         ];
     }
 
     public function array(): array
     {
         return [
-            ['MedSupply Philippines Inc.', 'Juan Dela Cruz', '09171234567', 'juan@medsupply.ph', '123 Rizal St., Manila', 'VAT'],
+            ['MedSupply Philippines Inc.', 'Juan Dela Cruz', '09171234567', 'juan@medsupply.ph', '123 Rizal St., Manila', 'VAT', '000-123-456-000'],
         ];
     }
 }

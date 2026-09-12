@@ -123,10 +123,11 @@ class SupplierController extends Controller
         $request->validate([
             'supplier_name' => 'required|unique:suppliers,supplier_name',
             'contact_person' => 'required',
-            'email' => 'required|email|unique:suppliers,email',
+            'email' => 'nullable|email|unique:suppliers,email',
             'contact_number' => 'required|unique:suppliers,contact_number',
             'delivery_address' => 'required',
             'vat_type' => 'required|in:' . implode(',', array_keys(Supplier::VAT_TYPES)),
+            'tin' => 'nullable|string|max:50',
         ]);
         $supplier = Supplier::create([
             'supplier_name' => $request->supplier_name,
@@ -135,6 +136,7 @@ class SupplierController extends Controller
             'contact_number' => $request->contact_number,
             'delivery_address' => $request->delivery_address,
             'vat_type' => $request->vat_type,
+            'tin' => $request->tin,
         ]);
 
         ActivityLog::record(
@@ -162,10 +164,11 @@ class SupplierController extends Controller
         $request->validate([
             'supplier_name' => 'required|unique:suppliers,supplier_name,' . $supplier->id,
             'contact_person' => 'required',
-            'email' => 'required|email|unique:suppliers,email,' . $supplier->id,
+            'email' => 'nullable|email|unique:suppliers,email,' . $supplier->id,
             'contact_number' => 'required|unique:suppliers,contact_number,' . $supplier->id,
             'delivery_address' => 'required',
             'vat_type' => 'required|in:' . implode(',', array_keys(Supplier::VAT_TYPES)),
+            'tin' => 'nullable|string|max:50',
         ]);
         //update the supplier
         $original = $supplier->getOriginal();
@@ -176,6 +179,7 @@ class SupplierController extends Controller
             'contact_number' => $request->contact_number,
             'delivery_address' => $request->delivery_address,
             'vat_type' => $request->vat_type,
+            'tin' => $request->tin,
         ]);
 
         $changes = $supplier->getChanges();

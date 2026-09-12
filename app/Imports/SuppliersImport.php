@@ -39,6 +39,7 @@ class SuppliersImport implements ToModel, WithHeadingRow, WithValidation, SkipsO
             'email' => trim($row['email'] ?? ''),
             'delivery_address' => trim($row['delivery_address'] ?? ''),
             'vat_type' => strtoupper(trim($row['vat_type'] ?? '')),
+            'tin' => trim($row['tin'] ?? '') ?: null,
         ]);
     }
 
@@ -47,14 +48,22 @@ class SuppliersImport implements ToModel, WithHeadingRow, WithValidation, SkipsO
         return [
             'supplier_name' => 'required|string|max:255|unique:suppliers,supplier_name',
             'contact_person' => 'required|string|max:255',
-            'contact_number' => 'required|string|max:255|unique:suppliers,contact_number',
-            'email' => 'required|email|unique:suppliers,email',
+            // Not 'string' — a phone-number-looking cell in the source
+            // spreadsheet is read as a real PHP int/float when it isn't
+            // formatted as text, which Laravel's `string` rule then rejects
+            // outright. Dropping it still validates length correctly
+            // (Laravel's size check falls back to string length for a
+            // non-numeric-ruled value) and model() below already casts to
+            // string before saving.
+            'contact_number' => 'required|max:255|unique:suppliers,contact_number',
+            'email' => 'nullable|email|unique:suppliers,email',
             'delivery_address' => 'required|string',
             'vat_type' => ['required', function ($attribute, $value, $fail) {
                 if (! in_array(strtoupper(trim((string) $value)), ['VAT', 'NON-VAT'], true)) {
                     $fail('VAT Type must be exactly "VAT" or "NON-VAT".');
                 }
             }],
+            'tin' => 'nullable|string|max:50',
         ];
     }
 
