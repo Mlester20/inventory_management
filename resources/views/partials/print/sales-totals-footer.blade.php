@@ -28,25 +28,32 @@
             @endif
         </div>
     </div>
-    <div class="col-5 print-vat-wrapper">
-        <table class="table table-bordered table-sm print-vat-table mb-0">
-            <tbody>
-                <tr><td>VATable Sales</td><td></td></tr>
-                <tr><td>VAT-Exempt Sales</td><td></td></tr>
-                <tr><td>VAT Zero Rated Sales</td><td></td></tr>
-                <tr><td>Add: VAT</td><td></td></tr>
-                <tr><td>Less Withholding Tax</td><td></td></tr>
-                <tr class="print-vat-total-row">
-                    <td class="fw-bold">Total Amount Due</td>
-                    <td class="text-end fw-bold">₱{{ $totalAmountDue }}</td>
-                </tr>
-            </tbody>
-        </table>
-        {{-- Fills any leftover height when the Note box (sibling column) is
-             taller, so the two boxes' bottom borders line up, without
-             stretching the VAT table's own rows to match (which left ugly
-             gaps inside each row when the Note box grew tall). --}}
-        <div class="print-vat-filler"></div>
+    <div class="col-5">
+        <div class="print-vat-wrapper">
+            <table class="table table-bordered table-sm print-vat-table mb-0">
+                <tbody>
+                    <tr><td>VATable Sales</td><td></td></tr>
+                    <tr><td>VAT-Exempt Sales</td><td></td></tr>
+                    <tr><td>VAT Zero Rated Sales</td><td></td></tr>
+                    <tr><td>Add: VAT</td><td></td></tr>
+                    <tr><td>Less Withholding Tax</td><td></td></tr>
+                    <tr class="print-vat-total-row">
+                        <td class="fw-bold">Total Amount Due</td>
+                        <td class="text-end fw-bold">₱{{ $totalAmountDue }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            {{-- Fills any leftover height when the Note box (sibling column)
+                 is taller, so the two boxes' bottom borders line up, without
+                 stretching the VAT table's own rows to match (which left
+                 ugly gaps inside each row when the Note box grew tall). This
+                 has to be a separate element from .col-5 — .col-5 needs
+                 display: table-cell (to match its sibling's height) while
+                 this wrapper needs display: flex; a single element can't be
+                 both, and table-cell would silently win, leaving the flex
+                 rules (and this filler's height) inert. --}}
+            <div class="print-vat-filler"></div>
+        </div>
     </div>
 </div>
 
