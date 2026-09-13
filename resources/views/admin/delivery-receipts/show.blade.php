@@ -275,7 +275,48 @@
     }
 
     .dr-sheet {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
+    }
+
+    /* DR-only overrides — the classes below come from the shared
+       partials.print.base-print (used by every document type), each with
+       its own fixed rem size, so shrinking .dr-sheet's own font-size alone
+       doesn't shrink them. Scoped under .dr-sheet so Sales Order/Invoice/
+       Purchase Order printouts, which share the same base-print classes,
+       are unaffected. */
+    .dr-sheet .print-company-detail {
+        font-size: 0.65rem;
+    }
+
+    .dr-sheet .print-doc-title {
+        font-size: 1.4rem;
+    }
+
+    .dr-sheet .print-doc-page,
+    .dr-sheet .print-doc-no-row {
+        font-size: 0.68rem;
+    }
+
+    .dr-sheet .print-to-header {
+        font-size: 0.72rem;
+    }
+
+    .dr-sheet .print-to-row {
+        font-size: 0.68rem;
+    }
+
+    .dr-sheet .print-sig-label {
+        font-size: 0.72rem;
+    }
+
+    .dr-sheet .print-sig-value {
+        font-size: 0.68rem;
+    }
+
+    .dr-sheet .print-items-table th,
+    .dr-sheet .print-items-table td {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.35rem;
     }
 
     @media print {

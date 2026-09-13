@@ -243,7 +243,6 @@
                         <tr>
                             <th style="width: 4%;">#</th>
                             <th>Generic Description</th>
-                            <th>Remarks</th>
                             <th style="width: 7%;">Unit</th>
                             <th class="text-end" style="width: 7%;">Qty</th>
                             <th class="text-end" style="width: 10%;">Unit Cost</th>
@@ -254,8 +253,12 @@
                         @foreach ($salesOrder->items as $item)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
-                                <td>{{ $item->genericName->generic_name ?? '—' }}</td>
-                                <td style="white-space: pre-line;">{{ $item->remarks ?? '—' }}</td>
+                                <td>
+                                    {{ $item->genericName->generic_name ?? '—' }}
+                                    @if($item->remarks)
+                                        <div class="print-item-remarks" style="white-space: pre-line;">{{ $item->remarks }}</div>
+                                    @endif
+                                </td>
                                 <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $item->qty ?? '—' }}</td>
                                 <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
@@ -378,13 +381,69 @@
     }
 
     .so-sheet {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
+    }
+
+    /* Sales Order-only overrides — the classes below come from the shared
+       partials.print.base-print (used by every document type), each with
+       its own fixed rem size, so shrinking .so-sheet's own font-size alone
+       doesn't shrink them. Scoped under .so-sheet so Delivery
+       Receipt/Invoice/Purchase Order printouts, which share the same
+       base-print classes, are unaffected. */
+    .so-sheet .print-company-detail {
+        font-size: 0.65rem;
+    }
+
+    .so-sheet .print-doc-title {
+        font-size: 1.4rem;
+    }
+
+    .so-sheet .print-doc-page,
+    .so-sheet .print-doc-no-row {
+        font-size: 0.68rem;
+    }
+
+    .so-sheet .print-to-header {
+        font-size: 0.72rem;
+    }
+
+    .so-sheet .print-to-row {
+        font-size: 0.68rem;
+    }
+
+    .so-sheet .print-sig-label {
+        font-size: 0.72rem;
+    }
+
+    .so-sheet .print-sig-value {
+        font-size: 0.68rem;
+    }
+
+    .so-sheet .print-items-table th,
+    .so-sheet .print-items-table td {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.35rem;
+    }
+
+    .so-sheet .print-item-remarks {
+        font-size: 0.62rem;
+        color: #555;
+        margin-top: 0.15rem;
+    }
+
+    .so-sheet .print-note-label {
+        font-size: 0.72rem;
+    }
+
+    .so-sheet .print-note-content,
+    .so-sheet .print-vat-table td {
+        font-size: 0.62rem;
     }
 
     .print-list-customer-table td {
         border-color: #333;
-        font-size: 0.78rem;
-        padding: 0.25rem 0.5rem;
+        font-size: 0.68rem;
+        padding: 0.2rem 0.4rem;
         vertical-align: middle;
     }
 
