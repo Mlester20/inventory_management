@@ -19,7 +19,7 @@
     - notes (string, optional): printed inside the Note box; left blank
       (for manual completion) when the document has no notes
 --}}
-<div class="row g-0 print-money-footer mb-2">
+<div class="row g-0 print-money-footer">
     <div class="col-7">
         <div class="print-note-box">
             <div class="print-note-label">Note:</div>
@@ -28,7 +28,7 @@
             @endif
         </div>
     </div>
-    <div class="col-5">
+    <div class="col-5 print-vat-wrapper">
         <table class="table table-bordered table-sm print-vat-table mb-0">
             <tbody>
                 <tr><td>VATable Sales</td><td></td></tr>
@@ -42,6 +42,11 @@
                 </tr>
             </tbody>
         </table>
+        {{-- Fills any leftover height when the Note box (sibling column) is
+             taller, so the two boxes' bottom borders line up, without
+             stretching the VAT table's own rows to match (which left ugly
+             gaps inside each row when the Note box grew tall). --}}
+        <div class="print-vat-filler"></div>
     </div>
 </div>
 

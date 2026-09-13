@@ -381,7 +381,7 @@
     }
 
     .so-sheet {
-        font-size: 0.75rem;
+        font-size: 0.68rem;
     }
 
     /* Sales Order-only overrides — the classes below come from the shared
@@ -391,58 +391,58 @@
        Receipt/Invoice/Purchase Order printouts, which share the same
        base-print classes, are unaffected. */
     .so-sheet .print-company-detail {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
     }
 
     .so-sheet .print-doc-title {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
     }
 
     .so-sheet .print-doc-page,
     .so-sheet .print-doc-no-row {
-        font-size: 0.68rem;
+        font-size: 0.62rem;
     }
 
     .so-sheet .print-to-header {
-        font-size: 0.72rem;
+        font-size: 0.66rem;
     }
 
     .so-sheet .print-to-row {
-        font-size: 0.68rem;
+        font-size: 0.62rem;
     }
 
     .so-sheet .print-sig-label {
-        font-size: 0.72rem;
+        font-size: 0.66rem;
     }
 
     .so-sheet .print-sig-value {
-        font-size: 0.68rem;
+        font-size: 0.6rem;
     }
 
     .so-sheet .print-items-table th,
     .so-sheet .print-items-table td {
-        font-size: 0.7rem;
-        padding: 0.2rem 0.35rem;
+        font-size: 0.62rem;
+        padding: 0.15rem 0.3rem;
     }
 
     .so-sheet .print-item-remarks {
-        font-size: 0.62rem;
+        font-size: 0.56rem;
         color: #555;
         margin-top: 0.15rem;
     }
 
     .so-sheet .print-note-label {
-        font-size: 0.72rem;
+        font-size: 0.66rem;
     }
 
     .so-sheet .print-note-content,
     .so-sheet .print-vat-table td {
-        font-size: 0.62rem;
+        font-size: 0.56rem;
     }
 
     .print-list-customer-table td {
         border-color: #333;
-        font-size: 0.68rem;
+        font-size: 0.62rem;
         padding: 0.2rem 0.4rem;
         vertical-align: middle;
     }

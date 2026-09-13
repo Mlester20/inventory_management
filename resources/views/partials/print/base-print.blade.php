@@ -112,6 +112,48 @@
     margin-top: 0.25rem;
 }
 
+/* table/table-cell (not flexbox) for the Note-box-vs-VAT-table row: this
+   is the one CSS layout mode where two side-by-side boxes reliably match
+   height to whichever is taller, in every browser's print engine —
+   flexbox's align-items: stretch turned out not to size a nested flex
+   column's 100% height reliably here. */
+.print-money-footer {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.print-money-footer > .col-7,
+.print-money-footer > .col-5 {
+    display: table-cell;
+    vertical-align: top;
+    float: none;
+}
+
+.print-money-footer > .col-7 {
+    width: 58.333%;
+}
+
+.print-money-footer > .col-5 {
+    width: 41.667%;
+}
+
+.print-vat-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.print-vat-table {
+    flex: 0 0 auto;
+}
+
+.print-vat-filler {
+    flex: 1 1 auto;
+    border: 1.5px solid #333;
+    border-top: none;
+}
+
 .print-vat-table td {
     border-color: #333;
     font-size: 0.72rem;
