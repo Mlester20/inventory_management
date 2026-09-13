@@ -222,8 +222,15 @@ class DeliveryReceiptController extends Controller
             'receipt_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
             'items' => 'required|array|min:1',
-            'items.*.product_batch_id' => 'required|exists:product_batches,id',
-            'items.*.qty' => 'required|integer|min:1',
+            // Nullable, not required — a partial fulfillment (e.g. a Sales
+            // Order line whose item hasn't arrived at the Warehouse yet)
+            // intentionally leaves that line blank rather than blocking the
+            // whole Delivery Receipt; DeliveryReceiptService::applyItems()
+            // skips any line missing a batch or qty instead of treating a
+            // blank as 0 delivered, mirroring GoodsReceiptService's own
+            // partial-receipt handling.
+            'items.*.product_batch_id' => 'nullable|exists:product_batches,id',
+            'items.*.qty' => 'nullable|integer|min:1',
             'items.*.remarks' => 'nullable|string',
             'items.*.sales_order_item_id' => 'nullable|exists:sales_order_items,id',
         ];

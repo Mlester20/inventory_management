@@ -165,10 +165,26 @@ class DeliveryReceiptService
      */
     protected function applyItems(DeliveryReceipt $deliveryReceipt, array $items, ?int $userId): void
     {
+        $hasAnyLine = collect($items)->contains(
+            fn ($line) => ! empty($line['product_batch_id']) && ! empty($line['qty']) && (int) $line['qty'] > 0
+        );
+        if (! $hasAnyLine) {
+            throw ValidationException::withMessages([
+                'items' => 'Select a batch and enter a quantity for at least one item.',
+            ]);
+        }
+
         $warehouse = Location::warehouse();
         $affectedSalesOrders = [];
 
         foreach ($items as $line) {
+            // A partial fulfillment intentionally leaves some pending Sales
+            // Order lines blank (not yet available to deliver) — skip them
+            // rather than treating a blank batch/qty as 0 units delivered.
+            if (empty($line['product_batch_id']) || empty($line['qty']) || (int) $line['qty'] <= 0) {
+                continue;
+            }
+
             $batch = ProductBatch::with('product')->findOrFail($line['product_batch_id']);
             $qty = (int) $line['qty'];
             $availableAtWarehouse = $batch->qtyAtLocation($warehouse->id);
