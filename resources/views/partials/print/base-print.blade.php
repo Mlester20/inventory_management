@@ -109,7 +109,6 @@
 }
 
 .print-note-box {
-    width: 58.333%;
     vertical-align: top;
     border: 1.5px solid #333;
     min-height: 95px;

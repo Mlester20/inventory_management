@@ -231,6 +231,10 @@
         font-size: 0.85rem;
     }
 
+    .po-sheet .print-note-box {
+        min-height: 180px;
+    }
+
     @media print {
         #printablePurchaseOrderSheet {
             box-shadow: none !important;
