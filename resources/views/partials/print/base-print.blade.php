@@ -146,6 +146,7 @@
     font-size: 0.72rem;
     font-weight: 600;
     padding: 0.3rem 0.5rem;
+    white-space: nowrap;
 }
 
 .print-vat-total-row td {
