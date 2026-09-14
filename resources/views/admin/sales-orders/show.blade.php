@@ -30,35 +30,51 @@
                         <i class="bx bx-plus"></i> Create Delivery Receipt
                     </a>
                 @endif
-                <button type="button" class="btn btn-outline-primary" onclick="printSalesOrder()">
-                    <i class="bx bx-printer"></i> Print
-                </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="printSalesOrderList()">
-                    <i class="bx bx-list-ul"></i> Print (Packing List)
-                </button>
-                @if($salesOrder->isArchived())
-                    <form action="{{ route('sales-orders.unarchive', $salesOrder) }}" method="POST">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-secondary">
-                            <i class="bx bx-undo"></i> Unarchive
+
+                <div class="dropdown">
+                    <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bx bx-printer"></i> Print
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        <button type="button" class="dropdown-item" onclick="printSalesOrder()">
+                            <i class="bx bx-printer"></i> Standard
                         </button>
-                    </form>
-                @else
-                    <form action="{{ route('sales-orders.archive', $salesOrder) }}" method="POST">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-secondary">
-                            <i class="bx bx-archive"></i> Archive
+                        <button type="button" class="dropdown-item" onclick="printSalesOrderList()">
+                            <i class="bx bx-list-ul"></i> Packing List
                         </button>
-                    </form>
-                @endif
-                @if(Auth::user()->role === 'admin' && ! $salesOrder->isCancelled())
-                    <form action="{{ route('sales-orders.cancel', $salesOrder) }}" method="POST" onsubmit="return confirmSubmit(this, 'Cancel/void this Sales Order? The record and its delivery history stay, only the status changes.');">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-danger">
-                            <i class="bx bx-block"></i> Cancel/Void
-                        </button>
-                    </form>
-                @endif
+                    </div>
+                </div>
+
+                <div class="dropdown">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
+                        <i class="bx bx-dots-vertical-rounded"></i>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        @if($salesOrder->isArchived())
+                            <form action="{{ route('sales-orders.unarchive', $salesOrder) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bx bx-undo"></i> Unarchive
+                                </button>
+                            </form>
+                        @else
+                            <form action="{{ route('sales-orders.archive', $salesOrder) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bx bx-archive"></i> Archive
+                                </button>
+                            </form>
+                        @endif
+                        @if(Auth::user()->role === 'admin' && ! $salesOrder->isCancelled())
+                            <form action="{{ route('sales-orders.cancel', $salesOrder) }}" method="POST" onsubmit="return confirmSubmit(this, 'Cancel/void this Sales Order? The record and its delivery history stay, only the status changes.');">
+                                @csrf
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bx bx-block"></i> Cancel/Void
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
             @endif
         </div>
     </div>
