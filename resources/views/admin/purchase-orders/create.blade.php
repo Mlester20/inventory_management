@@ -24,20 +24,24 @@
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label for="supplier_id" class="form-label">Supplier</label>
-                        <select
-                            name="supplier_id"
-                            id="supplier_id"
-                            class="form-select @error('supplier_id') is-invalid @enderror"
+                        <label for="supplier_search" class="form-label">Supplier</label>
+                        <input
+                            type="text"
+                            name="supplier_search"
+                            id="supplier_search"
+                            class="form-control @error('supplier_id') is-invalid @enderror"
+                            list="supplier_datalist"
+                            placeholder="Search supplier..."
+                            autocomplete="off"
+                            value="{{ old('supplier_search', $editingPurchaseOrder?->supplier?->supplier_name) }}"
                             required
                         >
-                            <option value="">-- Select Supplier --</option>
+                        <datalist id="supplier_datalist">
                             @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" {{ old('supplier_id', $editingPurchaseOrder?->supplier_id) == $supplier->id ? 'selected' : '' }}>
-                                    {{ $supplier->supplier_name }}
-                                </option>
+                                <option value="{{ $supplier->supplier_name }}"></option>
                             @endforeach
-                        </select>
+                        </datalist>
+                        <input type="hidden" name="supplier_id" id="supplier_id" value="{{ old('supplier_id', $editingPurchaseOrder?->supplier_id) }}">
                         @error('supplier_id')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
@@ -129,6 +133,12 @@
 <script>
     const GENERIC_NAMES = @json($genericNamesForJs);
     const prefillLines = @json($prefillLines);
+
+    const SUPPLIERS = @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->supplier_name])->values());
+
+    function findSupplierByName(name) {
+        return SUPPLIERS.find(s => s.name === name) || null;
+    }
 
     let rowIndex = 0;
 
@@ -320,6 +330,13 @@
             e.preventDefault();
             generateLines();
         }
+    });
+
+    document.getElementById('supplier_search').addEventListener('input', function () {
+        const match = findSupplierByName(this.value);
+        const hidden = document.getElementById('supplier_id');
+        hidden.value = match ? match.id : '';
+        hidden.dispatchEvent(new Event('change'));
     });
 
     // Kept for future use if per-supplier filtering is ever reintroduced —

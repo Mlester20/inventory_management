@@ -24,15 +24,17 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="supplier_id" class="form-label">Supplier</label>
-                        <select name="supplier_id" id="supplier_id" class="form-select @error('supplier_id') is-invalid @enderror" required>
-                            <option value="">-- Select Supplier --</option>
+                        <label for="supplier_search" class="form-label">Supplier</label>
+                        <input type="text" name="supplier_search" id="supplier_search"
+                            class="form-control @error('supplier_id') is-invalid @enderror"
+                            list="supplier_datalist" placeholder="Search supplier..." autocomplete="off"
+                            value="{{ old('supplier_search', $editingPurchaseInvoice?->supplier?->supplier_name) }}" required>
+                        <datalist id="supplier_datalist">
                             @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" {{ old('supplier_id', $editingPurchaseInvoice?->supplier_id) == $supplier->id ? 'selected' : '' }}>
-                                    {{ $supplier->supplier_name }}
-                                </option>
+                                <option value="{{ $supplier->supplier_name }}"></option>
                             @endforeach
-                        </select>
+                        </datalist>
+                        <input type="hidden" name="supplier_id" id="supplier_id" value="{{ old('supplier_id', $editingPurchaseInvoice?->supplier_id) }}">
                         @error('supplier_id')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
@@ -155,10 +157,22 @@
     const PREFILL_GOODS_RECEIPT_ID = @json(old('goods_receipt_id', $editingPurchaseInvoice?->goods_receipt_id));
     const PREFILL_PURCHASE_ORDER_ID = @json(old('purchase_order_id', $editingPurchaseInvoice?->purchase_order_id));
 
+    const SUPPLIERS = @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->supplier_name])->values());
+
+    function findSupplierByName(name) {
+        return SUPPLIERS.find(s => s.name === name) || null;
+    }
+
     const supplierSelect = document.getElementById('supplier_id');
     const goodsReceiptSelect = document.getElementById('goods_receipt_id');
     const purchaseOrderSelect = document.getElementById('purchase_order_id');
     const amountInput = document.getElementById('amount');
+
+    document.getElementById('supplier_search').addEventListener('input', function () {
+        const match = findSupplierByName(this.value);
+        supplierSelect.value = match ? match.id : '';
+        supplierSelect.dispatchEvent(new Event('change'));
+    });
 
     function refreshGoodsReceiptOptions() {
         const supplierId = supplierSelect.value;

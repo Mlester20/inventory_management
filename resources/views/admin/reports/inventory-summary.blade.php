@@ -37,15 +37,16 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="supplier_id" class="form-label">Supplier</label>
-                    <select class="form-select" id="supplier_id" name="supplier_id">
-                        <option value="">All Suppliers</option>
+                    <label for="supplier_search" class="form-label">Supplier</label>
+                    <input type="text" class="form-control" id="supplier_search" list="supplier_datalist"
+                        placeholder="All suppliers" autocomplete="off"
+                        value="{{ optional($suppliers->firstWhere('id', $supplierId))->supplier_name }}">
+                    <datalist id="supplier_datalist">
                         @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" {{ (string) $supplierId === (string) $supplier->id ? 'selected' : '' }}>
-                                {{ $supplier->supplier_name }}
-                            </option>
+                            <option value="{{ $supplier->supplier_name }}"></option>
                         @endforeach
-                    </select>
+                    </datalist>
+                    <input type="hidden" id="supplier_id" name="supplier_id" value="{{ $supplierId }}">
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
                     <div class="form-check">
@@ -191,4 +192,15 @@
     }
 </style>
 
+@endsection
+
+@section('scripts')
+<script>
+    const REPORT_SUPPLIERS = @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->supplier_name])->values());
+
+    document.getElementById('supplier_search').addEventListener('input', function () {
+        const match = REPORT_SUPPLIERS.find(s => s.name === this.value);
+        document.getElementById('supplier_id').value = match ? match.id : '';
+    });
+</script>
 @endsection

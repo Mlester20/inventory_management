@@ -78,12 +78,14 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Supplier</label>
-                            <select name="supplier_id" id="{{ $prefix }}supplier_id" class="form-select">
-                                <option value="">-- Select Supplier --</option>
+                            <input type="text" class="form-control" id="{{ $prefix }}supplier_search"
+                                list="{{ $prefix }}supplier-datalist" placeholder="Search supplier..." autocomplete="off">
+                            <datalist id="{{ $prefix }}supplier-datalist">
                                 @foreach ($suppliers as $supplier)
-                                    <option value="{{ $supplier->id }}">{{ $supplier->supplier_name }}</option>
+                                    <option value="{{ $supplier->supplier_name }}"></option>
                                 @endforeach
-                            </select>
+                            </datalist>
+                            <input type="hidden" name="supplier_id" id="{{ $prefix }}supplier_id">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Tax / VAT Classification</label>
@@ -195,6 +197,16 @@
     function findProductGenericById(id) {
         return PRODUCT_GENERIC_NAMES.find(g => String(g.id) === String(id));
     }
+
+    const PRODUCT_SUPPLIERS = @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->supplier_name])->values());
+
+    function findProductSupplierByName(name) {
+        return PRODUCT_SUPPLIERS.find(s => s.name === name) || null;
+    }
+
+    function findProductSupplierById(id) {
+        return PRODUCT_SUPPLIERS.find(s => String(s.id) === String(id)) || null;
+    }
 </script>
 @endonce
 
@@ -215,6 +227,15 @@
     if (genericSearchInput) {
         genericSearchInput.addEventListener('input', function () {
             applyGeneric(findProductGenericByLabel(this.value));
+        });
+    }
+
+    const supplierSearchInput = document.getElementById(prefix + 'supplier_search');
+    const supplierIdInput = document.getElementById(prefix + 'supplier_id');
+    if (supplierSearchInput) {
+        supplierSearchInput.addEventListener('input', function () {
+            const match = findProductSupplierByName(this.value);
+            supplierIdInput.value = match ? match.id : '';
         });
     }
 
@@ -257,7 +278,9 @@
             document.getElementById('update_brand_name').value = get('data-brand-name') || '';
             document.getElementById('update_description').value = get('data-description') || '';
             document.getElementById('update_barcode').value = get('data-barcode') || '';
-            document.getElementById('update_supplier_id').value = get('data-supplier-id') || '';
+            const updateSupplier = findProductSupplierById(get('data-supplier-id'));
+            document.getElementById('update_supplier_search').value = updateSupplier ? updateSupplier.name : '';
+            document.getElementById('update_supplier_id').value = updateSupplier ? updateSupplier.id : '';
             document.getElementById('update_tax_id').value = get('data-tax-id') || '';
             if (document.getElementById('update_unit_cost')) {
                 document.getElementById('update_unit_cost').value = get('data-unit-cost') || '';
@@ -304,7 +327,9 @@
 
             document.getElementById('brand_name').value = get('data-brand-name') || '';
             document.getElementById('description').value = get('data-description') || '';
-            document.getElementById('supplier_id').value = get('data-supplier-id') || '';
+            const cloneSupplier = findProductSupplierById(get('data-supplier-id'));
+            document.getElementById('supplier_search').value = cloneSupplier ? cloneSupplier.name : '';
+            document.getElementById('supplier_id').value = cloneSupplier ? cloneSupplier.id : '';
             document.getElementById('tax_id').value = get('data-tax-id') || '';
             if (document.getElementById('unit_cost')) {
                 document.getElementById('unit_cost').value = get('data-unit-cost') || '';
