@@ -112,30 +112,17 @@
     margin-top: 0.25rem;
 }
 
-/* table/table-cell (not flexbox) for the Note-box-vs-VAT-table row: this
-   is the one CSS layout mode where two side-by-side boxes reliably match
-   height to whichever is taller, in every browser's print engine —
-   flexbox's align-items: stretch turned out not to size a nested flex
-   column's 100% height reliably here. */
+/* CSS Grid for the Note-box-vs-VAT-table row: grid items stretch to the
+   row's height by default (align-items: stretch), and — unlike this
+   file's earlier flexbox attempt — reliably give a stretched grid item a
+   definite height that its own children can then fill with height: 100%,
+   across every browser's print engine. grid-template-columns controls
+   both column widths directly, so .col-7/.col-5's own Bootstrap flex/
+   width rules (meant for a flex .row) are simply irrelevant here, not
+   conflicting. */
 .print-money-footer {
-    display: table;
-    width: 100%;
-    table-layout: fixed;
-}
-
-.print-money-footer > .col-7,
-.print-money-footer > .col-5 {
-    display: table-cell;
-    vertical-align: top;
-    float: none;
-}
-
-.print-money-footer > .col-7 {
-    width: 58.333%;
-}
-
-.print-money-footer > .col-5 {
-    width: 41.667%;
+    display: grid;
+    grid-template-columns: 58.333% 41.667%;
 }
 
 .print-vat-wrapper {
