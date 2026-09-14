@@ -17,18 +17,27 @@
         default => 'col-4',
     };
 @endphp
-<div class="row mt-4 signature-block">
-    <div class="{{ $colClass }} text-center">
-        <div class="border-top pt-1">{{ $label1 ?? 'Prepared By' }}: {{ $value1 ?? '—' }}</div>
+<div class="row g-0 mt-2 signature-block">
+    <div class="{{ $colClass }}">
+        <div class="print-sig-box">
+            <div class="print-sig-label">{{ $label1 ?? 'Prepared By' }}:</div>
+            <div class="print-sig-value">{{ $value1 ?? '' }}</div>
+        </div>
     </div>
     @if($columns >= 2)
-        <div class="{{ $colClass }} text-center">
-            <div class="border-top pt-1">{{ $label2 ?? 'Approved By' }}: {{ $value2 ?? '____________________' }}</div>
+        <div class="{{ $colClass }}">
+            <div class="print-sig-box">
+                <div class="print-sig-label">{{ $label2 ?? 'Approved By' }}:</div>
+                <div class="print-sig-value">{{ $value2 ?? '' }}</div>
+            </div>
         </div>
     @endif
     @if($columns === 3)
-        <div class="{{ $colClass }} text-center">
-            <div class="border-top pt-1">{{ $label3 ?? 'Received By' }}: {{ $value3 ?? '____________________' }}</div>
+        <div class="{{ $colClass }}">
+            <div class="print-sig-box">
+                <div class="print-sig-label">{{ $label3 ?? 'Received By' }}:</div>
+                <div class="print-sig-value">{{ $value3 ?? '' }}</div>
+            </div>
         </div>
     @endif
 </div>
