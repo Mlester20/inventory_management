@@ -198,7 +198,7 @@
 @section('scripts')
 <style>
     .invoice-sheet {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
     }
 
     .invoice-letterhead {
@@ -214,12 +214,12 @@
 
     .invoice-company-name {
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 0.9rem;
         letter-spacing: 0.3px;
     }
 
     .invoice-company-detail {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         line-height: 1.3;
         color: #333;
     }
@@ -232,7 +232,7 @@
 
     .invoice-doc-title .invoice-title {
         font-weight: 700;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .invoice-doc-title .invoice-no span {
@@ -257,8 +257,8 @@
     }
 
     .invoice-to-table td {
-        padding: 0.2rem 0.4rem;
-        font-size: 0.72rem;
+        padding: 0.15rem 0.35rem;
+        font-size: 0.62rem;
     }
 
     .invoice-to-table .label {
@@ -274,9 +274,9 @@
 
     .invoice-strip-table th,
     .invoice-strip-table td {
-        font-size: 0.62rem;
+        font-size: 0.56rem;
         text-align: center;
-        padding: 0.2rem 0.3rem;
+        padding: 0.15rem 0.25rem;
         white-space: nowrap;
     }
 
@@ -292,6 +292,11 @@
         white-space: nowrap;
     }
 
+    .invoice-items-table td {
+        font-size: 0.62rem;
+        padding: 0.15rem 0.35rem;
+    }
+
     .invoice-totals {
         width: 170px;
         flex-shrink: 0;
@@ -299,8 +304,8 @@
     }
 
     .invoice-totals td {
-        font-size: 0.68rem;
-        padding: 0.15rem 0.4rem;
+        font-size: 0.6rem;
+        padding: 0.12rem 0.35rem;
         text-align: center;
     }
 
@@ -313,12 +318,12 @@
     }
 
     .invoice-totals .total-due-row td {
-        font-size: 0.85rem;
+        font-size: 0.7rem;
         background-color: #eee;
     }
 
     .invoice-disclaimer {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         color: #6c757d;
         text-align: justify;
     }

@@ -228,11 +228,46 @@
     }
 
     .po-sheet {
-        font-size: 0.85rem;
+        font-size: 0.68rem;
     }
 
     .po-sheet .print-note-box {
         min-height: 180px;
+    }
+
+    .po-sheet .print-company-detail {
+        font-size: 0.6rem;
+    }
+
+    .po-sheet .print-doc-title {
+        font-size: 1.3rem;
+    }
+
+    .po-sheet .print-doc-page,
+    .po-sheet .print-doc-no-row {
+        font-size: 0.62rem;
+    }
+
+    .po-sheet .print-to-header {
+        font-size: 0.66rem;
+    }
+
+    .po-sheet .print-to-row {
+        font-size: 0.62rem;
+    }
+
+    .po-sheet .print-sig-label {
+        font-size: 0.66rem;
+    }
+
+    .po-sheet .print-sig-value {
+        font-size: 0.6rem;
+    }
+
+    .po-sheet .print-items-table th,
+    .po-sheet .print-items-table td {
+        font-size: 0.62rem;
+        padding: 0.15rem 0.3rem;
     }
 
     @media print {

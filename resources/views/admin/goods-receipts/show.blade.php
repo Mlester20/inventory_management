@@ -177,7 +177,42 @@
     }
 
     .gr-sheet {
-        font-size: 0.85rem;
+        font-size: 0.68rem;
+    }
+
+    .gr-sheet .print-company-detail {
+        font-size: 0.6rem;
+    }
+
+    .gr-sheet .print-doc-title {
+        font-size: 1.3rem;
+    }
+
+    .gr-sheet .print-doc-page,
+    .gr-sheet .print-doc-no-row {
+        font-size: 0.62rem;
+    }
+
+    .gr-sheet .print-to-header {
+        font-size: 0.66rem;
+    }
+
+    .gr-sheet .print-to-row {
+        font-size: 0.62rem;
+    }
+
+    .gr-sheet .print-sig-label {
+        font-size: 0.66rem;
+    }
+
+    .gr-sheet .print-sig-value {
+        font-size: 0.6rem;
+    }
+
+    .gr-sheet .print-items-table th,
+    .gr-sheet .print-items-table td {
+        font-size: 0.62rem;
+        padding: 0.15rem 0.3rem;
     }
 
     @media print {

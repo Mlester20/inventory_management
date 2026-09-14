@@ -163,7 +163,6 @@
                         <tr>
                             <th style="width: 4%;">#</th>
                             <th>Generic Description</th>
-                            <th>Remarks</th>
                             <th style="width: 7%;">Unit</th>
                             <th class="text-end" style="width: 8%;">Qty</th>
                             <th class="text-end" style="width: 11%;">Unit Cost</th>
@@ -174,8 +173,12 @@
                         @foreach ($salesQuote->items as $item)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
-                                <td>{{ $item->genericName->generic_name ?? '—' }}</td>
-                                <td>{{ $item->remarks ?? '—' }}</td>
+                                <td>
+                                    {{ $item->genericName->generic_name ?? '—' }}
+                                    @if($item->remarks)
+                                        <div class="print-item-remarks" style="white-space: pre-line;">{{ $item->remarks }}</div>
+                                    @endif
+                                </td>
                                 <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $item->qty }}</td>
                                 <td class="text-end">{{ number_format($item->price, 2) }}</td>
@@ -252,7 +255,60 @@
     }
 
     .sq-sheet {
-        font-size: 0.85rem;
+        font-size: 0.68rem;
+    }
+
+    /* Sales Quote-only overrides — see the matching comment in
+       sales-orders/show.blade.php's .so-sheet block for why these are
+       scoped here rather than edited directly in base-print. */
+    .sq-sheet .print-company-detail {
+        font-size: 0.6rem;
+    }
+
+    .sq-sheet .print-doc-title {
+        font-size: 1.3rem;
+    }
+
+    .sq-sheet .print-doc-page,
+    .sq-sheet .print-doc-no-row {
+        font-size: 0.62rem;
+    }
+
+    .sq-sheet .print-to-header {
+        font-size: 0.66rem;
+    }
+
+    .sq-sheet .print-to-row {
+        font-size: 0.62rem;
+    }
+
+    .sq-sheet .print-sig-label {
+        font-size: 0.66rem;
+    }
+
+    .sq-sheet .print-sig-value {
+        font-size: 0.6rem;
+    }
+
+    .sq-sheet .print-items-table th,
+    .sq-sheet .print-items-table td {
+        font-size: 0.62rem;
+        padding: 0.15rem 0.3rem;
+    }
+
+    .sq-sheet .print-item-remarks {
+        font-size: 0.56rem;
+        color: #555;
+        margin-top: 0.15rem;
+    }
+
+    .sq-sheet .print-note-label {
+        font-size: 0.66rem;
+    }
+
+    .sq-sheet .print-note-content,
+    .sq-sheet .print-vat-table td {
+        font-size: 0.56rem;
     }
 
     @media print {

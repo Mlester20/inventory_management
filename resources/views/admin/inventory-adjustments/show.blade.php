@@ -224,7 +224,7 @@
 @section('scripts')
 <style>
     .print-sheet {
-        font-size: 0.85rem;
+        font-size: 0.68rem;
     }
 
     .print-letterhead {
@@ -240,12 +240,12 @@
 
     .print-company-name {
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 0.9rem;
         letter-spacing: 0.3px;
     }
 
     .print-company-detail {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         line-height: 1.3;
         color: #333;
     }
@@ -258,7 +258,7 @@
 
     .print-doc-title .print-title {
         font-weight: 700;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .print-doc-title .print-no span {
@@ -274,8 +274,8 @@
     }
 
     .print-to-table td {
-        padding: 0.2rem 0.4rem;
-        font-size: 0.72rem;
+        padding: 0.15rem 0.35rem;
+        font-size: 0.62rem;
     }
 
     .print-to-table .label {
@@ -294,6 +294,11 @@
         font-weight: 700;
         text-align: center;
         white-space: nowrap;
+    }
+
+    .print-items-table td {
+        font-size: 0.62rem;
+        padding: 0.15rem 0.35rem;
     }
 
     @media print {

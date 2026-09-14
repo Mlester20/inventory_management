@@ -185,7 +185,7 @@
     }
 
     .sd-sheet {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
     }
 
     .sd-letterhead {
@@ -201,12 +201,12 @@
 
     .sd-company-name {
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 0.9rem;
         letter-spacing: 0.3px;
     }
 
     .sd-company-detail {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         line-height: 1.3;
         color: #333;
     }
@@ -219,7 +219,7 @@
 
     .sd-doc-title .sd-title {
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 0.9rem;
     }
 
     .sd-doc-title .sd-no span {
@@ -237,8 +237,8 @@
     }
 
     .sd-to-table td {
-        padding: 0.2rem 0.4rem;
-        font-size: 0.72rem;
+        padding: 0.15rem 0.35rem;
+        font-size: 0.62rem;
     }
 
     .sd-to-table .label {
@@ -254,9 +254,9 @@
 
     .sd-strip-table th,
     .sd-strip-table td {
-        font-size: 0.62rem;
+        font-size: 0.56rem;
         text-align: center;
-        padding: 0.2rem 0.3rem;
+        padding: 0.15rem 0.25rem;
         white-space: nowrap;
     }
 
@@ -270,6 +270,11 @@
         font-weight: 700;
         text-align: center;
         white-space: nowrap;
+    }
+
+    .sd-items-table td {
+        font-size: 0.62rem;
+        padding: 0.15rem 0.35rem;
     }
 
     @media print {
