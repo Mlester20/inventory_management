@@ -63,13 +63,16 @@
                 <div id="direct_tab" class="gr-tab">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="direct_supplier_id" class="form-label">Supplier</label>
-                            <select name="supplier_id" id="direct_supplier_id" class="form-select">
-                                <option value="">-- Select Supplier --</option>
+                            <label for="direct_supplier_search" class="form-label">Supplier</label>
+                            <input type="text" name="supplier_search" id="direct_supplier_search" class="form-control"
+                                list="direct_supplier_datalist" placeholder="Search supplier..." autocomplete="off"
+                                value="{{ old('supplier_search', $editingGoodsReceipt?->supplier?->supplier_name) }}">
+                            <datalist id="direct_supplier_datalist">
                                 @foreach ($suppliers as $supplier)
-                                    <option value="{{ $supplier->id }}" {{ old('supplier_id', $editingGoodsReceipt?->supplier_id) == $supplier->id ? 'selected' : '' }}>{{ $supplier->supplier_name }}</option>
+                                    <option value="{{ $supplier->supplier_name }}"></option>
                                 @endforeach
-                            </select>
+                            </datalist>
+                            <input type="hidden" name="supplier_id" id="direct_supplier_id" value="{{ old('supplier_id', $editingGoodsReceipt?->supplier_id) }}">
                         </div>
                     </div>
 
@@ -136,6 +139,15 @@
     const DIRECT_PREFILL_LINES = @json($directPrefillLines);
     const PO_PREFILL_LINES = @json($poPrefillLines);
 
+    // Supplier is a searchable text field (native <datalist>, same
+    // technique as the Item picker below) rather than a long <select> —
+    // matched back to the real supplier_id via a hidden input.
+    const SUPPLIERS = @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->supplier_name])->values());
+
+    function findSupplierByName(name) {
+        return SUPPLIERS.find(s => s.name === name) || null;
+    }
+
     let directRowIndex = 0;
     let poRowIndex = 0;
 
@@ -163,6 +175,13 @@
     function currentDirectSupplierId() {
         return document.getElementById('direct_supplier_id').value;
     }
+
+    document.getElementById('direct_supplier_search').addEventListener('input', function () {
+        const match = findSupplierByName(this.value);
+        const hidden = document.getElementById('direct_supplier_id');
+        hidden.value = match ? match.id : '';
+        hidden.dispatchEvent(new Event('change'));
+    });
 
     // Item is a searchable text field (native <datalist>, matching the same
     // technique already used for Generic Description pickers) instead of a

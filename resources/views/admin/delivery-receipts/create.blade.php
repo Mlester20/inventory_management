@@ -468,14 +468,19 @@
             return;
         }
 
-        // The real batch options stay first (so the existing default —
-        // auto-select when there's only one option — is unchanged for the
-        // common full-delivery case); the "skip" option is appended after,
-        // so it never wins the browser's default-selects-first-option
-        // behavior but is still one click away for a genuine partial
-        // fulfillment (e.g. this Sales Order line's item hasn't arrived at
-        // the Warehouse yet).
-        cells.item.innerHTML = `<select class="form-select form-select-sm item-select" name="items[${index}][product_batch_id]">${optionsHtml}<option value="">— Not delivering this item yet —</option></select>`;
+        // A "not delivering this item yet" checkbox (rather than an option
+        // buried inside the item dropdown — harder to notice, per Sir's
+        // feedback) disables the select and Qty when checked, so a genuine
+        // partial fulfillment (this Sales Order line's item hasn't arrived
+        // at the Warehouse yet) submits a blank line the backend skips
+        // instead of erroring.
+        cells.item.innerHTML = `
+            <select class="form-select form-select-sm item-select" name="items[${index}][product_batch_id]">${optionsHtml}</select>
+            <div class="form-check mt-1">
+                <input class="form-check-input skip-item-checkbox" type="checkbox" id="skip-item-${index}">
+                <label class="form-check-label small" for="skip-item-${index}">Not delivering this item yet</label>
+            </div>
+        `;
         cells.batch.innerHTML = `<input type="text" class="form-control form-control-sm batch-display" readonly>`;
         cells.expiry.innerHTML = `<input type="text" class="form-control form-control-sm expiry-display" readonly>`;
         cells.qty.innerHTML = `<input type="number" class="form-control form-control-sm qty-input" name="items[${index}][qty]" min="1" value="1">`;
@@ -491,29 +496,13 @@
         }
 
         const itemSelect = cells.item.querySelector('.item-select');
+        const skipCheckbox = cells.item.querySelector('.skip-item-checkbox');
         const qtyInput = cells.qty.querySelector('.qty-input');
         const batchDisplay = cells.batch.querySelector('.batch-display');
         const expiryDisplay = cells.expiry.querySelector('.expiry-display');
 
         function syncSelected() {
             const selected = itemSelect.options[itemSelect.selectedIndex];
-
-            // The "— Not delivering this item yet —" option (empty value)
-            // means this line is intentionally left blank for a partial
-            // fulfillment — clear and disable Qty so nothing implies a
-            // quantity is being delivered here.
-            if (!itemSelect.value) {
-                itemSelect.title = '';
-                batchDisplay.value = '';
-                expiryDisplay.value = '';
-                qtyInput.value = '';
-                qtyInput.disabled = true;
-                return;
-            }
-            qtyInput.disabled = false;
-            if (!qtyInput.value) {
-                qtyInput.value = 1;
-            }
 
             // Long item descriptions get visually clipped by the column
             // width — a native hover tooltip keeps the full text reachable
@@ -530,6 +519,28 @@
             }
         }
         itemSelect.addEventListener('change', syncSelected);
+
+        // Checking "Not delivering this item yet" disables the select and
+        // Qty — a disabled field never posts, so this line arrives at the
+        // backend with a blank product_batch_id/qty, which
+        // DeliveryReceiptService::applyItems() skips rather than erroring.
+        function syncSkipState() {
+            const skipped = skipCheckbox.checked;
+            itemSelect.disabled = skipped;
+            qtyInput.disabled = skipped;
+            if (skipped) {
+                itemSelect.title = '';
+                batchDisplay.value = '';
+                expiryDisplay.value = '';
+                qtyInput.value = '';
+            } else {
+                if (!qtyInput.value) {
+                    qtyInput.value = 1;
+                }
+                syncSelected();
+            }
+        }
+        skipCheckbox.addEventListener('change', syncSkipState);
 
         // Overlay a resumed draft's saved batch/qty/remarks for this line —
         // only if that batch is still among the live fetched options (stock
