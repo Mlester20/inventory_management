@@ -96,7 +96,21 @@
     min-height: 1.15em;
 }
 
+/* A genuine <table>/<td> — see the comment in
+   partials.print.sales-totals-footer for why this isn't Bootstrap's flex
+   .row/.col-* or CSS Grid (both tried first; neither reliably resolved a
+   nested element's height: 100% against a "stretched" item across every
+   browser's print engine). Native table cells reliably match height to
+   whichever sibling cell is taller, with no such ambiguity. */
+.print-money-footer-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
 .print-note-box {
+    width: 58.333%;
+    vertical-align: top;
     border: 1.5px solid #333;
     min-height: 95px;
     padding: 0.4rem 0.6rem;
@@ -112,17 +126,10 @@
     margin-top: 0.25rem;
 }
 
-/* CSS Grid for the Note-box-vs-VAT-table row: grid items stretch to the
-   row's height by default (align-items: stretch), and — unlike this
-   file's earlier flexbox attempt — reliably give a stretched grid item a
-   definite height that its own children can then fill with height: 100%,
-   across every browser's print engine. grid-template-columns controls
-   both column widths directly, so .col-7/.col-5's own Bootstrap flex/
-   width rules (meant for a flex .row) are simply irrelevant here, not
-   conflicting. */
-.print-money-footer {
-    display: grid;
-    grid-template-columns: 58.333% 41.667%;
+.print-vat-cell {
+    width: 41.667%;
+    vertical-align: top;
+    padding: 0;
 }
 
 .print-vat-wrapper {
