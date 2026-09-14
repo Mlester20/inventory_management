@@ -19,13 +19,17 @@
     - notes (string, optional): printed inside the Note box; left blank
       (for manual completion) when the document has no notes
 --}}
-{{-- A genuine <table>/<td> row — not Bootstrap's flex .row/.col-*, and not
-     CSS Grid either (both were tried first; neither reliably resolved a
-     nested element's height: 100% against a "stretched" flex/grid item in
-     every browser's print engine). A native table cell's height is the one
-     case percentage heights on its children are unambiguously, reliably
-     specified to resolve against — so .print-vat-wrapper's height: 100%
-     below finally has solid ground to stand on. --}}
+{{-- A genuine <table>/<td> row — Bootstrap's flex .row/.col-*, then CSS
+     Grid, were each tried first; neither reliably resolved a nested
+     element's height: 100% against a "stretched" flex/grid item across
+     real browser print engines. This version drops percentage heights
+     entirely: the VAT table itself gets an explicit height, and its own
+     last row is an empty spacer with height: 100% — the one classic,
+     print-safe technique for "this row absorbs whatever's left over"
+     that's been reliable in HTML tables since long before flexbox/grid
+     existed, because it never asks a child to resolve a percentage
+     height against anything — it only relies on how browsers have always
+     distributed a table's own extra height across its own rows. --}}
 <table class="print-money-footer-table mb-0">
     <tr>
         <td class="print-note-box">
@@ -35,27 +39,20 @@
             @endif
         </td>
         <td class="print-vat-cell">
-            <div class="print-vat-wrapper">
-                <table class="table table-bordered table-sm print-vat-table mb-0">
-                    <tbody>
-                        <tr><td>VATable Sales</td><td></td></tr>
-                        <tr><td>VAT-Exempt Sales</td><td></td></tr>
-                        <tr><td>VAT Zero Rated Sales</td><td></td></tr>
-                        <tr><td>Add: VAT</td><td></td></tr>
-                        <tr><td>Less Withholding Tax</td><td></td></tr>
-                        <tr class="print-vat-total-row">
-                            <td class="fw-bold">Total Amount Due</td>
-                            <td class="text-end fw-bold">₱{{ $totalAmountDue }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-                {{-- Fills any leftover height when the Note box (sibling
-                     cell) is taller, so the two boxes' bottom borders line
-                     up, without stretching the VAT table's own rows to
-                     match (which left ugly gaps inside each row when the
-                     Note box grew tall). --}}
-                <div class="print-vat-filler"></div>
-            </div>
+            <table class="table table-bordered table-sm print-vat-table mb-0">
+                <tbody>
+                    <tr><td>VATable Sales</td><td></td></tr>
+                    <tr><td>VAT-Exempt Sales</td><td></td></tr>
+                    <tr><td>VAT Zero Rated Sales</td><td></td></tr>
+                    <tr><td>Add: VAT</td><td></td></tr>
+                    <tr><td>Less Withholding Tax</td><td></td></tr>
+                    <tr class="print-vat-total-row">
+                        <td class="fw-bold">Total Amount Due</td>
+                        <td class="text-end fw-bold">₱{{ $totalAmountDue }}</td>
+                    </tr>
+                    <tr class="print-vat-spacer-row"><td colspan="2"></td></tr>
+                </tbody>
+            </table>
         </td>
     </tr>
 </table>

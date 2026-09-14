@@ -132,20 +132,18 @@
     padding: 0;
 }
 
-.print-vat-wrapper {
-    display: flex;
-    flex-direction: column;
+/* The VAT table gets the full height of its <td> (a real table cell, so
+   this height: 100% is on solid ground); its own last row — an empty
+   spacer — also gets height: 100% so IT absorbs whatever's left over,
+   leaving every other row at its natural, compact height instead of
+   every row stretching open (which is what happened when the table
+   itself was stretched with no spacer row to soak up the difference). */
+.print-vat-table {
     height: 100%;
 }
 
-.print-vat-table {
-    flex: 0 0 auto;
-}
-
-.print-vat-filler {
-    flex: 1 1 auto;
-    border: 1.5px solid #333;
-    border-top: none;
+.print-vat-spacer-row td {
+    height: 100%;
 }
 
 .print-vat-table td {
