@@ -85,16 +85,6 @@
                 'totalAmountDue' => number_format($invoice->amount_due, 2),
                 'preparedByValue' => $invoice->preparedBy->name ?? '',
             ])
-
-            <p class="text-end fw-bold mt-2 mb-0" style="font-size: 0.66rem;">RECEIVED ITEMS IN GOOD CONDITION</p>
-
-            <div class="invoice-disclaimer mt-2">
-                This sales invoice is made under agreement that above goods will not be sold for transshipment to either
-                contraries or trades without written authorization of {{ config('company.name') }}. Violation
-                of this condition shall entitle to latter collect from buyer and/or penalty and/or liquidated damages
-                and amount equivalent to 100% of value goods purchased. This invoice shall be valid for five (5) years
-                from the date of issue.
-            </div>
         </div>
     </div>
 @endsection
@@ -149,12 +139,6 @@
     .invoice-sheet .print-note-content,
     .invoice-sheet .print-vat-table td {
         font-size: 0.56rem;
-    }
-
-    .invoice-disclaimer {
-        font-size: 0.56rem;
-        color: #6c757d;
-        text-align: justify;
     }
 
     @media print {
