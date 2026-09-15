@@ -153,12 +153,16 @@
                                 <th>Unit</th>
                                 @if(!$deliveryReceipt->isDraft())
                                     <th class="text-end">Invoiced</th>
+                                    <th class="text-end no-print" style="width: 110px;">Qty to Invoice</th>
                                 @endif
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($deliveryReceipt->items as $line)
-                                @php $fullyInvoiced = $line->invoiced_qty >= $line->qty; @endphp
+                                @php
+                                    $remaining = $line->remaining_invoiceable_qty;
+                                    $fullyInvoiced = $remaining <= 0;
+                                @endphp
                                 <tr>
                                     @if(!$deliveryReceipt->isDraft())
                                         <td class="no-print">
@@ -182,6 +186,11 @@
                                                 {{ $line->invoiced_qty }}
                                             @endif
                                         </td>
+                                        <td class="no-print">
+                                            <input type="number" name="qty[{{ $line->id }}]" value="{{ $remaining }}"
+                                                min="1" max="{{ $remaining }}" class="form-control form-control-sm text-end"
+                                                {{ $fullyInvoiced ? 'disabled' : '' }}>
+                                        </td>
                                     @endif
                                 </tr>
                             @endforeach
@@ -200,7 +209,12 @@
                         <p class="fw-bold mb-0">{{ $deliveryReceipt->preparedBy->name ?? '—' }}</p>
                     </div>
                     @if(!$deliveryReceipt->isDraft())
-                        <div class="col-md-8 text-md-end mt-3 mt-md-0 no-print">
+                        <div class="col-md-4 no-print">
+                            <label for="dr_po_no" class="form-label small mb-1">Customer PO #</label>
+                            <input type="text" name="po_no" id="dr_po_no" class="form-control form-control-sm"
+                                value="{{ $deliveryReceipt->salesOrder?->po_no }}" placeholder="Optional">
+                        </div>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0 no-print">
                             <button type="submit" class="btn btn-primary" id="createInvoiceBtn" disabled>
                                 <i class="bx bx-receipt"></i> Create Invoice
                             </button>

@@ -59,6 +59,7 @@
                             <th class="text-end">Qty</th>
                             <th>Unit</th>
                             <th class="text-end">Invoiced</th>
+                            <th class="text-end no-print" style="width: 110px;">Qty to Invoice</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -66,7 +67,8 @@
                             @php
                                 $product = $line->productBatch->product;
                                 $generic = $product->genericName;
-                                $fullyInvoiced = $line->remaining_invoiceable_qty <= 0;
+                                $remaining = $line->remaining_invoiceable_qty;
+                                $fullyInvoiced = $remaining <= 0;
                                 $linkedInvoice = $line->sales->first()?->invoice;
                             @endphp
                             <tr>
@@ -98,17 +100,26 @@
                                         {{ $line->invoiced_qty }}
                                     @endif
                                 </td>
+                                <td class="no-print">
+                                    <input type="number" name="qty[{{ $line->id }}]" value="{{ $remaining }}"
+                                        min="1" max="{{ $remaining }}" class="form-control form-control-sm text-end"
+                                        {{ $fullyInvoiced ? 'disabled' : '' }}>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $customer ? 11 : 12 }}" class="text-center text-muted py-4">No Advance Orders found.</td>
+                                <td colspan="{{ $customer ? 12 : 13 }}" class="text-center text-muted py-4">No Advance Orders found.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
             @if($lines->isNotEmpty())
-                <div class="card-footer no-print">
+                <div class="card-footer no-print d-flex align-items-end gap-2 flex-wrap">
+                    <div>
+                        <label for="ao_po_no" class="form-label small mb-1">Customer PO #</label>
+                        <input type="text" name="po_no" id="ao_po_no" class="form-control form-control-sm" style="width: 220px;" placeholder="Optional">
+                    </div>
                     <button type="submit" class="btn btn-primary">
                         <i class="bx bx-receipt"></i> Create Invoice
                     </button>

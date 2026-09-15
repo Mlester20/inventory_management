@@ -255,13 +255,18 @@ class DeliveryReceiptController extends Controller
         $validated = $request->validate([
             'line_ids' => 'required|array|min:1',
             'line_ids.*' => 'exists:delivery_receipt_items,id',
+            'qty' => 'nullable|array',
+            'qty.*' => 'nullable|integer|min:1',
+            'po_no' => 'nullable|string|max:255',
         ]);
 
         try {
             $invoice = $this->deliveryReceiptService->createInvoiceFromLines(
                 $deliveryReceipt,
                 $validated['line_ids'],
-                Auth::id()
+                Auth::id(),
+                array_filter($validated['qty'] ?? []),
+                $validated['po_no'] ?? null
             );
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());

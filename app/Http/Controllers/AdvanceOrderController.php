@@ -87,6 +87,9 @@ class AdvanceOrderController extends Controller
             'customer_id' => 'nullable|exists:customers,id',
             'line_ids' => 'nullable|array',
             'line_ids.*' => 'exists:delivery_receipt_items,id',
+            'qty' => 'nullable|array',
+            'qty.*' => 'nullable|integer|min:1',
+            'po_no' => 'nullable|string|max:255',
         ]);
 
         // A plain validate() rule here (required|min:1) would silently
@@ -106,6 +109,11 @@ class AdvanceOrderController extends Controller
         $lines = DeliveryReceiptItem::whereIn('id', $validated['line_ids'])->with('deliveryReceipt')->get();
         $linesByDeliveryReceipt = $lines->groupBy('delivery_receipt_id');
         $invoices = [];
+        // Keyed by delivery_receipt_item_id regardless of which DR group it
+        // belongs to (matches how the "qty[{{ $line->id }}]" inputs post) —
+        // createInvoiceFromLines() only reads the keys relevant to its own
+        // group, so passing the whole array through per group is harmless.
+        $qtyOverrides = array_filter($validated['qty'] ?? []);
 
         try {
             foreach ($linesByDeliveryReceipt as $deliveryReceiptId => $group) {
@@ -113,7 +121,9 @@ class AdvanceOrderController extends Controller
                 $invoice = $this->deliveryReceiptService->createInvoiceFromLines(
                     $deliveryReceipt,
                     $group->pluck('id')->all(),
-                    Auth::id()
+                    Auth::id(),
+                    $qtyOverrides,
+                    $validated['po_no'] ?? null
                 );
                 $invoices[] = $invoice;
 

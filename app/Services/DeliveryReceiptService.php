@@ -242,9 +242,9 @@ class DeliveryReceiptService
      * same resolution Sales Order already uses — a Delivery Receipt line
      * carries no price of its own.
      */
-    public function createInvoiceFromLines(DeliveryReceipt $deliveryReceipt, array $deliveryReceiptItemIds, ?int $userId = null): Invoice
+    public function createInvoiceFromLines(DeliveryReceipt $deliveryReceipt, array $deliveryReceiptItemIds, ?int $userId = null, array $qtyOverrides = [], ?string $poNo = null): Invoice
     {
-        return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId) {
+        return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId, $qtyOverrides, $poNo) {
             $customer = $deliveryReceipt->customer;
             $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
 
@@ -280,7 +280,18 @@ class DeliveryReceiptService
                 }
 
                 $product = $line->productBatch->product;
-                $qty = $line->remaining_invoiceable_qty;
+
+                // Partial invoicing: an entered qty overrides the default
+                // (invoice everything still remaining on this line), but
+                // can never exceed what's actually left — a stale/tampered
+                // value from the form is rejected here, not just capped by
+                // the input's client-side max.
+                $qty = $qtyOverrides[$line->id] ?? $line->remaining_invoiceable_qty;
+                if ($qty <= 0 || $qty > $line->remaining_invoiceable_qty) {
+                    throw ValidationException::withMessages([
+                        'line_ids' => "Invalid quantity for {$product->item_name}: {$qty} (only {$line->remaining_invoiceable_qty} remaining to invoice).",
+                    ]);
+                }
 
                 $price = $line->salesOrderItem
                     ? (float) $line->salesOrderItem->price
@@ -320,6 +331,7 @@ class DeliveryReceiptService
             $invoice = Invoice::create([
                 'customer_name' => $customer->customer_name,
                 'customer_id' => $customer->id,
+                'po_no' => $poNo,
                 'sales_no' => $this->generateSalesNo(),
                 'prepared_by' => $userId,
                 'vat_sales' => round($vatSales, 2),
