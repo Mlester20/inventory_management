@@ -45,7 +45,13 @@ class AdvanceOrderController extends Controller
             ->with(['deliveryReceipt.customer', 'productBatch.product.genericName', 'sales.invoice'])
             ->get()
             ->filter(fn (DeliveryReceiptItem $line) => $line->productBatch?->product?->genericName)
-            ->sortBy(fn (DeliveryReceiptItem $line) => $line->deliveryReceipt->receipt_date)
+            // Sorted by date first, then by delivery_receipt_id as a
+            // tie-break — guarantees every line from the same Delivery
+            // Receipt sits contiguously (two DRs sharing the exact same
+            // receipt_date would otherwise interleave), which the view
+            // relies on to visually group lines by which resulting invoice
+            // they'll belong to.
+            ->sortBy(fn (DeliveryReceiptItem $line) => $line->deliveryReceipt->receipt_date->format('Y-m-d') . '-' . str_pad($line->delivery_receipt_id, 10, '0', STR_PAD_LEFT))
             ->values();
 
         // Paginated in-memory rather than at the query level — the filter

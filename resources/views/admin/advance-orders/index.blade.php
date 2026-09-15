@@ -50,6 +50,7 @@
                             @unless($customer)
                                 <th>Customer</th>
                             @endunless
+                            <th>DR No.</th>
                             <th>Date</th>
                             <th>Generic Description</th>
                             <th>Item Description</th>
@@ -63,6 +64,7 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @php $prevDrId = null; $groupAlt = false; @endphp
                         @forelse($lines as $i => $line)
                             @php
                                 $product = $line->productBatch->product;
@@ -70,8 +72,19 @@
                                 $remaining = $line->remaining_invoiceable_qty;
                                 $fullyInvoiced = $remaining <= 0;
                                 $linkedInvoice = $line->sales->first()?->invoice;
+                                if ($line->delivery_receipt_id !== $prevDrId) {
+                                    $groupAlt = ! $groupAlt;
+                                    $prevDrId = $line->delivery_receipt_id;
+                                }
                             @endphp
-                            <tr>
+                            {{-- Lines sharing a background tint here share the same
+                                 Delivery Receipt — checking any of them together
+                                 produces exactly one Invoice (see
+                                 AdvanceOrderController::createInvoice(), grouped by
+                                 delivery_receipt_id); checking lines from a
+                                 differently-shaded group produces a separate
+                                 Invoice per group. --}}
+                            <tr class="{{ $groupAlt ? 'dr-group-alt' : '' }}">
                                 <td class="no-print">
                                     <input type="checkbox" class="form-check-input" name="line_ids[]" value="{{ $line->id }}" {{ $fullyInvoiced ? 'disabled' : '' }}>
                                 </td>
@@ -79,6 +92,11 @@
                                 @unless($customer)
                                     <td>{{ $line->deliveryReceipt->customer->customer_name ?? '—' }}</td>
                                 @endunless
+                                <td>
+                                    <a href="{{ route('delivery-receipts.show', $line->delivery_receipt_id) }}" title="View this Delivery Receipt">
+                                        {{ $line->deliveryReceipt->dr_no }}
+                                    </a>
+                                </td>
                                 <td>{{ $line->deliveryReceipt->receipt_date->format('M d, Y') }}</td>
                                 <td>{{ $generic->generic_name }}</td>
                                 <td>{{ $product->description ?: $product->item_name }}</td>
@@ -108,7 +126,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $customer ? 12 : 13 }}" class="text-center text-muted py-4">No Advance Orders found.</td>
+                                <td colspan="{{ $customer ? 13 : 14 }}" class="text-center text-muted py-4">No Advance Orders found.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -137,6 +155,13 @@
 <style>
     .table-header-bg {
         background-color: #f7f8fa;
+    }
+
+    /* Alternates per Delivery Receipt group (not per row) — lines sharing
+       a tint here will combine into one Invoice if checked together; a
+       differently-tinted block becomes a separate Invoice. */
+    .dr-group-alt {
+        background-color: #eef2ff;
     }
 
     @media print {
