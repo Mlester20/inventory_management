@@ -84,6 +84,17 @@
             @include('partials.print.sales-totals-footer', [
                 'totalAmountDue' => number_format($invoice->amount_due, 2),
                 'preparedByValue' => $invoice->preparedBy->name ?? '',
+                // Unlike Sales Order/Sales Quote (still generic-level at
+                // that stage), an Invoice's lines are always real Products
+                // with a known tax_id by this point — either picked
+                // directly (manual "New Invoice") or inherited from the
+                // Delivery Receipt line's product_batch — so this is real,
+                // reliably computed data, not a guess.
+                'vatableSales' => $invoice->vat_sales,
+                'vatExemptSales' => $invoice->vatex_sales,
+                'vatZeroRated' => $invoice->zero_sales,
+                'addVat' => $invoice->vat_amount,
+                'lessWithholdingTax' => $invoice->less_wt,
             ])
         </div>
     </div>

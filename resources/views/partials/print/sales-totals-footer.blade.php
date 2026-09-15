@@ -18,6 +18,12 @@
     - acknowledgeByLabel (optional, default "Acknowledge By")
     - notes (string, optional): printed inside the Note box; left blank
       (for manual completion) when the document has no notes
+    - vatableSales / vatExemptSales / vatZeroRated / addVat / lessWithholdingTax
+      (numeric, optional): when the caller actually has per-line tax data to
+      compute these from (e.g. Invoice, whose lines are real Products with a
+      known tax_id — unlike Sales Order/Sales Quote, still generic-level at
+      this stage), pass the real numbers and they print instead of a blank
+      line for manual completion.
 --}}
 {{-- A genuine <table>/<td> row — Bootstrap's flex .row/.col-*, then CSS
      Grid, were each tried first; neither reliably resolved a nested
@@ -41,11 +47,11 @@
         <td class="print-vat-cell">
             <table class="table table-bordered table-sm print-vat-table mb-0">
                 <tbody>
-                    <tr><td>VATable Sales</td><td></td></tr>
-                    <tr><td>VAT-Exempt Sales</td><td></td></tr>
-                    <tr><td>VAT Zero Rated Sales</td><td></td></tr>
-                    <tr><td>Add: VAT</td><td></td></tr>
-                    <tr><td>Less Withholding Tax</td><td></td></tr>
+                    <tr><td>VATable Sales</td><td class="text-end">{{ isset($vatableSales) ? number_format($vatableSales, 2) : '' }}</td></tr>
+                    <tr><td>VAT-Exempt Sales</td><td class="text-end">{{ isset($vatExemptSales) ? number_format($vatExemptSales, 2) : '' }}</td></tr>
+                    <tr><td>VAT Zero Rated Sales</td><td class="text-end">{{ isset($vatZeroRated) ? number_format($vatZeroRated, 2) : '' }}</td></tr>
+                    <tr><td>Add: VAT</td><td class="text-end">{{ isset($addVat) ? number_format($addVat, 2) : '' }}</td></tr>
+                    <tr><td>Less Withholding Tax</td><td class="text-end">{{ isset($lessWithholdingTax) ? number_format($lessWithholdingTax, 2) : '' }}</td></tr>
                     <tr class="print-vat-total-row">
                         <td class="fw-bold">Total Amount Due</td>
                         <td class="text-end fw-bold">₱{{ $totalAmountDue }}</td>
