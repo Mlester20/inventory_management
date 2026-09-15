@@ -256,7 +256,7 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        $invoice->load('sales.productBatch.product.tax', 'preparedBy');
+        $invoice->load('sales.productBatch.product.tax', 'preparedBy', 'customer');
 
         return view('admin.invoices.show', compact('invoice'));
     }
