@@ -116,6 +116,7 @@
                 <thead>
                     <tr class="table-header-bg">
                         <th>Generic Description</th>
+                        <th>Brand</th>
                         <th class="text-end">Qty</th>
                         <th class="text-end">Price</th>
                         <th class="text-end">Amount</th>
@@ -125,6 +126,13 @@
                     @foreach ($salesQuote->items as $item)
                         <tr>
                             <td>{{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }})</td>
+                            <td>
+                                @if($item->product)
+                                    {{ $item->product->brand_name ?: $item->product->item_name }}
+                                @else
+                                    <span class="text-muted">Not identified yet</span>
+                                @endif
+                            </td>
                             <td class="text-end">{{ $item->qty ?? '—' }}</td>
                             <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
                             <td class="text-end">{{ ($item->qty !== null && $item->price !== null) ? number_format($item->qty * $item->price, 2) : '—' }}</td>
@@ -133,7 +141,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="table-info fw-bold">
-                        <td colspan="3">TOTAL</td>
+                        <td colspan="4">TOTAL</td>
                         <td class="text-end">{{ number_format($salesQuote->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2) }}</td>
                     </tr>
                 </tfoot>
@@ -189,10 +197,10 @@
                 </table>
             </div>
 
-            @include('partials.print.sales-totals-footer', [
+            @include('partials.print.sales-totals-footer', array_merge([
                 'totalAmountDue' => number_format($salesQuote->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2),
                 'preparedByValue' => $salesQuote->preparedBy->name ?? '',
-            ])
+            ], $vatPreview ?? []))
         </div>
     </div>
 

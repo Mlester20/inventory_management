@@ -166,6 +166,18 @@
     const GENERIC_NAMES = @json($genericNamesForJs);
     const prefillLines = @json($prefillLines);
 
+    // Tax classification is manually asserted by the encoder, not derived
+    // from a specific Product — a Sales Order line is still generic-level
+    // (no product_id), so there's no real tax_id to read the way an
+    // Invoice line can. Left unset, the printed VAT box stays blank for
+    // that line, same as before this field existed.
+    const TAX_CLASSIFICATION_OPTIONS_HTML = `
+        <option value="">Not yet identified</option>
+        @foreach (\App\Models\SalesOrderItem::TAX_CLASSIFICATIONS as $value => $label)
+            <option value="{{ $value }}">{{ $label }}</option>
+        @endforeach
+    `;
+
     // Customer is a searchable text field (native <datalist>, same technique
     // as Generic Description below) rather than a long <select> — matters
     // once the real customer list grows past what's comfortable to scroll
@@ -228,7 +240,7 @@
     }
 
     function addRow(prefill = {}) {
-        const { genericLabel = '', qty = '', price = null, advanceOrderQty = '', remarks = '' } = prefill;
+        const { genericLabel = '', qty = '', price = null, taxClassification = '', brandLabel = '', advanceOrderQty = '', remarks = '' } = prefill;
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -242,20 +254,33 @@
             </div>
 
             <div class="row g-2">
-                <div class="col-md-5">
+                <div class="col-12">
                     <label class="form-label small mb-1">Generic Description</label>
                     <input type="text" class="form-control generic-search-input" list="generic-list-${index}"
                         placeholder="Search generic name..." autocomplete="off" required>
                     <datalist id="generic-list-${index}">${genericDatalistOptions()}</datalist>
                     <input type="hidden" name="items[${index}][generic_name_id]" class="generic-id-input">
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-md-6">
+                    <label class="form-label small mb-1">Brand <span class="text-muted">(optional)</span></label>
+                    <input type="text" class="form-control brand-search-input" list="brand-list-${index}"
+                        placeholder="Search brand..." autocomplete="off">
+                    <datalist id="brand-list-${index}" class="brand-datalist"></datalist>
+                    <input type="hidden" name="items[${index}][product_id]" class="product-id-input">
+                </div>
+                <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Qty</label>
                     <input type="number" name="items[${index}][qty]" class="form-control qty-input" min="1" value="1" required>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Price</label>
                     <input type="number" name="items[${index}][price]" class="form-control price-input" step="0.01" min="0" value="0" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Tax <span class="text-muted">(optional)</span></label>
+                    <select name="items[${index}][tax_classification]" class="form-select tax-classification-input">
+                        ${TAX_CLASSIFICATION_OPTIONS_HTML}
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small mb-1">Advance Order Qty</label>
@@ -285,8 +310,20 @@
             const genericSearchInput = card.querySelector('.generic-search-input');
             genericSearchInput.value = genericLabel;
             genericSearchInput.dispatchEvent(new Event('input'));
+
+            // Brand is set directly (not dispatched) so it doesn't re-run
+            // the brand-picked price auto-suggest below and clobber the
+            // line's own saved price, set right after this.
+            if (brandLabel) {
+                card.querySelector('.brand-search-input').value = brandLabel;
+                const generic = findGenericByLabel(genericLabel);
+                const product = generic && generic.products ? generic.products.find(p => p.brand_name === brandLabel) : null;
+                if (product) card.querySelector('.product-id-input').value = product.id;
+            }
+
             if (qty) card.querySelector('.qty-input').value = qty;
             if (price !== null && price !== undefined) card.querySelector('.price-input').value = Number(price).toFixed(2);
+            if (taxClassification) card.querySelector('.tax-classification-input').value = taxClassification;
             if (advanceOrderQty) card.querySelector('.advance-input').value = advanceOrderQty;
             if (remarks) card.querySelector('.remarks-input').value = remarks;
         }
@@ -298,6 +335,15 @@
         const genericSearchInput = card.querySelector('.generic-search-input');
         const genericIdInput = card.querySelector('.generic-id-input');
         const priceInput = card.querySelector('.price-input');
+        const brandSearchInput = card.querySelector('.brand-search-input');
+        const brandDatalist = card.querySelector('.brand-datalist');
+        const productIdInput = card.querySelector('.product-id-input');
+
+        function brandOptionsHtml(generic) {
+            return (generic && generic.products ? generic.products : [])
+                .map(p => `<option value="${p.brand_name}"></option>`)
+                .join('');
+        }
 
         genericSearchInput.addEventListener('input', function () {
             const generic = findGenericByLabel(this.value);
@@ -309,6 +355,32 @@
                     priceInput.value = parseFloat(price).toFixed(2);
                 }
             }
+
+            // Brand is scoped to whichever generic is currently selected —
+            // changing the generic invalidates any previously picked brand,
+            // since it may not even exist under the new one.
+            brandDatalist.innerHTML = brandOptionsHtml(generic);
+            brandSearchInput.value = '';
+            productIdInput.value = '';
+
+            computeTotals();
+        });
+
+        brandSearchInput.addEventListener('input', function () {
+            const generic = findGenericByLabel(genericSearchInput.value);
+            const product = generic && generic.products ? generic.products.find(p => p.brand_name === this.value) : null;
+            productIdInput.value = product ? product.id : '';
+
+            // Per Sir's direction: once a specific Brand is identified, its
+            // own price replaces whatever's in the field (still editable
+            // after). Left blank, Price stays exactly as manually entered.
+            if (product) {
+                const price = product.prices[currentPriceLevel()];
+                if (price !== null && price !== undefined) {
+                    priceInput.value = parseFloat(price).toFixed(2);
+                }
+            }
+
             computeTotals();
         });
 
@@ -376,10 +448,19 @@
 
         document.querySelectorAll('#lineItemsBody .line-item-card').forEach(card => {
             const genericIdInput = card.querySelector('.generic-id-input');
+            const productIdInput = card.querySelector('.product-id-input');
             const priceInput = card.querySelector('.price-input');
             const generic = GENERIC_NAMES.find(g => String(g.id) === String(genericIdInput.value));
-            if (generic) {
-                const price = generic.prices[currentPriceLevel()];
+
+            // Prefer the identified Brand's own price when one's picked for
+            // this line; otherwise fall back to the generic-wide suggestion.
+            const product = generic && productIdInput.value
+                ? (generic.products || []).find(p => String(p.id) === String(productIdInput.value))
+                : null;
+            const source = product || generic;
+
+            if (source) {
+                const price = source.prices[currentPriceLevel()];
                 if (price !== null && price !== undefined) {
                     priceInput.value = parseFloat(price).toFixed(2);
                 }
@@ -396,6 +477,8 @@
                 genericLabel: line.generic_label,
                 qty: line.qty,
                 price: line.price,
+                taxClassification: line.tax_classification,
+                brandLabel: line.brand_label,
                 advanceOrderQty: line.advance_order_qty,
                 remarks: line.remarks,
             });

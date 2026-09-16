@@ -153,6 +153,14 @@
     white-space: nowrap;
 }
 
+.print-vat-note {
+    font-size: 0.6rem;
+    font-style: italic;
+    color: #555;
+    padding: 0.2rem 0.1rem 0;
+    white-space: normal;
+}
+
 .print-vat-total-row td {
     background-color: #f5f5f5;
 }

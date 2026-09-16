@@ -7,6 +7,8 @@ use App\Models\Customer;
 use App\Models\GenericName;
 use App\Models\Product;
 use App\Models\SalesOrder;
+use App\Models\SalesOrderItem;
+use App\Models\Taxes;
 use App\Models\User;
 use App\Services\SalesOrderService;
 use Illuminate\Http\Request;
@@ -89,13 +91,30 @@ class SalesOrderController extends Controller
                     'price_level_2' => $firstProduct?->price_2,
                     'price_level_3' => $firstProduct?->price_3,
                 ],
+                // Optional per-line Brand picker: every Product under this
+                // generic, with its own prices, so picking one can
+                // auto-suggest that specific brand's price instead of the
+                // generic-wide fallback above. Purely a convenience — never
+                // required, and unrelated to Delivery Receipt's own
+                // brand/batch selection.
+                'products' => $genericName->products->map(fn (Product $product) => [
+                    'id' => $product->id,
+                    'brand_name' => $product->brand_name ?: $product->item_name,
+                    'prices' => [
+                        'retail' => $product->unit_price,
+                        'wholesale' => $product->wholesale_price,
+                        'price_level_1' => $product->price_1,
+                        'price_level_2' => $product->price_2,
+                        'price_level_3' => $product->price_3,
+                    ],
+                ])->values(),
             ];
         })->values();
 
         $prefillLines = [];
 
         if ($editing) {
-            $editing->load('items.genericName.category');
+            $editing->load('items.genericName.category', 'items.product');
 
             $prefillLines = $editing->items
                 ->filter(fn ($line) => $line->genericName)
@@ -104,6 +123,9 @@ class SalesOrderController extends Controller
                     'generic_name_id' => $line->generic_name_id,
                     'qty' => $line->qty,
                     'price' => $line->price !== null ? (float) $line->price : null,
+                    'tax_classification' => $line->tax_classification,
+                    'product_id' => $line->product_id,
+                    'brand_label' => $line->product ? ($line->product->brand_name ?: $line->product->item_name) : null,
                     'advance_order_qty' => $line->advance_order_qty,
                     'remarks' => $line->remarks,
                 ])
@@ -120,6 +142,9 @@ class SalesOrderController extends Controller
             $prefillLines = collect(old('items'))
                 ->map(function ($line) use ($genericNames) {
                     $genericName = $genericNames->firstWhere('id', $line['generic_name_id'] ?? null);
+                    $product = $genericName && ! empty($line['product_id'])
+                        ? $genericName->products->firstWhere('id', $line['product_id'])
+                        : null;
 
                     return [
                         'generic_label' => $genericName
@@ -128,6 +153,9 @@ class SalesOrderController extends Controller
                         'generic_name_id' => $line['generic_name_id'] ?? null,
                         'qty' => $line['qty'] ?? null,
                         'price' => $line['price'] ?? null,
+                        'tax_classification' => $line['tax_classification'] ?? null,
+                        'product_id' => $line['product_id'] ?? null,
+                        'brand_label' => $product ? ($product->brand_name ?: $product->item_name) : null,
                         'advance_order_qty' => $line['advance_order_qty'] ?? null,
                         'remarks' => $line['remarks'] ?? null,
                     ];
@@ -188,8 +216,10 @@ class SalesOrderController extends Controller
             'notes' => 'nullable|string',
             'items' => 'nullable|array',
             'items.*.generic_name_id' => 'nullable|exists:generic_names,id',
+            'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.qty' => 'nullable|integer|min:1',
             'items.*.price' => 'nullable|numeric|min:0',
+            'items.*.tax_classification' => 'nullable|in:' . implode(',', array_keys(SalesOrderItem::TAX_CLASSIFICATIONS)),
             'items.*.advance_order_qty' => 'nullable|integer|min:0',
             'items.*.remarks' => 'nullable|string',
         ];
@@ -209,8 +239,10 @@ class SalesOrderController extends Controller
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.generic_name_id' => 'required|exists:generic_names,id',
+            'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
+            'items.*.tax_classification' => 'nullable|in:' . implode(',', array_keys(SalesOrderItem::TAX_CLASSIFICATIONS)),
             'items.*.advance_order_qty' => 'nullable|integer|min:0',
             'items.*.remarks' => 'nullable|string',
         ];
@@ -221,9 +253,48 @@ class SalesOrderController extends Controller
      */
     public function show(SalesOrder $salesOrder)
     {
-        $salesOrder->load('customer', 'preparedBy', 'items.genericName', 'deliveryReceipts');
+        $salesOrder->load('customer', 'preparedBy', 'items.genericName', 'items.product', 'deliveryReceipts');
 
-        return view('admin.sales-orders.show', compact('salesOrder'));
+        $vatPreview = $this->buildVatPreview($salesOrder->items);
+
+        return view('admin.sales-orders.show', compact('salesOrder', 'vatPreview'));
+    }
+
+    /**
+     * Best-effort VAT breakdown for the print footer, computed only from
+     * lines the encoder has manually tagged with a tax_classification —
+     * SO/SQ lines are generic-level (no Product/tax_id known yet), so this
+     * can never be more than a partial preview. Returns null when nothing
+     * is classified, matching today's fully-blank behavior exactly.
+     */
+    protected function buildVatPreview($items): ?array
+    {
+        $classified = $items->filter(fn ($i) => $i->tax_classification !== null);
+
+        if ($classified->isEmpty()) {
+            return null;
+        }
+
+        $lineTotal = fn ($i) => ($i->qty ?? 0) * ($i->price ?? 0);
+
+        $vatSales = $classified->where('tax_classification', 'vatable')->sum($lineTotal);
+        $vatexSales = $classified->where('tax_classification', 'vatex')->sum($lineTotal);
+        $zeroSales = $classified->where('tax_classification', 'zero')->sum($lineTotal);
+
+        $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
+        $vatAmount = round($vatSales * ($activeVatRate / 100), 2);
+
+        $hasUnclassifiedLines = $items->contains(fn ($i) => $i->tax_classification === null);
+
+        return [
+            'vatableSales' => round($vatSales, 2),
+            'vatExemptSales' => round($vatexSales, 2),
+            'vatZeroRated' => round($zeroSales, 2),
+            'addVat' => $vatAmount,
+            'vatNote' => $hasUnclassifiedLines
+                ? 'Based on lines with an identified tax classification only; totals may change once the rest are identified.'
+                : null,
+        ];
     }
 
     /**

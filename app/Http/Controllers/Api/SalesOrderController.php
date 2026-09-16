@@ -27,6 +27,11 @@ class SalesOrderController extends Controller
                     'delivered_qty' => $item->delivered_qty,
                     'remaining_qty' => $item->remaining_qty,
                     'price' => $item->price,
+                    // The Brand optionally identified at SO time — purely a
+                    // suggestion for pre-selecting a matching batch below;
+                    // if it's out of stock/unavailable, the encoder just
+                    // picks a different one, same as any other line.
+                    'brand_name' => $item->product ? ($item->product->brand_name ?: $item->product->item_name) : null,
                 ];
             });
 

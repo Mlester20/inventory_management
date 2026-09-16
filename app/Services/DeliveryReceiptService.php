@@ -31,7 +31,7 @@ class DeliveryReceiptService
         // even if its Generic Name has since been trashed — losing the label
         // shouldn't silently drop it from the "what's left to deliver" list.
         return $salesOrder->items()
-            ->with(['genericName' => fn ($q) => $q->withTrashed()])
+            ->with(['genericName' => fn ($q) => $q->withTrashed(), 'product'])
             ->get()
             ->filter(fn (SalesOrderItem $item) => $item->remaining_qty > 0)
             ->values();

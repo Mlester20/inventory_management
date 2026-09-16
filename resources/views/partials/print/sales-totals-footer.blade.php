@@ -24,6 +24,9 @@
       known tax_id — unlike Sales Order/Sales Quote, still generic-level at
       this stage), pass the real numbers and they print instead of a blank
       line for manual completion.
+    - vatNote (string, optional): a small caption printed under the VAT box,
+      e.g. Sales Order/Sales Quote's "figures cover classified lines only"
+      disclaimer when some lines are missing a manual tax classification.
 --}}
 {{-- A genuine <table>/<td> row — Bootstrap's flex .row/.col-*, then CSS
      Grid, were each tried first; neither reliably resolved a nested
@@ -59,6 +62,9 @@
                     <tr class="print-vat-spacer-row"><td colspan="2"></td></tr>
                 </tbody>
             </table>
+            @if(!empty($vatNote))
+                <div class="print-vat-note">{{ $vatNote }}</div>
+            @endif
         </td>
     </tr>
 </table>

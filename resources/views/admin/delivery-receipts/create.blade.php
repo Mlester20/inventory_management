@@ -456,7 +456,7 @@
         }
     }
 
-    function renderAvailability(cells, items, index, salesOrderItemId, remainingQty, unit, preselect = null) {
+    function renderAvailability(cells, items, index, salesOrderItemId, remainingQty, unit, preselect = null, suggestedBrandName = null) {
         const optionsHtml = itemOptionsHtml(items);
 
         if (!optionsHtml) {
@@ -476,6 +476,7 @@
         // instead of erroring.
         cells.item.innerHTML = `
             <select class="form-select form-select-sm item-select" name="items[${index}][product_batch_id]">${optionsHtml}</select>
+            ${suggestedBrandName ? '<div class="form-text small suggested-brand-note"></div>' : ''}
             <div class="form-check mt-1">
                 <input class="form-check-input skip-item-checkbox" type="checkbox" id="skip-item-${index}">
                 <label class="form-check-label small" for="skip-item-${index}">Not delivering this item yet</label>
@@ -549,6 +550,24 @@
             const hasOption = [...itemSelect.options].some(o => o.value === String(preselect.product_batch_id));
             if (hasOption) {
                 itemSelect.value = String(preselect.product_batch_id);
+            }
+        } else if (suggestedBrandName) {
+            // Purely a convenience: pre-select whichever available batch
+            // matches the Brand the encoder already identified back on the
+            // Sales Order, so it doesn't need to be picked twice. If that
+            // brand isn't in stock, nothing matches and the field is simply
+            // left for the encoder to pick manually, same as any other line.
+            const match = items.find(item => item.brand_name === suggestedBrandName);
+            const note = cells.item.querySelector('.suggested-brand-note');
+            if (match) {
+                itemSelect.value = String(match.id);
+                if (note) {
+                    note.textContent = `Pre-selected based on the Brand identified on the Sales Order (${suggestedBrandName}).`;
+                    note.classList.add('text-muted');
+                }
+            } else if (note) {
+                note.textContent = `The Brand identified on the Sales Order ("${suggestedBrandName}") isn't currently available — please pick from what's in stock.`;
+                note.classList.add('text-warning');
             }
         }
         syncSelected();
@@ -677,7 +696,7 @@
             // per Sales Order line — overlay it onto this freshly fetched
             // pending line (remaining_qty is always live, never stale).
             const preselect = PO_PREFILL_LINES.find(p => String(p.sales_order_item_id) === String(line.sales_order_item_id)) || null;
-            renderAvailability(cells, items, index, line.sales_order_item_id, line.remaining_qty, line.unit, preselect);
+            renderAvailability(cells, items, index, line.sales_order_item_id, line.remaining_qty, line.unit, preselect, line.brand_name);
         }
     });
 

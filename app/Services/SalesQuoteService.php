@@ -68,8 +68,10 @@ class SalesQuoteService
 
                 $salesQuote->items()->create([
                     'generic_name_id' => $line['generic_name_id'],
+                    'product_id' => $line['product_id'] ?? null,
                     'qty' => $line['qty'] ?? null,
                     'price' => $line['price'] ?? null,
+                    'tax_classification' => $line['tax_classification'] ?? null,
                 ]);
             }
 
@@ -124,8 +126,10 @@ class SalesQuoteService
         foreach ($items as $line) {
             $salesQuote->items()->create([
                 'generic_name_id' => $line['generic_name_id'],
+                'product_id' => $line['product_id'] ?? null,
                 'qty' => $line['qty'],
                 'price' => $line['price'],
+                'tax_classification' => $line['tax_classification'] ?? null,
             ]);
         }
     }
@@ -164,8 +168,10 @@ class SalesQuoteService
                 'prepared_by' => $data['prepared_by'] ?? null,
                 'items' => $salesQuote->items->map(fn ($item) => [
                     'generic_name_id' => $item->generic_name_id,
+                    'product_id' => $item->product_id,
                     'qty' => $item->qty,
                     'price' => $item->price,
+                    'tax_classification' => $item->tax_classification,
                     'advance_order_qty' => 0,
                 ])->all(),
             ]);

@@ -118,8 +118,10 @@ class SalesOrderService
 
                 $salesOrder->items()->create([
                     'generic_name_id' => $line['generic_name_id'],
+                    'product_id' => $line['product_id'] ?? null,
                     'qty' => $line['qty'] ?? null,
                     'price' => $line['price'] ?? null,
+                    'tax_classification' => $line['tax_classification'] ?? null,
                     'advance_order_qty' => $line['advance_order_qty'] ?? 0,
                     'remarks' => $line['remarks'] ?? null,
                 ]);
@@ -164,8 +166,10 @@ class SalesOrderService
         foreach ($items as $line) {
             $salesOrder->items()->create([
                 'generic_name_id' => $line['generic_name_id'],
+                'product_id' => $line['product_id'] ?? null,
                 'qty' => $line['qty'],
                 'price' => $line['price'],
+                'tax_classification' => $line['tax_classification'] ?? null,
                 'advance_order_qty' => $line['advance_order_qty'] ?? 0,
                 'remarks' => $line['remarks'] ?? null,
             ]);

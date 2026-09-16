@@ -124,6 +124,7 @@
                 <thead>
                     <tr class="table-header-bg">
                         <th>Generic Description</th>
+                        <th>Brand</th>
                         <th class="text-end">Qty</th>
                         <th class="text-end">Price</th>
                         <th class="text-end">Advance Qty</th>
@@ -141,6 +142,13 @@
                                     <div class="text-muted small" style="white-space: pre-line;">{{ $item->remarks }}</div>
                                 @endif
                             </td>
+                            <td>
+                                @if($item->product)
+                                    {{ $item->product->brand_name ?: $item->product->item_name }}
+                                @else
+                                    <span class="text-muted">Not identified yet</span>
+                                @endif
+                            </td>
                             <td class="text-end">{{ $item->qty ?? '—' }}</td>
                             <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
                             <td class="text-end">{{ $item->advance_order_qty }}</td>
@@ -156,7 +164,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="table-info fw-bold">
-                        <td colspan="6">TOTAL</td>
+                        <td colspan="7">TOTAL</td>
                         <td class="text-end">{{ number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2) }}</td>
                     </tr>
                 </tfoot>
@@ -285,11 +293,11 @@
                 </table>
             </div>
 
-            @include('partials.print.sales-totals-footer', [
+            @include('partials.print.sales-totals-footer', array_merge([
                 'totalAmountDue' => number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2),
                 'preparedByValue' => $salesOrder->preparedBy->name ?? '',
                 'notes' => $salesOrder->notes,
-            ])
+            ], $vatPreview ?? []))
         </div>
     </div>
 
