@@ -8,9 +8,26 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 
 class SearchController extends Controller
 {
+    /**
+     * Build a MySQL boolean-mode MATCH AGAINST search string with a trailing
+     * wildcard per word, so each word is prefix-matched and all words are
+     * required (AND semantics) — e.g. "juan dela" -> "+juan* +dela*".
+     */
+    private function booleanModeTerm(string $query): string
+    {
+        $words = preg_split('/\s+/', trim($query));
+        $words = array_filter($words, fn ($w) => $w !== '');
+
+        return implode(' ', array_map(function ($word) {
+            $escaped = str_replace(['+', '-', '*', '"', '(', ')', '~', '<', '>', '@'], ' ', $word);
+            return '+' . $escaped . '*';
+        }, $words));
+    }
+
     public function search(Request $request)
     {
         try {
@@ -30,11 +47,21 @@ class SearchController extends Controller
                 ]);
             }
 
+            $useFullText = strlen($query) >= 3;
+            $booleanTerm = $useFullText ? $this->booleanModeTerm($query) : null;
+
             // Search for products
-            $items = Product::withSum('locationStocks', 'qty')
-                ->where('item_name', 'LIKE', "%{$query}%")
-                ->orWhere('description', 'LIKE', "%{$query}%")
-                ->limit(5)
+            $itemsQuery = Product::withSum('locationStocks', 'qty');
+            if ($useFullText) {
+                $itemsQuery->whereRaw('MATCH(item_name, description) AGAINST(? IN BOOLEAN MODE)', [$booleanTerm])
+                    ->orderByRaw('MATCH(item_name, description) AGAINST(? IN BOOLEAN MODE) DESC', [$booleanTerm]);
+            } else {
+                $itemsQuery->where(function (Builder $q) use ($query) {
+                    $q->where('item_name', 'LIKE', "%{$query}%")
+                        ->orWhere('description', 'LIKE', "%{$query}%");
+                });
+            }
+            $items = $itemsQuery->limit(5)
                 ->get(['id', 'item_name', 'unit_price'])
                 ->map(function($item) {
                     return [
@@ -47,7 +74,8 @@ class SearchController extends Controller
                     ];
                 });
 
-            // Search for purchases (Sales)
+            // Search for purchases (Sales) — stays on LIKE; product-name search goes
+            // through a relation, so a single-table FULLTEXT index doesn't apply here.
             $purchases = Purchase::whereHas('productBatch.product', function($q) use ($query) {
                 $q->where('item_name', 'LIKE', "%{$query}%");
             })
@@ -67,11 +95,19 @@ class SearchController extends Controller
                 });
 
             // Search for customers
-            $customers = Customer::where('customer_name', 'LIKE', "%{$query}%")
-                ->orWhere('contact_person', 'LIKE', "%{$query}%")
-                ->orWhere('email', 'LIKE', "%{$query}%")
-                ->orWhere('contact_number', 'LIKE', "%{$query}%")
-                ->limit(5)
+            $customersQuery = Customer::query();
+            if ($useFullText) {
+                $customersQuery->whereRaw('MATCH(customer_name, contact_person, email, contact_number) AGAINST(? IN BOOLEAN MODE)', [$booleanTerm])
+                    ->orderByRaw('MATCH(customer_name, contact_person, email, contact_number) AGAINST(? IN BOOLEAN MODE) DESC', [$booleanTerm]);
+            } else {
+                $customersQuery->where(function (Builder $q) use ($query) {
+                    $q->where('customer_name', 'LIKE', "%{$query}%")
+                        ->orWhere('contact_person', 'LIKE', "%{$query}%")
+                        ->orWhere('email', 'LIKE', "%{$query}%")
+                        ->orWhere('contact_number', 'LIKE', "%{$query}%");
+                });
+            }
+            $customers = $customersQuery->limit(5)
                 ->get(['id', 'customer_name', 'contact_person', 'email', 'contact_number'])
                 ->map(function($customer) {
                     return [
@@ -85,11 +121,19 @@ class SearchController extends Controller
                 });
 
             // Search for suppliers
-            $suppliers = Supplier::where('supplier_name', 'LIKE', "%{$query}%")
-                ->orWhere('contact_person', 'LIKE', "%{$query}%")
-                ->orWhere('email', 'LIKE', "%{$query}%")
-                ->orWhere('contact_number', 'LIKE', "%{$query}%")
-                ->limit(5)
+            $suppliersQuery = Supplier::query();
+            if ($useFullText) {
+                $suppliersQuery->whereRaw('MATCH(supplier_name, contact_person, email, contact_number) AGAINST(? IN BOOLEAN MODE)', [$booleanTerm])
+                    ->orderByRaw('MATCH(supplier_name, contact_person, email, contact_number) AGAINST(? IN BOOLEAN MODE) DESC', [$booleanTerm]);
+            } else {
+                $suppliersQuery->where(function (Builder $q) use ($query) {
+                    $q->where('supplier_name', 'LIKE', "%{$query}%")
+                        ->orWhere('contact_person', 'LIKE', "%{$query}%")
+                        ->orWhere('email', 'LIKE', "%{$query}%")
+                        ->orWhere('contact_number', 'LIKE', "%{$query}%");
+                });
+            }
+            $suppliers = $suppliersQuery->limit(5)
                 ->get(['id', 'supplier_name', 'contact_person', 'email', 'contact_number'])
                 ->map(function($supplier) {
                     return [
@@ -103,8 +147,14 @@ class SearchController extends Controller
                 });
 
             // Search for categories
-            $categories = Category::where('category_name', 'LIKE', "%{$query}%")
-                ->limit(5)
+            $categoriesQuery = Category::query();
+            if ($useFullText) {
+                $categoriesQuery->whereRaw('MATCH(category_name) AGAINST(? IN BOOLEAN MODE)', [$booleanTerm])
+                    ->orderByRaw('MATCH(category_name) AGAINST(? IN BOOLEAN MODE) DESC', [$booleanTerm]);
+            } else {
+                $categoriesQuery->where('category_name', 'LIKE', "%{$query}%");
+            }
+            $categories = $categoriesQuery->limit(5)
                 ->get(['id', 'category_name'])
                 ->map(function($category) {
                     return [
