@@ -632,6 +632,21 @@
     -submit dialogs (Delete/Restore/Cancel/Archive, etc.), same as
     layout.user already does. --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    {{-- Validation failures (e.g. a duplicate supplier name/email) redirect back
+    with $errors, but the master-data modals render none of it and the package's
+    own auto-display never fires here, so the save looked like it did nothing. --}}
+    @if ($errors->any())
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Could not save',
+                    html: @json(collect($errors->all())->map(fn ($message) => e($message))->implode('<br>')),
+                });
+            });
+        </script>
+    @endif
     <script>
         /**
          * Confirm via SweetAlert before submitting a form, instead of the
