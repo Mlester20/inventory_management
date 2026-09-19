@@ -52,6 +52,10 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     public int $genericNamesCreated = 0;
     public int $productsImported = 0;
     public int $duplicatesSkipped = 0;
+    public int $alreadyInSystemSkipped = 0;
+
+    /** @var array<string,string> "{category}|{generic}|{brand}" of products already in the DB => product code */
+    protected array $existingProductKeys = [];
 
     /** Groups this run's skipped rows on the Import Results page. */
     public string $batchId;
@@ -70,6 +74,18 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         $this->batchId = (string) Str::uuid();
         $this->categoryIds = Category::pluck('id', 'category_name')->all();
         $this->categoryNames = array_flip($this->categoryIds);
+
+        // Same key as the in-file duplicate check, so re-importing a file (or a
+        // corrected copy of it) can't create second copies of products already
+        // in the system. Soft-deleted products are excluded by the model scope.
+        Product::query()
+            ->join('generic_names as g', 'g.id', '=', 'products.generic_name_id')
+            ->join('categories as c', 'c.id', '=', 'g.category_id')
+            ->get(['products.code', 'products.brand_name', 'g.generic_name', 'c.category_name'])
+            ->each(function ($product) {
+                $key = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . ($product->brand_name ?? ''));
+                $this->existingProductKeys[$key] ??= $product->code;
+            });
 
         // Keyed case-insensitively: generic_names.generic_name has a
         // case-insensitive unique index at the DB level (default collation),
@@ -153,6 +169,18 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             return;
         }
         $this->seenProductKeys[$productKey] = $this->currentRow;
+
+        if (isset($this->existingProductKeys[$productKey])) {
+            $this->alreadyInSystemSkipped++;
+            $this->pendingSkips[] = [
+                'sheet_row' => $this->currentRow,
+                'reason' => ImportSkippedRow::REASON_ALREADY_IN_SYSTEM,
+                'details' => "Already in the system as product code {$this->existingProductKeys[$productKey]} (same Category, Generic Description and Brand).",
+                'row_data' => $rowData,
+            ];
+
+            return;
+        }
 
         $categoryId = $this->resolveCategory($category);
         $genericKey = $this->genericKey($generic);

@@ -235,13 +235,14 @@ class ProductController extends Controller
             action: 'imported',
             description: "Imported {$import->productsImported} product(s) from Excel "
                 . "({$import->categoriesCreated} new categories, {$import->genericNamesCreated} new generic names; "
-                . "{$import->duplicatesSkipped} duplicate row(s), " . count($import->crossCategorySkips()) . ' cross-category row(s) skipped)',
+                . "{$import->duplicatesSkipped} duplicate row(s), {$import->alreadyInSystemSkipped} already in the system, "
+                . count($import->crossCategorySkips()) . ' cross-category row(s) skipped)',
         );
 
         $summary = "{$import->productsImported} product(s) imported "
             . "({$import->categoriesCreated} new categories, {$import->genericNamesCreated} new generic names).";
 
-        $skipped = $import->duplicatesSkipped + count($import->crossCategorySkips());
+        $skipped = $import->duplicatesSkipped + $import->alreadyInSystemSkipped + count($import->crossCategorySkips());
 
         if ($skipped === 0) {
             Alert::success('Success', $summary);
