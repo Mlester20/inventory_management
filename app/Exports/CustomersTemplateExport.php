@@ -5,14 +5,20 @@ namespace App\Exports;
 use App\Models\Customer;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
 /**
  * Blank template with one example row, matching CustomersImport's expected
  * columns. Price Level uses the human-readable label (e.g. "Wholesale") —
  * CustomersImport accepts either that or the internal key.
  */
-class CustomersTemplateExport implements FromArray, WithHeadings
+class CustomersTemplateExport implements FromArray, WithHeadings, WithTitle
 {
+    public function title(): string
+    {
+        return 'CUSTOMERS';
+    }
+
     public function headings(): array
     {
         return [

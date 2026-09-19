@@ -4,14 +4,20 @@ namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
 /**
  * Blank template with one example row, matching SuppliersImport's expected
  * columns exactly (headers become snake_case keys via WithHeadingRow, so
  * these must line up).
  */
-class SuppliersTemplateExport implements FromArray, WithHeadings
+class SuppliersTemplateExport implements FromArray, WithHeadings, WithTitle
 {
+    public function title(): string
+    {
+        return 'SUPPLIERS';
+    }
+
     public function headings(): array
     {
         return [

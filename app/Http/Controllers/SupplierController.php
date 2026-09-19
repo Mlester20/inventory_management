@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Exports\SuppliersTemplateExport;
+use App\Imports\NamedSheetImport;
+use App\Imports\SheetPicker;
 use App\Imports\SuppliersImport;
 use App\Models\ActivityLog;
 use App\Models\PurchaseInvoice;
@@ -254,7 +256,7 @@ class SupplierController extends Controller
             'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
         ]);
 
-        $import = new SuppliersImport();
+        $import = new NamedSheetImport(new SuppliersImport(), SheetPicker::key($request->file('file'), 'SUPPLIERS'));
         Excel::import($import, $request->file('file'));
 
         $importedCount = $import->importedCount;

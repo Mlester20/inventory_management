@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
 /**
  * Blank template matching ProductsCatalogImport's expected columns
@@ -11,8 +12,13 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
  * up). Cost and Unit Price are optional — leave blank to import at ₱0.00
  * pending real pricing, same as the bulk catalog-only import case.
  */
-class ProductsCatalogTemplateExport implements FromArray, WithHeadings
+class ProductsCatalogTemplateExport implements FromArray, WithHeadings, WithTitle
 {
+    public function title(): string
+    {
+        return 'PRODUCTS';
+    }
+
     public function headings(): array
     {
         return ['Category', 'Unit', 'Generic Description', 'Brand', 'Cost', 'Unit Price'];

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Exports\CustomersTemplateExport;
 use App\Imports\CustomersImport;
+use App\Imports\NamedSheetImport;
+use App\Imports\SheetPicker;
 use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
@@ -254,7 +256,7 @@ class CustomerController extends Controller
             'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
         ]);
 
-        $import = new CustomersImport();
+        $import = new NamedSheetImport(new CustomersImport(), SheetPicker::key($request->file('file'), 'CUSTOMERS'));
         Excel::import($import, $request->file('file'));
 
         $importedCount = $import->importedCount;

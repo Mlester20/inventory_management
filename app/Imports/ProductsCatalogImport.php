@@ -28,7 +28,8 @@ class ProductsCatalogImport implements WithMultipleSheets
 {
     protected ProductsCatalogSheetImport $rows;
 
-    public function __construct()
+    /** @param string|int $sheet tab name, or 0 for the first tab (see SheetPicker) */
+    public function __construct(protected string|int $sheet = 'PRODUCTS')
     {
         $this->rows = new ProductsCatalogSheetImport();
     }
@@ -36,7 +37,7 @@ class ProductsCatalogImport implements WithMultipleSheets
     public function sheets(): array
     {
         return [
-            'PRODUCTS' => $this->rows,
+            $this->sheet => $this->rows,
         ];
     }
 

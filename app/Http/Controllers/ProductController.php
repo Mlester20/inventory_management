@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\ProductsCatalogTemplateExport;
 use App\Imports\ProductsCatalogImport;
+use App\Imports\SheetPicker;
 use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\GenericName;
@@ -217,7 +218,7 @@ class ProductController extends Controller
             'file' => 'required|file|mimes:xlsx,xls,csv|max:20480',
         ]);
 
-        $import = new ProductsCatalogImport();
+        $import = new ProductsCatalogImport(SheetPicker::key($request->file('file'), 'PRODUCTS'));
 
         try {
             Excel::import($import, $request->file('file'));
