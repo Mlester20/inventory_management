@@ -166,32 +166,6 @@
                 </li>
               </ul>
             </li>
-            <li class="menu-item {{ request()->routeIs('suppliers.*') ? 'active open' : '' }}">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-user"></i>
-                <div data-i18n="Suppliers">Suppliers</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
-                  <a href="{{ route('suppliers.index') }}" class="menu-link">
-                    <div data-i18n="Account">Suppliers</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
-            <li class="menu-item {{ request()->routeIs('customers.*') ? 'active open' : '' }}">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-group"></i>
-                <div data-i18n="Customers">Customers</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item {{ request()->routeIs('customers.*') ? 'active' : '' }}">
-                  <a href="{{ route('customers.index') }}" class="menu-link">
-                    <div data-i18n="Customers">Customers</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
             <li class="menu-item {{ request()->routeIs('purchases.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-cart"></i>
@@ -219,6 +193,37 @@
               </ul>
             </li>
 
+            <!-- Customer & Supplier Accounts -->
+            <li class="menu-header small text-uppercase">
+              <span class="menu-header-text">Customer &amp; Supplier Accounts</span>
+            </li>
+            <li class="menu-item {{ request()->routeIs('suppliers.*') ? 'active open' : '' }}">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-user"></i>
+                <div data-i18n="Suppliers">Suppliers</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
+                  <a href="{{ route('suppliers.index') }}" class="menu-link">
+                    <div data-i18n="Account">Suppliers</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <li class="menu-item {{ request()->routeIs('customers.*') ? 'active open' : '' }}">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-group"></i>
+                <div data-i18n="Customers">Customers</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item {{ request()->routeIs('customers.*') ? 'active' : '' }}">
+                  <a href="{{ route('customers.index') }}" class="menu-link">
+                    <div data-i18n="Customers">Customers</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+
             <!-- Taxes & Invoice -->
             <li class="menu-header small text-uppercase">
               <span class="menu-header-text">Taxes &amp; Invoice</span>
@@ -236,24 +241,7 @@
                 </li>
               </ul>
             </li>
-            <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active open' : '' }}">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-receipt"></i>
-                <div data-i18n="Invoices">Invoices</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
-                  <a href="{{ route('invoices.index') }}" class="menu-link">
-                    <div data-i18n="Error">Sales Invoices</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="{{ route('invoices.create') }}" class="menu-link">
-                    <div data-i18n="Error">New Invoice</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
+
 
             <!-- Sales -->
             <li class="menu-header small text-uppercase">
@@ -296,6 +284,7 @@
                     <div data-i18n="Error">New Sales Order</div>
                   </a>
                 </li>
+        
                 <li class="menu-item {{ request()->routeIs('advance-orders.*') ? 'active' : '' }}">
                   <a href="{{ route('advance-orders.index') }}" class="menu-link">
                     <div data-i18n="Error">Advance Orders</div>
@@ -312,6 +301,37 @@
                   </a>
                 </li>
               </ul>
+              <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                  <i class="menu-icon tf-icons bx bx-receipt"></i>
+                  <div data-i18n="Invoices">Invoices</div>
+                </a>
+                <ul class="menu-sub">
+                  <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
+                    <a href="{{ route('invoices.index') }}" class="menu-link">
+                      <div data-i18n="Error">Sales Invoices</div>
+                    </a>
+                  </li>
+                  <li class="menu-item">
+                    <a href="{{ route('invoices.create') }}" class="menu-link">
+                      <div data-i18n="Error">New Invoice</div>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li class="menu-item {{ request()->routeIs('purchases.*') ? 'active open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                  <i class="menu-icon tf-icons bx bx-cart"></i>
+                  <div data-i18n="Purchases">POS Sales</div>
+                </a>
+                <ul class="menu-sub">
+                  <li class="menu-item {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
+                    <a href="{{ route('purchases.index') }}" class="menu-link">
+                      <div data-i18n="Error">Purchases</div>
+                    </a>
+                  </li>
+                </ul>
+              </li>
             </li>
 
             <!-- Purchase -->
@@ -484,6 +504,24 @@
               </a>
             </li>
             @endif
+            <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active open' : '' }}">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-receipt"></i>
+                <div data-i18n="Invoices">Invoices</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
+                  <a href="{{ route('invoices.index') }}" class="menu-link">
+                    <div data-i18n="Error">Sales Invoices</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('invoices.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Invoice</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
 
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>
