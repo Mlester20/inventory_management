@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Customer;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -16,7 +17,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
  * customer_name, customer_type, price_level, and vat_type are required —
  * contact details are optional here just like on that form.
  */
-class CustomersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class CustomersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure, SkipsEmptyRows
 {
     use SkipsFailures;
 
@@ -55,7 +56,9 @@ class CustomersImport implements ToModel, WithHeadingRow, WithValidation, SkipsO
             // outright (same fix as SuppliersImport). model() above already
             // casts to string before saving.
             'contact_number' => 'nullable|max:255',
-            'email' => 'nullable|email|unique:customers,email',
+            // Not unique: branches of one company (and the client's placeholder
+            // data) legitimately share an email.
+            'email' => 'nullable|email',
             'delivery_address' => 'nullable|string',
             // Blank is allowed here (defaulted in model() above) — only a
             // present-but-unrecognized value is rejected.
@@ -82,6 +85,11 @@ class CustomersImport implements ToModel, WithHeadingRow, WithValidation, SkipsO
     {
         $raw = mb_strtolower(trim((string) $raw));
 
+        // Short code the client's own spreadsheet uses for Wholesale.
+        if ($raw === 'ws') {
+            return 'wholesale';
+        }
+
         foreach (Customer::PRICE_LEVELS as $key => $label) {
             if ($raw === mb_strtolower($key) || $raw === mb_strtolower($label)) {
                 return $key;
@@ -95,7 +103,6 @@ class CustomersImport implements ToModel, WithHeadingRow, WithValidation, SkipsO
     {
         return [
             'customer_name.unique' => 'A customer with this name already exists.',
-            'email.unique' => 'A customer with this email already exists.',
         ];
     }
 }

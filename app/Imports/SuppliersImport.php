@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Supplier;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -22,7 +23,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
  * file just as well as one already in the DB — confirmed live, no
  * separate in-memory duplicate tracking needed.
  */
-class SuppliersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class SuppliersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure, SkipsEmptyRows
 {
     use SkipsFailures;
 
