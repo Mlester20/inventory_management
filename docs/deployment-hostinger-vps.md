@@ -262,3 +262,47 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 
 For a riskier update, wrap it with `php artisan down` before and `php artisan up` after, so visitors
 see a "be right back" page instead of a half-applied deploy.
+
+## Wiping data before go-live (client enters actual inventory)
+
+`php artisan inventory:wipe` (`app/Console/Commands/WipeInventoryData.php`) clears demo/test stock and
+transactions so the client can start from actual inventory. Irreversible on prod, so always back up first.
+
+**Deletes** (27 tables with `--products`): stock (`product_batches`, `location_stocks`,
+`stock_movements`) and every transaction that has product lines — quotes, sales orders, delivery
+receipts, invoices, sales/purchases, customer payments, purchase orders, goods receipts, purchase
+invoices, supplier payments, inventory adjustments, stock transfers, stock disposals/returns.
+`--products` also deletes the `products` catalog.
+
+**Keeps:** users, `locations` (Warehouse/POS — the stock flow breaks without them), categories,
+customers, suppliers, `generic_names`, taxes, expenses, and `activity_logs` (audit trail).
+
+Products can't be wiped alone: transaction lines reference them by foreign key, so those documents go too.
+If the catalog is real imported data (thousands of products), run **without** `--products` to keep it.
+
+```bash
+cd /var/www/inventory_management
+php artisan down
+mysqldump -u inventory_user -p --no-tablespaces --single-transaction inventory_app > ~/inventory_app_pre-wipe_$(date +%F).sql
+ls -lh ~/inventory_app_pre-wipe_*.sql    # must be MBs, not 0 / a few KB — otherwise do NOT wipe
+git pull origin main
+php artisan inventory:wipe --products    # asks for confirmation; drop --products to keep the catalog
+php artisan up
+```
+
+Restore if something goes wrong: `mysql -u inventory_user -p inventory_app < ~/inventory_app_pre-wipe_YYYY-MM-DD.sql`
+
+Gotchas: use the `DB_PASSWORD` from the VPS `.env` (`Access denied ... using password: YES` = wrong
+password). `--no-tablespaces` is needed because `inventory_user` only has rights on `inventory_app`, not the
+global `PROCESS` privilege (`Access denied; you need the PROCESS privilege` otherwise).
+
+Local tip: XAMPP's dump tool isn't on PATH — use `/c/xampp/mysql/bin/mysqldump.exe`.
+
+### Creating the new admin account afterwards
+
+Same command as checkpoint 11 (never the stock seeder). Valid `role` values: `admin`, `admin_staff`, `user`.
+The wipe leaves existing users in place, so delete old/test accounts separately if the client doesn't want them.
+
+```bash
+php artisan tinker --execute="\App\Models\User::create(['name' => 'Name', 'email' => 'email@example.com', 'password' => bcrypt('ChangeMe!'), 'role' => 'admin', 'is_active' => true]);"
+```
