@@ -14,7 +14,7 @@ class ImportSkippedRow extends Model
 
     public const REASONS = [
         self::REASON_DUPLICATE_IN_FILE => 'Duplicate row in the file',
-        self::REASON_ALREADY_IN_SYSTEM => 'Already exists in the system',
+        self::REASON_ALREADY_IN_SYSTEM => 'Already exists (in the system or earlier in the file)',
         self::REASON_DIFFERENT_CATEGORY => 'Generic description exists under another category',
         self::REASON_INVALID_DATA => 'Invalid or duplicate data',
     ];
@@ -73,10 +73,17 @@ class ImportSkippedRow extends Model
                 ->mapWithKeys(fn ($value, $key) => [ucwords(str_replace('_', ' ', (string) $key)) => $value])
                 ->all();
 
+            $errors = $group->flatMap(fn ($failure) => $failure->errors())->unique();
+
+            // The unique: rules' messages all read "... already exists." — a
+            // duplicate (of an existing record or an earlier row in the file,
+            // which is already saved by then), not malformed data.
+            $isDuplicate = $errors->contains(fn ($error) => str_contains($error, 'already exists'));
+
             return [
                 'sheet_row' => (int) $row,
-                'reason' => self::REASON_INVALID_DATA,
-                'details' => $group->flatMap(fn ($failure) => $failure->errors())->unique()->implode(' '),
+                'reason' => $isDuplicate ? self::REASON_ALREADY_IN_SYSTEM : self::REASON_INVALID_DATA,
+                'details' => $errors->implode(' '),
                 'row_data' => $values,
             ];
         })->values()->all();
