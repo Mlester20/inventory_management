@@ -34,6 +34,7 @@ class InventoryAdjustment extends Model
      * separate per-line field.
      */
     public const TYPES = [
+        'opening_balance' => 'Opening Balance',
         'stock_in_found' => 'Stock In - Found/Recount',
         'stock_out_damaged' => 'Stock Out - Damaged',
         'stock_out_lost' => 'Stock Out - Lost/Theft',
@@ -42,7 +43,7 @@ class InventoryAdjustment extends Model
         'correction_decrease' => 'Correction - Decrease',
     ];
 
-    public const STOCK_IN_TYPES = ['stock_in_found', 'correction_increase'];
+    public const STOCK_IN_TYPES = ['opening_balance', 'stock_in_found', 'correction_increase'];
 
     public function direction(): string
     {

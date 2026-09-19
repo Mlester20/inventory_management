@@ -11,8 +11,10 @@ class ImportSkippedRow extends Model
     public const REASON_DIFFERENT_CATEGORY = 'different_category';
     public const REASON_ALREADY_IN_SYSTEM = 'already_in_system';
     public const REASON_INVALID_DATA = 'invalid_data';
+    public const REASON_PRODUCT_NOT_FOUND = 'product_not_found';
 
     public const REASONS = [
+        self::REASON_PRODUCT_NOT_FOUND => 'Product not found in the system',
         self::REASON_DUPLICATE_IN_FILE => 'Duplicate row in the file',
         self::REASON_ALREADY_IN_SYSTEM => 'Already exists (in the system or earlier in the file)',
         self::REASON_DIFFERENT_CATEGORY => 'Generic description exists under another category',

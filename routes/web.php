@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\PurchaseReportController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ImportResultsController;
+use App\Http\Controllers\InventoryImportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TaxesController;
@@ -173,6 +174,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // Products / Lot-Serial & Expiry / Product History); see
     // InventoryItemsController for the tab-driven index.
     Route::get('admin/inventory-items', [InventoryItemsController::class, 'index'])->name('inventory-items.index');
+    Route::post('admin/inventory-items/import-stock', [InventoryImportController::class, 'import'])->name('inventory-items.import-stock');
+    Route::get('admin/inventory-items/import-stock/template', [InventoryImportController::class, 'downloadTemplate'])->name('inventory-items.import-stock.template');
     Route::get('admin/items/{product}', function (\App\Models\Product $product) {
         return redirect()->route('inventory-items.index', ['tab' => 'products', 'search' => $product->item_name]);
     })->name('admin.items.show');

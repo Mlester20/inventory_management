@@ -544,7 +544,14 @@
         {{-- ============================= LOT/SERIAL & EXPIRY TAB ============================= --}}
         @if($tab === 'batches')
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <a href="{{ route('inventory-adjustments.create') }}" class="btn btn-primary">Adjust Inventory</a>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('inventory-adjustments.create') }}" class="btn btn-primary">Adjust Inventory</a>
+                    @if(Auth::user()->role === 'admin')
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importInventoryModal">
+                            <i class="bx bx-upload me-1"></i> Import Opening Inventory
+                        </button>
+                    @endif
+                </div>
                 <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'batches', 'show_zero' => $showZero ? 0 : 1])) }}" class="btn btn-outline-secondary btn-sm">
                     @if($showZero)
                         <i class="bx bx-hide"></i> Hide zero-qty batches
@@ -655,6 +662,9 @@
                     </form>
                 </div>
             </div>
+            @if(Auth::user()->role === 'admin')
+                @include('admin.inventory-items.partials.import-inventory-modal')
+            @endif
         @endif
 
         {{-- ============================= PRODUCT HISTORY TAB ============================= --}}

@@ -305,6 +305,24 @@ global `PROCESS` privilege (`Access denied; you need the PROCESS privilege` othe
 
 Local tip: XAMPP's dump tool isn't on PATH — use `/c/xampp/mysql/bin/mysqldump.exe`.
 
+### Loading opening stock (lots + quantities) after the wipe
+
+Inventory Items → **Lot/Serial & Expiry View** → **Import Opening Inventory** (admin only). Template tab is
+`INVENTORY`: Category, Generic Description, Brand, Lot No, Expiry Date, Qty — one row per lot.
+
+- Products must already exist (import them first); an unmatched row is skipped and listed on **Import Results**,
+  never created. Lot No and Expiry Date may be blank (stored as no lot / no expiry). No cost column — cost stays
+  the product's Unit Cost.
+- A lot is identified by **Product + Lot No**: different products may share a lot number and expiry; the same
+  product can't get the same lot twice, so re-importing a file adds nothing.
+- Everything lands in the Warehouse as ONE `Opening Balance` Inventory Adjustment (`ADJ-YYYY-NNNNN`), so it
+  appears in Product History and can be undone with that adjustment's **Write-off** button.
+- Speed: every lot goes through the stock ledger one by one, ~13 s per 1,000 lots (3,000 lots = 39 s locally).
+  Nginx cuts the request at 60 s by default (browser shows `504` even though PHP keeps going), so for the real
+  import either upload in parts of ~2,000 rows, or raise the limit in the `location ~ \.php$` block and reload:
+  `fastcgi_read_timeout 300;` then `nginx -t && systemctl reload nginx`.
+- Take the `mysqldump` backup first, as with the wipe.
+
 ### Creating the new admin account afterwards
 
 Same command as checkpoint 11 (never the stock seeder). Valid `role` values: `admin`, `admin_staff`, `user`.
