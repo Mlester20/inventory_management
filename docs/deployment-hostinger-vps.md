@@ -277,6 +277,12 @@ invoices, supplier payments, inventory adjustments, stock transfers, stock dispo
 **Keeps:** users, `locations` (Warehouse/POS — the stock flow breaks without them), categories,
 customers, suppliers, `generic_names`, taxes, expenses, and `activity_logs` (audit trail).
 
+**`--all`** = full go-live reset: everything above **plus** customers, suppliers, expenses, expense
+categories, categories, generic_names, the audit trail and **all users** (`activity_logs` has a FK to
+`users`, so they go together). Only `locations` (Warehouse/POS) and `taxes` (VAT setup) survive. Nobody can
+log in afterwards until the new admin is created (see below), and categories/generic_names/customers/
+suppliers/products must be re-imported from the Excel files (`app/Imports/`).
+
 Products can't be wiped alone: transaction lines reference them by foreign key, so those documents go too.
 If the catalog is real imported data (thousands of products), run **without** `--products` to keep it.
 
@@ -286,7 +292,8 @@ php artisan down
 mysqldump -u inventory_user -p --no-tablespaces --single-transaction inventory_app > ~/inventory_app_pre-wipe_$(date +%F).sql
 ls -lh ~/inventory_app_pre-wipe_*.sql    # must be MBs, not 0 / a few KB — otherwise do NOT wipe
 git pull origin main
-php artisan inventory:wipe --products    # asks for confirmation; drop --products to keep the catalog
+php artisan inventory:wipe --all         # asks for confirmation. Lighter options: --products, or none (stock + transactions only)
+# create the new admin (tinker command below), THEN:
 php artisan up
 ```
 

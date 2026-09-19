@@ -10,6 +10,7 @@ class WipeInventoryData extends Command
 {
     protected $signature = 'inventory:wipe
         {--products : Also delete the product catalog (products table)}
+        {--all : Full go-live reset: everything except locations and taxes (includes users and the audit trail)}
         {--force : Skip the confirmation prompt}';
 
     protected $description = 'Wipe stock and all stock-related transactions (optionally the product catalog) before going live with actual inventory';
@@ -29,10 +30,20 @@ class WipeInventoryData extends Command
         'stock_movements', 'location_stocks', 'product_batches',
     ];
 
+    // users and activity_logs go together: activity_logs.user_id has a FK to users.
+    private const ALL_EXTRA_TABLES = [
+        'products', 'items',
+        'customers', 'suppliers', 'expenses', 'expense_categories',
+        'generic_names', 'categories',
+        'activity_logs', 'users', 'sessions', 'password_reset_tokens',
+    ];
+
     public function handle(): int
     {
         $tables = self::TRANSACTION_TABLES;
-        if ($this->option('products')) {
+        if ($this->option('all')) {
+            $tables = array_merge($tables, self::ALL_EXTRA_TABLES);
+        } elseif ($this->option('products')) {
             $tables[] = 'products';
         }
 
@@ -40,7 +51,12 @@ class WipeInventoryData extends Command
         foreach ($tables as $table) {
             $this->line(sprintf('  %-28s %d rows', $table, DB::table($table)->count()));
         }
-        $this->info('Kept: users, locations, categories, customers, suppliers, generic_names, taxes, expenses, activity_logs' . ($this->option('products') ? '' : ', products'));
+        if ($this->option('all')) {
+            $this->info('Kept: locations (stock flow needs Warehouse/POS) and taxes (VAT setup)');
+            $this->error('This deletes ALL users — nobody can log in until you create a new admin (see the runbook).');
+        } else {
+            $this->info('Kept: users, locations, categories, customers, suppliers, generic_names, taxes, expenses, activity_logs' . ($this->option('products') ? '' : ', products'));
+        }
 
         if (! $this->option('force') && ! $this->confirm('Database: ' . DB::getDatabaseName() . ' — have you taken a backup and want to proceed?')) {
             $this->line('Aborted, nothing deleted.');
@@ -57,6 +73,9 @@ class WipeInventoryData extends Command
         }
 
         $this->info('Done. Wiped ' . count($tables) . ' tables.');
+        if ($this->option('all')) {
+            $this->warn('Now create the new admin with the tinker command in docs/deployment-hostinger-vps.md.');
+        }
         return self::SUCCESS;
     }
 }
