@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\SalesReportController;
 use App\Http\Controllers\Admin\PurchaseReportController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\ImportResultsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TaxesController;
@@ -189,6 +190,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::resource('admin/purchases', PurchaseController::class);    
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+    Route::get('admin/import-results', [ImportResultsController::class, 'index'])->name('import-results.index');
+    Route::get('admin/import-results/export', [ImportResultsController::class, 'export'])->name('import-results.export');
     Route::resource('admin/return-items', ReturnItemController::class);
     Route::resource('admin/taxes', TaxesController::class);
     Route::resource('admin/expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);

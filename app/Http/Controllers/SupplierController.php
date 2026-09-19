@@ -7,10 +7,12 @@ use App\Imports\NamedSheetImport;
 use App\Imports\SheetPicker;
 use App\Imports\SuppliersImport;
 use App\Models\ActivityLog;
+use App\Models\ImportSkippedRow;
 use App\Models\PurchaseInvoice;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -273,14 +275,16 @@ class SupplierController extends Controller
             return redirect()->route('suppliers.index');
         }
 
-        $messages = $failures->map(fn ($failure) => "Row {$failure->row()}: " . implode(' ', $failure->errors()));
+        $batchId = (string) Str::uuid();
+        ImportSkippedRow::recordFailures($batchId, 'suppliers', $failures);
+        $skippedRows = $failures->groupBy(fn ($failure) => $failure->row())->count();
 
         Alert::error(
             'Imported with some rows skipped',
-            "{$importedCount} supplier(s) imported. {$messages->count()} row(s) skipped: " . $messages->take(5)->implode(' | ') . ($messages->count() > 5 ? ' …' : '')
+            "{$importedCount} supplier(s) imported. {$skippedRows} row(s) were skipped — the full list is below, so you can correct them in your Excel file."
         );
 
-        return redirect()->route('suppliers.index');
+        return redirect()->route('import-results.index', ['batch' => $batchId]);
     }
 
     /**

@@ -35,7 +35,7 @@ class WipeInventoryData extends Command
         'products', 'items',
         'customers', 'suppliers', 'expenses', 'expense_categories',
         'generic_names', 'categories',
-        'activity_logs', 'users', 'sessions', 'password_reset_tokens',
+        'activity_logs', 'import_skipped_rows', 'users', 'sessions', 'password_reset_tokens',
     ];
 
     public function handle(): int

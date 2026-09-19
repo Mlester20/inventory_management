@@ -476,6 +476,14 @@
                 <div data-i18n="Audit Trail">Audit Trail</div>
               </a>
             </li>
+            @if(auth()->user()->role === 'admin')
+            <li class="menu-item">
+              <a href="{{ route('import-results.index') }}" class="menu-link {{ request()->routeIs('import-results.*') ? 'active' : '' }}">
+                <i class="menu-icon tf-icons bx bx-error-circle"></i>
+                <div data-i18n="Import Results">Import Results</div>
+              </a>
+            </li>
+            @endif
 
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>

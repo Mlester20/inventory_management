@@ -241,23 +241,17 @@ class ProductController extends Controller
         $summary = "{$import->productsImported} product(s) imported "
             . "({$import->categoriesCreated} new categories, {$import->genericNamesCreated} new generic names).";
 
-        $skipNotes = [];
-        if ($import->duplicatesSkipped > 0) {
-            $skipNotes[] = "{$import->duplicatesSkipped} duplicate row(s) skipped";
-        }
-        if (count($import->crossCategorySkips()) > 0) {
-            $skipNotes[] = count($import->crossCategorySkips()) . ' row(s) skipped — generic description already exists under a different category: '
-                . implode('; ', array_slice($import->crossCategorySkips(), 0, 5))
-                . (count($import->crossCategorySkips()) > 5 ? ' …' : '');
-        }
+        $skipped = $import->duplicatesSkipped + count($import->crossCategorySkips());
 
-        if (empty($skipNotes)) {
+        if ($skipped === 0) {
             Alert::success('Success', $summary);
-        } else {
-            Alert::error('Imported with some rows skipped', $summary . ' ' . implode(' | ', $skipNotes));
+
+            return redirect()->route('inventory-items.index', ['tab' => 'products']);
         }
 
-        return redirect()->route('inventory-items.index', ['tab' => 'products']);
+        Alert::error('Imported with some rows skipped', "{$summary} {$skipped} row(s) were skipped — the full list is below, so you can correct them in your Excel file.");
+
+        return redirect()->route('import-results.index', ['batch' => $import->batchId]);
     }
 
     /**

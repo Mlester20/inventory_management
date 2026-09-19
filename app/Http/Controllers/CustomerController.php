@@ -9,9 +9,11 @@ use App\Imports\SheetPicker;
 use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
+use App\Models\ImportSkippedRow;
 use App\Models\Invoice;
 use App\Services\CustomerPaymentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -273,14 +275,16 @@ class CustomerController extends Controller
             return redirect()->route('customers.index');
         }
 
-        $messages = $failures->map(fn ($failure) => "Row {$failure->row()}: " . implode(' ', $failure->errors()));
+        $batchId = (string) Str::uuid();
+        ImportSkippedRow::recordFailures($batchId, 'customers', $failures);
+        $skippedRows = $failures->groupBy(fn ($failure) => $failure->row())->count();
 
         Alert::error(
             'Imported with some rows skipped',
-            "{$importedCount} customer(s) imported. {$messages->count()} row(s) skipped: " . $messages->take(5)->implode(' | ') . ($messages->count() > 5 ? ' …' : '')
+            "{$importedCount} customer(s) imported. {$skippedRows} row(s) were skipped — the full list is below, so you can correct them in your Excel file."
         );
 
-        return redirect()->route('customers.index');
+        return redirect()->route('import-results.index', ['batch' => $batchId]);
     }
 
     /**

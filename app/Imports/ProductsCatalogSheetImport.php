@@ -4,9 +4,11 @@ namespace App\Imports;
 
 use App\Models\Category;
 use App\Models\GenericName;
+use App\Models\ImportSkippedRow;
 use App\Models\Product;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -37,7 +39,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     /** @var array<string,int> generic_name => category_id it was created under */
     protected array $genericNameCategory;
 
-    /** @var array<string,true> "{category}|{generic}|{brand}" already imported this run */
+    /** @var array<string,int> "{category}|{generic}|{brand}" => sheet row it was first seen on this run */
     protected array $seenProductKeys = [];
 
     /** @var string[] human-readable notes for skipped cross-category rows */
@@ -51,9 +53,23 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     public int $productsImported = 0;
     public int $duplicatesSkipped = 0;
 
+    /** Groups this run's skipped rows on the Import Results page. */
+    public string $batchId;
+
+    /** @var array<int,string> category id => name, for readable skip messages */
+    protected array $categoryNames;
+
+    /** Sheet row of the row being processed (row 1 is the heading row). */
+    protected int $currentRow = 1;
+
+    /** @var array<int, array{sheet_row:int, reason:string, details:string, row_data:array}> */
+    protected array $pendingSkips = [];
+
     public function __construct()
     {
+        $this->batchId = (string) Str::uuid();
         $this->categoryIds = Category::pluck('id', 'category_name')->all();
+        $this->categoryNames = array_flip($this->categoryIds);
 
         // Keyed case-insensitively: generic_names.generic_name has a
         // case-insensitive unique index at the DB level (default collation),
@@ -92,9 +108,13 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     {
         DB::transaction(function () use ($rows) {
             foreach ($rows as $row) {
+                $this->currentRow++;
                 $this->importRow($row);
             }
         });
+
+        ImportSkippedRow::record($this->batchId, 'products', $this->pendingSkips);
+        $this->pendingSkips = [];
     }
 
     protected function importRow(Collection $row): void
@@ -111,20 +131,42 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             return;
         }
 
+        $rowData = [
+            'Category' => $category,
+            'Unit' => $unit,
+            'Generic Description' => $generic,
+            'Brand' => $brand,
+            'Cost' => $row['cost'] ?? null,
+            'Unit Price' => $row['unit_price'] ?? $row['n_r_php'] ?? null,
+        ];
+
         $productKey = mb_strtolower($category . '|' . $generic . '|' . ($brand ?? ''));
         if (isset($this->seenProductKeys[$productKey])) {
             $this->duplicatesSkipped++;
+            $this->pendingSkips[] = [
+                'sheet_row' => $this->currentRow,
+                'reason' => ImportSkippedRow::REASON_DUPLICATE_IN_FILE,
+                'details' => "Same Category, Generic Description and Brand as row {$this->seenProductKeys[$productKey]} of this file.",
+                'row_data' => $rowData,
+            ];
 
             return;
         }
-        $this->seenProductKeys[$productKey] = true;
+        $this->seenProductKeys[$productKey] = $this->currentRow;
 
         $categoryId = $this->resolveCategory($category);
         $genericKey = $this->genericKey($generic);
 
         if (isset($this->genericNameIds[$genericKey])) {
             if ($this->genericNameCategory[$genericKey] !== $categoryId) {
+                $existingCategory = $this->categoryNames[$this->genericNameCategory[$genericKey]] ?? 'another category';
                 $this->skippedCrossCategory[] = "\"{$generic}\" (row wants \"{$category}\", already exists under a different category)";
+                $this->pendingSkips[] = [
+                    'sheet_row' => $this->currentRow,
+                    'reason' => ImportSkippedRow::REASON_DIFFERENT_CATEGORY,
+                    'details' => "\"{$generic}\" already exists under category \"{$existingCategory}\"; this row wants \"{$category}\".",
+                    'row_data' => $rowData,
+                ];
 
                 return;
             }
@@ -158,6 +200,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
 
         $category = Category::create(['category_name' => $name]);
         $this->categoryIds[$name] = $category->id;
+        $this->categoryNames[$category->id] = $name;
         $this->categoriesCreated++;
 
         return $category->id;
