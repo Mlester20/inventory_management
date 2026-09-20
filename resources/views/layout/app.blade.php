@@ -504,24 +504,6 @@
               </a>
             </li>
             @endif
-            <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active open' : '' }}">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-receipt"></i>
-                <div data-i18n="Invoices">Invoices</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
-                  <a href="{{ route('invoices.index') }}" class="menu-link">
-                    <div data-i18n="Error">Sales Invoices</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="{{ route('invoices.create') }}" class="menu-link">
-                    <div data-i18n="Error">New Invoice</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
 
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>
