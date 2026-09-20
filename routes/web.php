@@ -175,6 +175,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // Products / Lot-Serial & Expiry / Product History); see
     // InventoryItemsController for the tab-driven index.
     Route::get('admin/inventory-items', [InventoryItemsController::class, 'index'])->name('inventory-items.index');
+    Route::post('admin/inventory-items/import-count', [InventoryImportController::class, 'importCount'])->name('inventory-items.import-count');
+    Route::get('admin/inventory-items/import-count/template', [InventoryImportController::class, 'countTemplate'])->name('inventory-items.import-count.template');
+    Route::get('admin/inventory-items/export-count', [InventoryImportController::class, 'exportForCount'])->name('inventory-items.export-count');
     Route::post('admin/inventory-items/import-stock', [InventoryImportController::class, 'import'])->name('inventory-items.import-stock');
     Route::get('admin/inventory-items/import-stock/template', [InventoryImportController::class, 'downloadTemplate'])->name('inventory-items.import-stock.template');
     Route::get('admin/items/{product}', function (\App\Models\Product $product) {

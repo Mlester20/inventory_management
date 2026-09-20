@@ -302,7 +302,7 @@
                                     <i class="bx bx-upload me-1"></i> Import Products
                                 </a>
                                 <a class="dropdown-item" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#importPricesModal">
-                                    <i class="bx bx-dollar-circle me-1"></i> Update Prices
+                                    <i class="bx bx-dollar-circle me-1"></i> Update Products
                                 </a>
                                 <div class="dropdown-divider"></div>
                                 <a class="dropdown-item" href="{{ route('products.export-prices') }}">
@@ -566,9 +566,23 @@
                 <div class="d-flex gap-2">
                     <a href="{{ route('inventory-adjustments.create') }}" class="btn btn-primary">Adjust Inventory</a>
                     @if(Auth::user()->role === 'admin')
-                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importInventoryModal">
-                            <i class="bx bx-upload me-1"></i> Import Opening Inventory
-                        </button>
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bx bx-import me-1"></i> Import
+                            </button>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#importInventoryModal">
+                                    <i class="bx bx-upload me-1"></i> Import Opening Inventory
+                                </a>
+                                <a class="dropdown-item" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#importCountModal">
+                                    <i class="bx bx-list-check me-1"></i> Import Stock Count
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ route('inventory-items.export-count') }}">
+                                    <i class="bx bx-download me-1"></i> Download stock for counting (Excel)
+                                </a>
+                            </div>
+                        </div>
                     @endif
                 </div>
                 <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'batches', 'show_zero' => $showZero ? 0 : 1])) }}" class="btn btn-outline-secondary btn-sm">
@@ -683,6 +697,7 @@
             </div>
             @if(Auth::user()->role === 'admin')
                 @include('admin.inventory-items.partials.import-inventory-modal')
+                @include('admin.inventory-items.partials.import-count-modal')
             @endif
         @endif
 

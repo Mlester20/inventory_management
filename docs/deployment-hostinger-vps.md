@@ -323,16 +323,18 @@ Inventory Items → **Lot/Serial & Expiry View** → **Import Opening Inventory*
   `fastcgi_read_timeout 300;` then `nginx -t && systemctl reload nginx`.
 - Take the `mysqldump` backup first, as with the wipe.
 
-### Updating Cost / prices / tax after products are in (Update Prices)
+### Updating Cost / prices / tax / description after products are in (Update Products)
 
-Products View → **Update Prices** (admin only). Import Products never updates an existing product (it skips it),
+Products View → **Import → Update Products** (admin only). Import Products never updates an existing product (it skips it),
 so prices, cost and tax go through this separate import — safe to run any time, even with transactions on file.
 
 - **Easiest:** in the modal click **Download all products** — every product in the layout below with its system
   `Code` — edit in Excel, upload it back. Or use the blank template (tab `PRICES`).
-- Columns: `Code | Category | Generic Description | Brand | Cost | Retail Markup % | Retail Price | Wholesale % | P1 % | P2 % | P3 % | Tax`.
-  Match is by **Code**; with Code blank it falls back to Category + Generic Description + Brand. Descriptions
-  edited in the file are ignored (they'd change the product's identity) — edit those on the product itself.
+- Columns: `Code | Category | Generic Description | Brand | Item Description | New Brand | Cost | Retail Markup % | Retail Price | Wholesale % | P1 % | P2 % | P3 % | Tax`.
+  Match is by **Code**; with Code blank it falls back to Category + Generic Description + Brand. **Item Description**
+  and **New Brand** change the product's text and **need the Code** (a row matched by name can't); Category and Generic
+  Description never change (they are the product's identity). A New Brand that another product already has under the
+  same Category + Generic is skipped. Saved through the model, so `item_name` follows the new Brand.
 - **Retail is a MARK-UP % on Cost** (Sir: Cost 10 + 100% = 20): fill `Retail Markup %` and the price is
   computed (`cost × (1 + %/100)`, needs a Cost), **or** type the `Retail Price` and leave the % blank. Both filled: kept if they
   agree; if they don't (or there's no Cost to check), the typed **Retail Price wins and the % is left blank** (Sir's
@@ -345,6 +347,22 @@ so prices, cost and tax go through this separate import — safe to run any time
 - No undo button — take the `mysqldump` backup first. (Known gap: Zero Vat is saved as the Zero-Rated tax, but the
   invoice only distinguishes "has a tax" (VATable) from "no tax" (exempt), so Zero-Rated still needs to be picked
   on the invoice line.)
+
+### Correcting quantities after a physical count (Stock Count)
+
+Lot/Serial & Expiry View → **Import → Import Stock Count** (admin only). Opening Inventory only ever *adds new
+lots*; this corrects lots that already exist.
+
+- **Easiest:** **Import → Download stock for counting (Excel)** — every Warehouse lot with its system quantity
+  (`Current Qty (system)`, ignored on import). Fill `Counted Qty`, upload it back. Blank template also available (tab `COUNT`).
+- Columns: `Code | Category | Generic Description | Brand | Lot No | Counted Qty`. Product by Code (or
+  Category + Generic + Brand when Code is blank); lot by Lot No (blank = the product's lot without a number).
+- The Warehouse quantity of each lot is **set to the counted figure**. The difference is posted as up to two
+  Inventory Adjustments — `Correction - Increase` and `Correction - Decrease` — so it shows in Product History and can
+  be written off. **Blank Counted Qty = leave the lot alone; `0` = counted, none on hand.**
+- Never creates a product or a lot: unknown ones are skipped to **Import Results** (`Lot not found` — add new lots with
+  Opening Inventory). Re-importing the same file changes nothing ("already correct").
+- Counts the **Warehouse** only (POS stock isn't touched).
 
 ### Creating the new admin account afterwards
 
