@@ -48,7 +48,9 @@ class InventoryItemsController extends Controller
         $posId = Location::pos()->id;
 
         $assignedTaxIds = Product::whereNotNull('tax_id')->pluck('tax_id')->unique();
+        // Zero-Rated (0%) stays selectable even though only the current VAT rate is "active".
         $taxes = Taxes::where('is_active', true)
+            ->orWhere('rate', 0)
             ->orWhereIn('id', $assignedTaxIds)
             ->orderBy('name')
             ->get();

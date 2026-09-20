@@ -268,6 +268,7 @@ class DeliveryReceiptService
 
             $vatSales = 0;
             $vatexSales = 0;
+            $zeroSales = 0;
             $vatAmount = 0;
             $saleRows = [];
 
@@ -298,13 +299,15 @@ class DeliveryReceiptService
                     : (float) ($product->{$customer->priceColumn()} ?? $product->unit_price);
 
                 $lineAmount = $qty * $price;
-                $classification = $product->tax_id ? 'vatable' : 'vatex';
+                $classification = $product->taxClassification();
 
                 $lineVat = 0;
                 if ($classification === 'vatable') {
                     $vatSales += $lineAmount;
                     $lineVat = round($lineAmount * ($activeVatRate / 100), 2);
                     $vatAmount += $lineVat;
+                } elseif ($classification === 'zero') {
+                    $zeroSales += $lineAmount;
                 } else {
                     $vatexSales += $lineAmount;
                 }
@@ -326,7 +329,7 @@ class DeliveryReceiptService
                 $line->increment('invoiced_qty', $qty);
             }
 
-            $totalSales = $vatSales + $vatexSales + $vatAmount;
+            $totalSales = $vatSales + $vatexSales + $zeroSales + $vatAmount;
 
             $invoice = Invoice::create([
                 'customer_name' => $customer->customer_name,
@@ -336,7 +339,7 @@ class DeliveryReceiptService
                 'prepared_by' => $userId,
                 'vat_sales' => round($vatSales, 2),
                 'vatex_sales' => round($vatexSales, 2),
-                'zero_sales' => 0,
+                'zero_sales' => round($zeroSales, 2),
                 'vat_amount' => round($vatAmount, 2),
                 'total_sales' => round($totalSales, 2),
                 'less_vat' => 0,

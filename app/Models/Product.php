@@ -76,6 +76,21 @@ class Product extends Model
         return $this->belongsTo(Taxes::class, 'tax_id');
     }
 
+    /**
+     * How a sale of this product is taxed by default: 'vatable' (has a tax with
+     * a rate above 0), 'zero' (a 0% tax, i.e. Zero-Rated) or 'vatex' (no tax =
+     * VAT-exempt). The one place this is decided, so the Invoice, Delivery
+     * Receipt invoicing, the item API, the invoice form and the POS all agree.
+     */
+    public function taxClassification(): string
+    {
+        if ($this->tax_id === null) {
+            return 'vatex';
+        }
+
+        return (float) ($this->tax?->rate ?? 0) > 0 ? 'vatable' : 'zero';
+    }
+
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);

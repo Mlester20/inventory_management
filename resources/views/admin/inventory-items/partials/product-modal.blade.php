@@ -92,7 +92,7 @@
                             <select name="tax_id" id="{{ $prefix }}tax_id" class="form-select">
                                 <option value="">-- No Tax --</option>
                                 @foreach ($taxes as $tax)
-                                    <option value="{{ $tax->id }}">{{ $tax->name }} ({{ $tax->rate }}%)</option>
+                                    <option value="{{ $tax->id }}" @selected(! $isUpdate && strtolower($tax->name) === 'vat')>{{ $tax->name }} ({{ $tax->rate }}%)</option>
                                 @endforeach
                             </select>
                         </div>

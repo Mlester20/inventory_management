@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\GenericName;
 use App\Models\ImportSkippedRow;
 use App\Models\Product;
+use App\Models\Taxes;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -52,6 +53,9 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     public int $genericNamesCreated = 0;
     public int $productsImported = 0;
     public int $duplicatesSkipped = 0;
+
+    /** Sir's default: a new product is VAT Inc (VATable) unless it is changed later. */
+    protected ?int $defaultTaxId = null;
     public int $alreadyInSystemSkipped = 0;
 
     /** @var array<string,string> "{category}|{generic}|{brand}" of products already in the DB => product code */
@@ -72,6 +76,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     public function __construct()
     {
         $this->batchId = (string) Str::uuid();
+        $this->defaultTaxId = Taxes::whereRaw('LOWER(name) = ?', ['vat'])->value('id');
         $this->categoryIds = Category::pluck('id', 'category_name')->all();
         $this->categoryNames = array_flip($this->categoryIds);
 
@@ -214,6 +219,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             // column) is read here rather than always hardcoded to 0.
             'unit_price' => $this->parseDecimal($row['unit_price'] ?? $row['n_r_php'] ?? null) ?? 0,
             'low_stock_threshold' => 0,
+            'tax_id' => $this->defaultTaxId,
             'custom_field_1' => $legacyCode,
         ]);
 

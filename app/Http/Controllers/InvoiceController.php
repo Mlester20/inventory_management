@@ -71,7 +71,8 @@ class InvoiceController extends Controller
                 'price' => (float) $product->unit_price,
                 'quantity' => (int) ($product->pos_qty ?? 0),
                 'unit' => 'pc',
-                'taxable' => $product->tax_id !== null,
+                'tax_classification' => $product->taxClassification(),
+                'taxable' => $product->taxClassification() === 'vatable',
             ];
         })->values();
 
@@ -134,10 +135,10 @@ class InvoiceController extends Controller
                     $dis = (float) ($line['dis'] ?? 0);
                     $lineAmount = ($qty * $price) - $dis;
 
-                    // Default classification comes from whether the product has a tax
-                    // assigned; the form may override per line (e.g. SC/PWD or
-                    // zero-rated sales) regardless of the product's default tax.
-                    $classification = $line['tax_override'] ?? ($product->tax_id ? 'vatable' : 'vatex');
+                    // Default classification comes from the product's tax (VATable,
+                    // Zero-Rated at 0%, or none = VAT-exempt); the form may override
+                    // per line (e.g. SC/PWD) regardless of the product's default.
+                    $classification = $line['tax_override'] ?? $product->taxClassification();
 
                     $lineVat = 0;
                     if ($classification === 'vatable') {

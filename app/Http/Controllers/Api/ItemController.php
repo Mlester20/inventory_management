@@ -17,7 +17,7 @@ class ItemController extends Controller
     {
         $posLocationId = Location::pos()->id;
 
-        $items = Product::with('category', 'supplier')
+        $items = Product::with('category', 'supplier', 'tax')
             ->withSum(['locationStocks as pos_qty' => fn ($q) => $q->where('location_id', $posLocationId)], 'qty')
             ->get()
             ->filter(fn (Product $item) => ($item->pos_qty ?? 0) > 0)
@@ -28,7 +28,8 @@ class ItemController extends Controller
                     'item_name' => $item->item_name,
                     'quantity' => (int) ($item->pos_qty ?? 0),
                     'unit_price' => $item->unit_price,
-                    'taxable' => $item->tax_id !== null,
+                    'tax_classification' => $item->taxClassification(),
+                    'taxable' => $item->taxClassification() === 'vatable',
                     'category' => [
                         'id' => $item->category->id,
                         'category_name' => $item->category->category_name,
@@ -53,7 +54,7 @@ class ItemController extends Controller
     {
         $posLocationId = Location::pos()->id;
 
-        $item = Product::with('category', 'supplier')
+        $item = Product::with('category', 'supplier', 'tax')
             ->withSum(['locationStocks as pos_qty' => fn ($q) => $q->where('location_id', $posLocationId)], 'qty')
             ->where('barcode', $barcode)
             ->first();
@@ -73,7 +74,8 @@ class ItemController extends Controller
             'item_name' => $item->item_name,
             'quantity' => $quantity,
             'unit_price' => $item->unit_price,
-            'taxable' => $item->tax_id !== null,
+            'tax_classification' => $item->taxClassification(),
+                    'taxable' => $item->taxClassification() === 'vatable',
             'category' => [
                 'id' => $item->category->id,
                 'category_name' => $item->category->category_name,

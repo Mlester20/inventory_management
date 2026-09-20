@@ -206,6 +206,7 @@
                 total_price: quantity * parseFloat(product.unit_price),
                 max_stock: product.quantity,
                 taxable: !!product.taxable,
+                tax_classification: product.tax_classification || (product.taxable ? 'vatable' : 'vatex'),
             });
         }
 
@@ -481,10 +482,13 @@
     function computeVatBreakdown(cartSnapshot) {
         let vatSales = 0;
         let vatexSales = 0;
+        let zeroSales = 0;
 
         cartSnapshot.forEach(item => {
             if (item.taxable) {
                 vatSales += item.total_price;
+            } else if (item.tax_classification === 'zero') {
+                zeroSales += item.total_price;
             } else {
                 vatexSales += item.total_price;
             }
@@ -492,10 +496,11 @@
 
         vatSales = round2(vatSales);
         vatexSales = round2(vatexSales);
+        zeroSales = round2(zeroSales);
         const vatAmount = round2(vatSales * (ACTIVE_VAT_RATE / 100));
-        const totalSales = round2(vatSales + vatexSales + vatAmount);
+        const totalSales = round2(vatSales + vatexSales + zeroSales + vatAmount);
 
-        return { vatSales, vatexSales, vatAmount, totalSales, amountDue: totalSales };
+        return { vatSales, vatexSales, zeroSales, vatAmount, totalSales, amountDue: totalSales };
     }
 
     function showReceipt(transactionId, cartSnapshot, amountTendered, changeAmount) {
@@ -533,6 +538,7 @@
                 '<tbody>' +
                     '<tr><td>Vatable Sales</td><td class="text-end">' + b.vatSales.toFixed(2) + '</td></tr>' +
                     '<tr><td>Vat-Exempt Sales</td><td class="text-end">' + b.vatexSales.toFixed(2) + '</td></tr>' +
+                    (b.zeroSales > 0 ? '<tr><td>Zero-Rated Sales</td><td class="text-end">' + b.zeroSales.toFixed(2) + '</td></tr>' : '') +
                     '<tr><td>Vat Amount</td><td class="text-end">' + b.vatAmount.toFixed(2) + '</td></tr>' +
                     '<tr class="fw-bold border-top"><td>Total Sales (Vat Inclusive)</td><td class="text-end">' + b.totalSales.toFixed(2) + '</td></tr>' +
                     '<tr class="fw-bold fs-5"><td>Amount Due</td><td class="text-end">₱' + b.amountDue.toFixed(2) + '</td></tr>' +

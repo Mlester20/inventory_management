@@ -340,13 +340,14 @@ so prices, cost and tax go through this separate import — safe to run any time
   agree; if they don't (or there's no Cost to check), the typed **Retail Price wins and the % is left blank** (Sir's
   rule; counted in the result message). A % with no Cost and no price is skipped. **Wholesale / P1–P3 are a % OFF Retail** (Retail 20, 10% → 18.00);
   their peso amount is computed and recomputed whenever Retail or Cost changes. The product form does the same.
-- **Tax:** `VAT Inc` (default VATable), `VAT Ex` (VAT-exempt = no tax on the product), `Zero Vat`.
-  Products imported without a tax count as VAT-exempt on invoices, so run this before invoicing.
+- **Tax:** `VAT Inc` (VATable, the default), `VAT Ex` (VAT-exempt = no tax on the product), `Zero Vat` (the
+  Zero-Rated 0% tax). The invoice classifies each product from its tax: has a tax with a rate above 0 → VATable,
+  a 0% tax → Zero-Rated, no tax → VAT-exempt (`Product::taxClassification()`, used by the Invoice, invoices created
+  from a Delivery Receipt, the item API, the invoice form and the POS). New products (Products import, New Item
+  form) are VAT Inc by default; products that already exist with no tax stay VAT-exempt until this import sets one.
 - **Blank cell = keep the current value.** Unmatched / invalid rows are skipped to **Import Results** (row number
   + reason). Unchanged rows are counted as "already up to date". ~5,000 rows take about 6 s.
-- No undo button — take the `mysqldump` backup first. (Known gap: Zero Vat is saved as the Zero-Rated tax, but the
-  invoice only distinguishes "has a tax" (VATable) from "no tax" (exempt), so Zero-Rated still needs to be picked
-  on the invoice line.)
+- No undo button — take the `mysqldump` backup first.
 
 ### Correcting quantities after a physical count (Stock Count)
 

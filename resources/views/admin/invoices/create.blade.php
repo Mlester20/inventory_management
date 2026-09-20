@@ -250,6 +250,25 @@
         return ITEMS.map(i => `<option value="${itemLabel(i)}"></option>`).join('');
     }
 
+    const TAX_LABELS = { vatable: 'VATable', vatex: 'VAT-Exempt', zero: 'Zero-Rated' };
+
+    // The Tax select's first option is "Default" — spell out what that means for
+    // the picked item (its product tax), so nobody has to guess.
+    function updateDefaultTaxLabel(card, item) {
+        const option = card.querySelector('.tax-select option[value=""]');
+        if (!option) {
+            return;
+        }
+        const classification = item ? (item.tax_classification || (item.taxable ? 'vatable' : 'vatex')) : null;
+        option.textContent = classification ? `Default (${TAX_LABELS[classification]})` : 'Default';
+        syncTaxTitle(card);
+    }
+
+    function syncTaxTitle(card) {
+        const select = card.querySelector('.tax-select');
+        select.title = select.selectedOptions.length ? select.selectedOptions[0].textContent : '';
+    }
+
     function findItemByLabel(label) {
         return ITEMS.find(i => itemLabel(i) === label);
     }
@@ -317,7 +336,7 @@
             </div>
 
             <div class="row g-2 mt-1">
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Batch No.</label>
                     <input type="text" name="items[${index}][batch_no]" class="form-control batch-input">
                 </div>
@@ -333,7 +352,7 @@
                     <label class="form-label small mb-1">Discount</label>
                     <input type="number" name="items[${index}][dis]" class="form-control dis-input" step="0.01" min="0" value="0">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label small mb-1">Tax</label>
                     <select name="items[${index}][tax_override]" class="form-select tax-select">
                         <option value="">Default</option>
@@ -362,18 +381,27 @@
         const unitInput = card.querySelector('.unit-input');
         const priceInput = card.querySelector('.price-input');
 
+        // Description and Unit are pre-filled from the item. Remember that, so
+        // picking a different item on the same line refreshes them, while text the
+        // encoder typed themselves is never overwritten.
+        descInput.addEventListener('input', () => { descInput.dataset.auto = '0'; });
+        unitInput.addEventListener('input', () => { unitInput.dataset.auto = '0'; });
+
         itemSearchInput.addEventListener('input', function () {
             const item = findItemByLabel(this.value);
             itemIdInput.value = item ? item.id : '';
             if (item) {
                 priceInput.value = item.price.toFixed(2);
-                if (!descInput.value) {
+                if (!descInput.value || descInput.dataset.auto === '1') {
                     descInput.value = item.name;
+                    descInput.dataset.auto = '1';
                 }
-                if (!unitInput.value) {
+                if (!unitInput.value || unitInput.dataset.auto === '1') {
                     unitInput.value = item.unit;
+                    unitInput.dataset.auto = '1';
                 }
             }
+            updateDefaultTaxLabel(card, item);
             computeTotals();
         });
 
@@ -381,6 +409,7 @@
             el.addEventListener('input', computeTotals);
             el.addEventListener('change', computeTotals);
         });
+        card.querySelector('.tax-select').addEventListener('change', () => syncTaxTitle(card));
 
         card.querySelector('.remove-row-btn').addEventListener('click', function () {
             card.remove();
@@ -396,6 +425,9 @@
         }
         const itemId = card.querySelector('.item-id-input').value;
         const item = ITEMS.find(i => String(i.id) === String(itemId));
+        if (item && item.tax_classification) {
+            return item.tax_classification;
+        }
         return (item && item.taxable) ? 'vatable' : 'vatex';
     }
 
