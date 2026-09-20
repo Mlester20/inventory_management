@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $typeLabels = ['products' => 'Products', 'customers' => 'Customers', 'suppliers' => 'Suppliers', 'inventory' => 'Opening Inventory'];
+    $typeLabels = ['products' => 'Products', 'customers' => 'Customers', 'suppliers' => 'Suppliers', 'inventory' => 'Opening Inventory', 'prices' => 'Update Prices'];
     $reasonBadges = [
         'product_not_found' => 'danger',
         'duplicate_in_file' => 'warning',

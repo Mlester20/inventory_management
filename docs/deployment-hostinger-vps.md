@@ -323,6 +323,29 @@ Inventory Items → **Lot/Serial & Expiry View** → **Import Opening Inventory*
   `fastcgi_read_timeout 300;` then `nginx -t && systemctl reload nginx`.
 - Take the `mysqldump` backup first, as with the wipe.
 
+### Updating Cost / prices / tax after products are in (Update Prices)
+
+Products View → **Update Prices** (admin only). Import Products never updates an existing product (it skips it),
+so prices, cost and tax go through this separate import — safe to run any time, even with transactions on file.
+
+- **Easiest:** in the modal click **Download all products** — every product in the layout below with its system
+  `Code` — edit in Excel, upload it back. Or use the blank template (tab `PRICES`).
+- Columns: `Code | Category | Generic Description | Brand | Cost | Retail Markup % | Retail Price | Wholesale % | P1 % | P2 % | P3 % | Tax`.
+  Match is by **Code**; with Code blank it falls back to Category + Generic Description + Brand. Descriptions
+  edited in the file are ignored (they'd change the product's identity) — edit those on the product itself.
+- **Retail is a MARK-UP % on Cost** (Sir: Cost 10 + 100% = 20): fill `Retail Markup %` and the price is
+  computed (`cost × (1 + %/100)`, needs a Cost), **or** type the `Retail Price` and leave the % blank. Both filled: kept if they
+  agree; if they don't (or there's no Cost to check), the typed **Retail Price wins and the % is left blank** (Sir's
+  rule; counted in the result message). A % with no Cost and no price is skipped. **Wholesale / P1–P3 are a % OFF Retail** (Retail 20, 10% → 18.00);
+  their peso amount is computed and recomputed whenever Retail or Cost changes. The product form does the same.
+- **Tax:** `VAT Inc` (default VATable), `VAT Ex` (VAT-exempt = no tax on the product), `Zero Vat`.
+  Products imported without a tax count as VAT-exempt on invoices, so run this before invoicing.
+- **Blank cell = keep the current value.** Unmatched / invalid rows are skipped to **Import Results** (row number
+  + reason). Unchanged rows are counted as "already up to date". ~5,000 rows take about 6 s.
+- No undo button — take the `mysqldump` backup first. (Known gap: Zero Vat is saved as the Zero-Rated tax, but the
+  invoice only distinguishes "has a tax" (VATable) from "no tax" (exempt), so Zero-Rated still needs to be picked
+  on the invoice line.)
+
 ### Creating the new admin account afterwards
 
 Same command as checkpoint 11 (never the stock seeder). Valid `role` values: `admin`, `admin_staff`, `user`.

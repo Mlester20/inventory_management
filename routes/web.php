@@ -24,6 +24,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ImportResultsController;
 use App\Http\Controllers\InventoryImportController;
+use App\Http\Controllers\ProductPricesImportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TaxesController;
@@ -183,6 +184,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::patch('admin/products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
     Route::post('admin/products/{product}/archive', [ProductController::class, 'archive'])->name('products.archive');
     Route::post('admin/products/{product}/unarchive', [ProductController::class, 'unarchive'])->name('products.unarchive');
+    Route::get('admin/products/export-prices', [ProductPricesImportController::class, 'export'])->name('products.export-prices');
+    Route::post('admin/products/import-prices', [ProductPricesImportController::class, 'import'])->name('products.import-prices');
+    Route::get('admin/products/import-prices/template', [ProductPricesImportController::class, 'downloadTemplate'])->name('products.import-prices.template');
     Route::post('admin/products/import', [ProductController::class, 'import'])->name('products.import');
     Route::get('admin/products/import/template', [ProductController::class, 'downloadTemplate'])->name('products.import.template');
     Route::put('admin/product-batches/{productBatch}', [ProductBatchController::class, 'update'])->name('product-batches.update');

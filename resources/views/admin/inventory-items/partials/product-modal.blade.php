@@ -265,6 +265,27 @@
         });
     }
 
+    // Retail is a mark-up on Cost. Fill the % and the price computes
+    // (Cost x (1 + %/100)); or type the Retail Price yourself, which clears the %.
+    const costInput = document.getElementById(prefix + 'unit_cost');
+    const retailPercentInput = document.getElementById(prefix + 'unit_price_percent');
+
+    function recalcRetail() {
+        const cost = parseFloat(costInput.value);
+        const percent = parseFloat(retailPercentInput.value);
+        if (isNaN(cost) || isNaN(percent)) return;
+        retailInput.value = (cost * (1 + percent / 100)).toFixed(2);
+        retailInput.dispatchEvent(new Event('input'));
+    }
+
+    if (retailInput && costInput && retailPercentInput) {
+        costInput.addEventListener('input', recalcRetail);
+        retailPercentInput.addEventListener('input', recalcRetail);
+        retailInput.addEventListener('input', function (event) {
+            if (event.isTrusted) retailPercentInput.value = '';
+        });
+    }
+
     @if($isUpdate)
     document.querySelectorAll('.edit-product-btn').forEach(function (button) {
         button.addEventListener('click', function () {
