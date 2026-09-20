@@ -294,7 +294,8 @@
             </div>
 
             @include('partials.print.sales-totals-footer', array_merge([
-                'totalAmountDue' => number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2),
+                // "Add: VAT" is added on top of the line amounts (same as the Invoice), so the total due includes it.
+                'totalAmountDue' => number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)) + ($vatPreview['addVat'] ?? 0), 2),
                 'preparedByValue' => $salesOrder->preparedBy->name ?? '',
                 'notes' => $salesOrder->notes,
             ], $vatPreview ?? []))
