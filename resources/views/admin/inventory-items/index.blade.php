@@ -289,30 +289,48 @@
         @if($tab === 'products')
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="d-flex gap-2">
-                    @if(Auth::user()->role === 'admin')
-                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importProductsModal">
-                            <i class="bx bx-upload me-1"></i> Import Products
-                        </button>
-                    @endif
                     <button type="button" id="newProductBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
-                        New Item
+                        <i class="bx bx-plus me-1"></i> New Item
                     </button>
+                    @if(Auth::user()->role === 'admin')
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bx bx-import me-1"></i> Import
+                            </button>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#importProductsModal">
+                                    <i class="bx bx-upload me-1"></i> Import Products
+                                </a>
+                                <a class="dropdown-item" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#importPricesModal">
+                                    <i class="bx bx-dollar-circle me-1"></i> Update Prices
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ route('products.export-prices') }}">
+                                    <i class="bx bx-download me-1"></i> Download all products (Excel)
+                                </a>
+                            </div>
+                        </div>
+                    @endif
                 </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_archived' => $showArchived ? 0 : 1, 'show_trashed' => 0])) }}" class="btn btn-outline-secondary btn-sm">
-                        @if($showArchived)
-                            <i class="bx bx-undo"></i> Hide archived
-                        @else
-                            <i class="bx bx-archive"></i> Show archived
-                        @endif
-                    </a>
-                    <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_trashed' => $showTrashed ? 0 : 1, 'show_archived' => 0])) }}" class="btn btn-outline-secondary btn-sm">
-                        @if($showTrashed)
-                            <i class="bx bx-undo"></i> Hide trashed
-                        @else
-                            <i class="bx bx-trash"></i> Show trashed
-                        @endif
-                    </a>
+                <div class="dropdown">
+                    <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bx {{ $showTrashed ? 'bx-trash' : ($showArchived ? 'bx-archive' : 'bx-list-ul') }} me-1"></i>
+                        Showing: {{ $showTrashed ? 'Trashed' : ($showArchived ? 'Archived' : 'Active') }}
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        <a class="dropdown-item {{ ! $showArchived && ! $showTrashed ? 'active' : '' }}"
+                           href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_archived' => 0, 'show_trashed' => 0])) }}">
+                            <i class="bx bx-list-ul me-1"></i> Active products
+                        </a>
+                        <a class="dropdown-item {{ $showArchived ? 'active' : '' }}"
+                           href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_archived' => 1, 'show_trashed' => 0])) }}">
+                            <i class="bx bx-archive me-1"></i> Archived
+                        </a>
+                        <a class="dropdown-item {{ $showTrashed ? 'active' : '' }}"
+                           href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_trashed' => 1, 'show_archived' => 0])) }}">
+                            <i class="bx bx-trash me-1"></i> Trashed
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -538,6 +556,7 @@
             @include('admin.inventory-items.partials.view-product-modal')
             @if(Auth::user()->role === 'admin')
                 @include('admin.inventory-items.partials.import-products-modal')
+                @include('admin.inventory-items.partials.import-prices-modal')
             @endif
         @endif
 
