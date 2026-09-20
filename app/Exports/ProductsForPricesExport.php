@@ -34,13 +34,15 @@ class ProductsForPricesExport implements FromArray, WithHeadings, WithTitle
             ->orderBy('g.generic_name')
             ->orderBy('products.brand_name')
             ->get([
-                'products.code', 'c.category_name', 'g.generic_name', 'products.brand_name',
+                'products.code', 'c.category_name', 'g.generic_name', 'products.brand_name', 'products.description',
                 'products.unit_cost', 'products.unit_price', 'products.unit_price_percent',
                 'products.wholesale_percent', 'products.price_1_percent', 'products.price_2_percent', 'products.price_3_percent',
                 't.name as tax_name',
             ])
             ->map(fn ($p) => [
                 $p->code, $p->category_name, $p->generic_name, $p->brand_name,
+                $p->description,
+                null,
                 $this->number($p->unit_cost),
                 $this->markupIfConsistent($p),
                 $this->number($p->unit_price),

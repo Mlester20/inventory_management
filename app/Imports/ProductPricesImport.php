@@ -63,6 +63,9 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
     /** @var array<string,int> lower-cased system code => product id */
     protected array $codeIds = [];
 
+    /** @var array<int,string> product id => lower-cased "{category}|{generic}|" (a product's identity minus its Brand) */
+    protected array $identity = [];
+
     /** @var array<int,array> product id => current cost/price/percent/tax values */
     protected array $current = [];
 
@@ -91,14 +94,15 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             ->join('categories as c', 'c.id', '=', 'g.category_id')
             ->orderBy('products.id')
             ->get(array_merge(
-                ['products.id', 'products.code', 'products.brand_name', 'g.generic_name', 'c.category_name'],
+                ['products.id', 'products.code', 'products.brand_name', 'products.description', 'g.generic_name', 'c.category_name'],
                 array_map(fn ($field) => "products.{$field}", $fields),
             ))
             ->each(function ($product) use ($fields) {
                 $key = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . ($product->brand_name ?? ''));
                 $this->productIds[$key] ??= $product->id;
                 $this->codeIds[mb_strtolower((string) $product->code)] = $product->id;
-                $this->current[$product->id] = $product->only($fields);
+                $this->identity[$product->id] = mb_strtolower($product->category_name . '|' . $product->generic_name . '|');
+                $this->current[$product->id] = $product->only(array_merge($fields, ['brand_name', 'description']));
             });
     }
 
@@ -144,8 +148,10 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             $percents[$percentField] = $this->firstPresent($row, $aliases);
         }
         $taxRaw = $this->firstPresent($row, ['tax', 'n_tax']);
+        $descriptionRaw = $this->firstPresent($row, ['item_description']);
+        $newBrandRaw = $this->firstPresent($row, ['new_brand']);
 
-        $requested = array_merge($amounts, $percents, ['tax' => $taxRaw, 'retail_markup' => $retailMarkupRaw]);
+        $requested = array_merge($amounts, $percents, ['tax' => $taxRaw, 'retail_markup' => $retailMarkupRaw, 'description' => $descriptionRaw, 'new_brand' => $newBrandRaw]);
         $noChangeRequested = collect($requested)->every(fn ($v) => $v === null);
 
         if ($code === null && $category === '' && $generic === '' && $noChangeRequested) {
@@ -157,6 +163,8 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             'Category' => $category,
             'Generic Description' => $generic,
             'Brand' => $brand,
+            'Item Description' => $descriptionRaw,
+            'New Brand' => $newBrandRaw,
             'Cost' => $amounts['unit_cost'],
             'Retail Markup %' => $retailMarkupRaw,
             'Retail Price' => $amounts['unit_price'],
@@ -282,6 +290,38 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             $update['tax_id'] = $resolved;
         }
 
+        $textChanges = [];
+        if ($descriptionRaw !== null || $newBrandRaw !== null) {
+            // Description/Brand text is changed by Code only: without it the
+            // Category + Generic + Brand match IS the product's identity.
+            if ($code === null) {
+                $this->skip($rowData, ImportSkippedRow::REASON_INVALID_DATA, 'Item Description and New Brand can only be changed on a row that has the product Code.');
+
+                return;
+            }
+
+            if ($descriptionRaw !== null && $descriptionRaw !== trim((string) ($current['description'] ?? ''))) {
+                $textChanges['description'] = $descriptionRaw;
+            }
+
+            if ($newBrandRaw !== null && $newBrandRaw !== trim((string) ($current['brand_name'] ?? ''))) {
+                if (mb_strlen($newBrandRaw) > 255) {
+                    $this->skip($rowData, ImportSkippedRow::REASON_INVALID_DATA, 'New Brand is too long (255 characters at most).');
+
+                    return;
+                }
+
+                $owner = $this->productIds[($this->identity[$productId] ?? '') . mb_strtolower($newBrandRaw)] ?? null;
+                if ($owner !== null && $owner !== $productId) {
+                    $this->skip($rowData, ImportSkippedRow::REASON_ALREADY_IN_SYSTEM, "Another product already has the Brand \"{$newBrandRaw}\" under the same Category and Generic Description.");
+
+                    return;
+                }
+
+                $textChanges['brand_name'] = $newBrandRaw;
+            }
+        }
+
         // Only a row that passed validation claims the product, so a later row
         // isn't called a "duplicate" of one that was itself rejected.
         $this->seen[$productId] = $this->currentRow;
@@ -302,14 +342,32 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             }
         }
 
-        if (! $this->differs($current, $update)) {
+        $priceChanged = $this->differs($current, $update);
+        if (! $priceChanged && $textChanges === []) {
             $this->unchanged++;
 
             return;
         }
 
-        DB::table('products')->where('id', $productId)->update($update + $derived + ['updated_at' => now()]);
-        $this->current[$productId] = array_merge($current, $update, $derived);
+        if ($priceChanged) {
+            DB::table('products')->where('id', $productId)->update($update + $derived + ['updated_at' => now()]);
+            $this->current[$productId] = array_merge($current, $update, $derived);
+        }
+
+        if ($textChanges !== []) {
+            // Through the model, so item_name (built from the Generic Name and
+            // Brand in Product::saving) stays in step with the new Brand.
+            Product::findOrFail($productId)->fill($textChanges)->save();
+
+            if (isset($textChanges['brand_name'])) {
+                $identity = $this->identity[$productId] ?? '';
+                unset($this->productIds[$identity . mb_strtolower(trim((string) ($current['brand_name'] ?? '')))]);
+                $this->productIds[$identity . mb_strtolower($textChanges['brand_name'])] = $productId;
+            }
+
+            $this->current[$productId] = array_merge($this->current[$productId], $textChanges);
+        }
+
         $this->updated++;
     }
 
