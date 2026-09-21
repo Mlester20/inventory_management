@@ -79,7 +79,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     public function __construct()
     {
         $this->batchId = (string) Str::uuid();
-        $this->defaultTaxId = Taxes::whereRaw('LOWER(name) = ?', ['vat'])->value('id');
+        $this->defaultTaxId = Taxes::vatable()?->id;
         $this->categoryIds = Category::pluck('id', 'category_name')->all();
         $this->categoryNames = array_flip($this->categoryIds);
 

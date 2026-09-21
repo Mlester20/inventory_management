@@ -25,4 +25,22 @@ class Taxes extends Model
     {
         return (float) (self::where('is_active', true)->orderByDesc('rate')->value('rate') ?? 0);
     }
+
+    /**
+     * The tax row a "VAT Inc" product points at, found by rate (> 0), never by
+     * name — admins rename tax rows freely (e.g. "VAT" -> "VAT-INC"), and a
+     * literal-name lookup would silently return nothing and leave new products
+     * VAT-exempt. Mirrors Product::taxClassification(). Prefers the active row
+     * so a deactivated leftover isn't picked over the real one.
+     */
+    public static function vatable(): ?self
+    {
+        return self::where('rate', '>', 0)->orderByDesc('is_active')->orderBy('id')->first();
+    }
+
+    /** The tax row a "Zero Vat" product points at: the 0% row, found by rate, not name. */
+    public static function zeroRated(): ?self
+    {
+        return self::where('rate', 0)->orderByDesc('is_active')->orderBy('id')->first();
+    }
 }
