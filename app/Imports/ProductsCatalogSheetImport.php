@@ -212,6 +212,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             'code' => $this->nextProductCode(),
             'generic_name_id' => $genericNameId,
             'brand_name' => $brand,
+            'description' => trim((string) ($row['item_description'] ?? '')) ?: null,
             'unit' => $unit,
             'unit_cost' => $this->parseDecimal($row['cost'] ?? null),
             // No source row in the real sheet has pricing today, but a
