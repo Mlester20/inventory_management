@@ -10,8 +10,8 @@
                 <div class="modal-body">
                     <p class="text-muted small">
                         Upload an Excel (.xlsx/.xls) or CSV file with columns: Category, Generic
-                        Description, Brand, Lot No, Expiry Date, Qty. One row per lot. If the file has
-                        multiple sheets, only the one named "INVENTORY" is read.
+                        Description, Brand, Unit (optional), Lot No, Expiry Date, Qty. One row per lot. If
+                        the file has multiple sheets, only the one named "INVENTORY" is read.
                         <a href="{{ route('inventory-items.import-stock.template') }}">Download the template</a>.
                     </p>
                     <div class="mb-3">
@@ -20,7 +20,8 @@
                     </div>
                     <div class="alert alert-info small mb-0">
                         Products must already exist — a row whose Category, Generic Description and Brand
-                        match no product is skipped and reported, never created. Lot No and Expiry Date may
+                        match no product is skipped and reported, never created. Add <strong>Unit</strong> if
+                        the same item exists in more than one packaging (e.g. a BX and a PC). Lot No and Expiry Date may
                         be left blank. Stock is added to the Warehouse as one "Opening Balance" Inventory
                         Adjustment. A lot the product already has (same Lot No) is skipped, so importing the
                         same file twice adds nothing. Rows with no Qty are ignored. Every lot goes through

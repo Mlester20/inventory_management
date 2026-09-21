@@ -23,8 +23,10 @@
                     </div>
                     <div class="alert alert-info small mb-0">
                         Only existing products are updated, found by <strong>Code</strong> (or, with the Code
-                        blank, by Category + Generic Description + Brand). Nothing is ever created — a row that
-                        matches no product is skipped and reported. A blank cell keeps the current value.
+                        blank, by Category + Generic Description + Brand — add <strong>Unit</strong> too if the
+                        same item exists in more than one packaging, e.g. a BX and a PC). Nothing is ever
+                        created — a row that matches no product, or matches more than one without a Unit to
+                        tell them apart, is skipped and reported. A blank cell keeps the current value.
                         Item Description and New Brand need the Code; the Category and Generic Description never change.
                         Wholesale and P1–P3 are a % <em>off</em> Retail; their peso amount is computed for you. Tax is VAT Inc
                         (VATable), VAT Ex (VAT-exempt) or Zero Vat. You can correct the file and import it

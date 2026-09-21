@@ -22,7 +22,7 @@ class StockForCountExport implements FromArray, WithHeadings, WithTitle
 
     public function headings(): array
     {
-        return ['Code', 'Category', 'Generic Description', 'Brand', 'Lot No', 'Counted Qty', 'Current Qty (system)', 'Expiry Date'];
+        return ['Code', 'Category', 'Generic Description', 'Brand', 'Unit', 'Lot No', 'Counted Qty', 'Current Qty (system)', 'Expiry Date'];
     }
 
     public function array(): array
@@ -38,9 +38,9 @@ class StockForCountExport implements FromArray, WithHeadings, WithTitle
             ->orderBy('g.generic_name')
             ->orderBy('p.brand_name')
             ->orderBy('b.expiration_date')
-            ->get(['p.code', 'c.category_name', 'g.generic_name', 'p.brand_name', 'b.batch_no', 'ls.qty', 'b.expiration_date'])
+            ->get(['p.code', 'c.category_name', 'g.generic_name', 'p.brand_name', 'g.unit', 'b.batch_no', 'ls.qty', 'b.expiration_date'])
             ->map(fn ($row) => [
-                $row->code, $row->category_name, $row->generic_name, $row->brand_name, $row->batch_no,
+                $row->code, $row->category_name, $row->generic_name, $row->brand_name, $row->unit, $row->batch_no,
                 null, (int) $row->qty, $row->expiration_date,
             ])
             ->all();

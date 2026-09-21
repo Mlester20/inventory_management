@@ -16,7 +16,9 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 /**
  * Physical stock count: sets the Warehouse quantity of EXISTING lots to the
  * counted figure. One row = one lot (product by Code, or Category + Generic
- * Description + Brand; lot by Lot No, blank = the product's no-lot batch).
+ * Description + Brand — Unit is only required for that name-based lookup when
+ * the combo isn't unique on its own, e.g. the same item exists as both a BX and
+ * a PC; lot by Lot No, blank = the product's no-lot batch).
  *
  * Never creates a product or a lot — an unknown one is skipped to Import
  * Results (Opening Inventory adds new lots). The difference between the system
@@ -39,8 +41,17 @@ class StockCountImport implements ToCollection, WithHeadingRow
     public ?InventoryAdjustment $increaseAdjustment = null;
     public ?InventoryAdjustment $decreaseAdjustment = null;
 
-    /** @var array<string,int> "{category}|{generic}|{brand}" => product id */
+    /** @var array<string,int> "{category}|{generic}|{unit}|{brand}" => product id */
     protected array $productIds = [];
+
+    /** @var array<string,int> "{category}|{generic}|{brand}" (Unit-independent) => product id,
+     * only present when that combo maps to exactly ONE product. */
+    protected array $productIdsByName = [];
+
+    /** @var array<string,true> "{category}|{generic}|{brand}" combos that map to more than
+     * one product (different Units) — a name-only lookup for these must be rejected rather
+     * than silently guessing which one is meant. */
+    protected array $ambiguousNameKeys = [];
 
     /** @var array<string,int> lower-cased system code => product id */
     protected array $codeIds = [];
@@ -67,10 +78,17 @@ class StockCountImport implements ToCollection, WithHeadingRow
             ->join('generic_names as g', 'g.id', '=', 'products.generic_name_id')
             ->join('categories as c', 'c.id', '=', 'g.category_id')
             ->orderBy('products.id')
-            ->get(['products.id', 'products.code', 'products.brand_name', 'g.generic_name', 'c.category_name'])
+            ->get(['products.id', 'products.code', 'products.brand_name', 'g.generic_name', 'g.unit', 'c.category_name'])
             ->each(function ($product) {
-                $key = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . ($product->brand_name ?? ''));
-                $this->productIds[$key] ??= $product->id;
+                $catGenericBrand = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . ($product->brand_name ?? ''));
+                $this->productIds[$catGenericBrand . '|' . mb_strtolower($product->unit)] = $product->id;
+
+                if (isset($this->productIdsByName[$catGenericBrand]) && $this->productIdsByName[$catGenericBrand] !== $product->id) {
+                    $this->ambiguousNameKeys[$catGenericBrand] = true;
+                } else {
+                    $this->productIdsByName[$catGenericBrand] = $product->id;
+                }
+
                 $this->codeIds[mb_strtolower((string) $product->code)] = $product->id;
             });
 
@@ -135,6 +153,7 @@ class StockCountImport implements ToCollection, WithHeadingRow
         $category = trim((string) ($row['category'] ?? ''));
         $generic = trim((string) ($row['generic_description'] ?? ''));
         $brand = trim((string) ($row['brand'] ?? '')) ?: null;
+        $unit = trim((string) ($row['unit'] ?? ''));
         $lotRaw = $this->firstPresent($row, ['lot_no', 'lot', 'batch_no']);
         $countedRaw = $this->firstPresent($row, ['counted_qty', 'qty', 'count', 'physical_count']);
 
@@ -148,6 +167,7 @@ class StockCountImport implements ToCollection, WithHeadingRow
             'Category' => $category,
             'Generic Description' => $generic,
             'Brand' => $brand,
+            'Unit' => $unit,
             'Lot No' => $lot,
             'Counted Qty' => $countedRaw,
         ];
@@ -172,14 +192,26 @@ class StockCountImport implements ToCollection, WithHeadingRow
         }
         $counted = (int) $counted;
 
-        $productId = $code !== null
-            ? ($this->codeIds[$this->normalizeCode($code)] ?? null)
-            : ($this->productIds[mb_strtolower($category . '|' . $generic . '|' . ($brand ?? ''))] ?? null);
+        if ($code !== null) {
+            $productId = $this->codeIds[$this->normalizeCode($code)] ?? null;
+        } else {
+            $catGenericBrand = mb_strtolower($category . '|' . $generic . '|' . ($brand ?? ''));
+
+            if ($unit !== '') {
+                $productId = $this->productIds[$catGenericBrand . '|' . mb_strtolower($unit)] ?? null;
+            } elseif (isset($this->ambiguousNameKeys[$catGenericBrand])) {
+                $this->skip($rowData, ImportSkippedRow::REASON_INVALID_DATA, 'More than one product shares this Category, Generic Description and Brand with different Units. Add the Unit column, or use Code, to identify the exact one.');
+
+                return;
+            } else {
+                $productId = $this->productIdsByName[$catGenericBrand] ?? null;
+            }
+        }
 
         if ($productId === null) {
             $this->skip($rowData, ImportSkippedRow::REASON_PRODUCT_NOT_FOUND, $code !== null
                 ? "No product with Code \"{$code}\" exists."
-                : 'No product with this Category, Generic Description and Brand exists.');
+                : 'No product with this Category, Generic Description, Brand' . ($unit !== '' ? ' and Unit' : '') . ' exists.');
 
             return;
         }

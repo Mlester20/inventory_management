@@ -8,8 +8,10 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 
 /**
  * Blank template matching InventoryOpeningImport's expected columns. The
- * first three identify an existing product (same as the PRODUCTS sheet); Lot
- * No and Expiry Date may be left blank; one row per lot.
+ * first three identify an existing product (same as the PRODUCTS sheet); Unit
+ * is only needed when that combo isn't unique on its own (e.g. the same item
+ * exists as both a BX and a PC); Lot No and Expiry Date may be left blank; one
+ * row per lot.
  */
 class InventoryTemplateExport implements FromArray, WithHeadings, WithTitle
 {
@@ -20,13 +22,13 @@ class InventoryTemplateExport implements FromArray, WithHeadings, WithTitle
 
     public function headings(): array
     {
-        return ['Category', 'Generic Description', 'Brand', 'Lot No', 'Expiry Date', 'Qty'];
+        return ['Category', 'Generic Description', 'Brand', 'Unit', 'Lot No', 'Expiry Date', 'Qty'];
     }
 
     public function array(): array
     {
         return [
-            ['Pain Relief', 'Paracetamol 500mg', 'Biogesic', 'LOT-12345', '2027-12-31', 500],
+            ['Pain Relief', 'Paracetamol 500mg', 'Biogesic', 'BX', 'LOT-12345', '2027-12-31', 500],
         ];
     }
 }

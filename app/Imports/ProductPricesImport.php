@@ -17,10 +17,13 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
  *
  * A row finds its product by the system Code when the Code cell is filled
  * (what the "Export products" file provides), otherwise by Category +
- * Generic Description + Brand (same key as the products import); anything that
- * matches nothing is skipped to Import Results. A blank cell keeps the current
- * value, so a partial sheet never wipes what's already entered, and the file
- * can be corrected and imported again at any time.
+ * Generic Description + Brand; Unit is only required for that name-based
+ * lookup when the combo isn't unique on its own (e.g. the same item exists as
+ * both a BX and a PC — a name-only match is then rejected as ambiguous rather
+ * than silently guessing). Anything that matches nothing is skipped to Import
+ * Results. A blank cell keeps the current value, so a partial sheet never
+ * wipes what's already entered, and the file can be corrected and imported
+ * again at any time.
  *
  * Retail is entered either as a mark-up % on Cost (price = cost x (1 + %/100))
  * or as a peso Retail Price with the % left blank (if both are filled and
@@ -57,13 +60,23 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
     /** Rows where a Markup % disagreed with the Retail Price: price kept, % left blank. */
     public int $percentOverridden = 0;
 
-    /** @var array<string,int> "{category}|{generic}|{brand}" => product id */
+    /** @var array<string,int> "{category}|{generic}|{unit}|{brand}" => product id */
     protected array $productIds = [];
+
+    /** @var array<string,int> "{category}|{generic}|{brand}" (Unit-independent) => product id,
+     * only present when that combo maps to exactly ONE product. */
+    protected array $productIdsByName = [];
+
+    /** @var array<string,true> "{category}|{generic}|{brand}" combos that map to more than
+     * one product (different Units) — a name-only lookup for these must be rejected rather
+     * than silently guessing which one is meant. */
+    protected array $ambiguousNameKeys = [];
 
     /** @var array<string,int> lower-cased system code => product id */
     protected array $codeIds = [];
 
-    /** @var array<int,string> product id => lower-cased "{category}|{generic}|" (a product's identity minus its Brand) */
+    /** @var array<int,string> product id => lower-cased "{category}|{generic}|{unit}|" (a product's
+     * identity minus its Brand — matches $productIds' key format so a Brand can be appended directly). */
     protected array $identity = [];
 
     /** @var array<int,array> product id => current cost/price/percent/tax values */
@@ -99,14 +112,25 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             ->join('categories as c', 'c.id', '=', 'g.category_id')
             ->orderBy('products.id')
             ->get(array_merge(
-                ['products.id', 'products.code', 'products.brand_name', 'products.description', 'g.generic_name', 'c.category_name'],
+                ['products.id', 'products.code', 'products.brand_name', 'products.description', 'g.generic_name', 'g.unit', 'c.category_name'],
                 array_map(fn ($field) => "products.{$field}", $fields),
             ))
             ->each(function ($product) use ($fields) {
-                $key = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . ($product->brand_name ?? ''));
-                $this->productIds[$key] ??= $product->id;
+                // Full identity key is Category|Generic|Unit|Brand — Unit BEFORE Brand, so
+                // $this->identity (the same prefix minus Brand) can have a Brand appended
+                // directly for the New Brand rename/collision logic below.
+                $catGenericUnit = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . $product->unit);
+                $this->productIds[$catGenericUnit . '|' . mb_strtolower((string) $product->brand_name)] = $product->id;
+                $this->identity[$product->id] = $catGenericUnit . '|';
+
+                $catGenericBrand = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . ($product->brand_name ?? ''));
+                if (isset($this->productIdsByName[$catGenericBrand]) && $this->productIdsByName[$catGenericBrand] !== $product->id) {
+                    $this->ambiguousNameKeys[$catGenericBrand] = true;
+                } else {
+                    $this->productIdsByName[$catGenericBrand] = $product->id;
+                }
+
                 $this->codeIds[mb_strtolower((string) $product->code)] = $product->id;
-                $this->identity[$product->id] = mb_strtolower($product->category_name . '|' . $product->generic_name . '|');
                 $this->current[$product->id] = $product->only(array_merge($fields, ['brand_name', 'description']));
             });
     }
@@ -142,6 +166,7 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
         $category = trim((string) ($row['category'] ?? ''));
         $generic = trim((string) ($row['generic_description'] ?? ''));
         $brand = trim((string) ($row['brand'] ?? '')) ?: null;
+        $unit = trim((string) ($row['unit'] ?? ''));
 
         $amounts = [];
         foreach (self::AMOUNTS as $field => $aliases) {
@@ -168,6 +193,7 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             'Category' => $category,
             'Generic Description' => $generic,
             'Brand' => $brand,
+            'Unit' => $unit,
             'Item Description' => $descriptionRaw,
             'New Brand' => $newBrandRaw,
             'Cost' => $amounts['unit_cost'],
@@ -192,14 +218,26 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             return;
         }
 
-        $productId = $code !== null
-            ? ($this->codeIds[$this->normalizeCode($code)] ?? null)
-            : ($this->productIds[mb_strtolower($category . '|' . $generic . '|' . ($brand ?? ''))] ?? null);
+        if ($code !== null) {
+            $productId = $this->codeIds[$this->normalizeCode($code)] ?? null;
+        } else {
+            $catGenericBrand = mb_strtolower($category . '|' . $generic . '|' . ($brand ?? ''));
+
+            if ($unit !== '') {
+                $productId = $this->productIds[mb_strtolower($category . '|' . $generic . '|' . $unit) . '|' . mb_strtolower($brand ?? '')] ?? null;
+            } elseif (isset($this->ambiguousNameKeys[$catGenericBrand])) {
+                $this->skip($rowData, ImportSkippedRow::REASON_INVALID_DATA, 'More than one product shares this Category, Generic Description and Brand with different Units. Add the Unit column, or use Code, to identify the exact one.');
+
+                return;
+            } else {
+                $productId = $this->productIdsByName[$catGenericBrand] ?? null;
+            }
+        }
 
         if ($productId === null) {
             $this->skip($rowData, ImportSkippedRow::REASON_PRODUCT_NOT_FOUND, $code !== null
                 ? "No product with Code \"{$code}\" exists."
-                : 'No product with this Category, Generic Description and Brand exists. Import it on the PRODUCTS sheet first.');
+                : 'No product with this Category, Generic Description, Brand' . ($unit !== '' ? ' and Unit' : '') . ' exists. Import it on the PRODUCTS sheet first.');
 
             return;
         }

@@ -24,7 +24,9 @@
                         Inventory Adjustments ("Correction - Increase" / "Correction - Decrease"), so it appears
                         in Product History and can be written off. Only <strong>existing</strong> lots are
                         corrected — an unknown product or lot is skipped and reported (new lots come from Import
-                        Opening Inventory). A blank Counted Qty leaves the lot alone; 0 means none on hand.
+                        Opening Inventory). With Code blank, add <strong>Unit</strong> if the same Category +
+                        Generic Description + Brand exists in more than one packaging. A blank Counted Qty
+                        leaves the lot alone; 0 means none on hand.
                     </div>
                 </div>
                 <div class="modal-footer">

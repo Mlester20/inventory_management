@@ -15,9 +15,11 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 /**
- * Opening stock import: one row = one lot of one product (Category, Generic
- * Description, Brand, Lot No, Expiry Date, Qty). Never creates products — a
- * row whose product isn't in the system is skipped and reported. All valid
+ * Opening stock import: one row = one lot of one product, found by Category +
+ * Generic Description + Brand (Unit is only required when that combo isn't
+ * unique on its own, e.g. the same item exists as both a BX and a PC). Never
+ * creates products — a row whose product isn't in the system is skipped and
+ * reported. All valid
  * rows are posted as ONE "Opening Balance" Inventory Adjustment through
  * InventoryAdjustmentService, so the stock lands in the Warehouse with the
  * normal ledger/Product History entries and can be written off as a unit.
@@ -38,8 +40,17 @@ class InventoryOpeningImport implements ToCollection, WithHeadingRow
     public int $ignoredNoQty = 0;
     public ?InventoryAdjustment $adjustment = null;
 
-    /** @var array<string,int> "{category}|{generic}|{brand}" => product id */
+    /** @var array<string,int> "{category}|{generic}|{brand}|{unit}" => product id */
     protected array $productIds = [];
+
+    /** @var array<string,int> "{category}|{generic}|{brand}" (Unit-independent) => product id,
+     * only present when that combo maps to exactly ONE product. */
+    protected array $productIdsByName = [];
+
+    /** @var array<string,true> "{category}|{generic}|{brand}" combos that map to more than
+     * one product (different Units) — a name-only lookup for these must be rejected rather
+     * than silently guessing which one is meant. */
+    protected array $ambiguousNameKeys = [];
 
     /** @var array<string,true> "{productId}|{lot}" lots already in the DB */
     protected array $existingLots = [];
@@ -59,10 +70,16 @@ class InventoryOpeningImport implements ToCollection, WithHeadingRow
             ->join('generic_names as g', 'g.id', '=', 'products.generic_name_id')
             ->join('categories as c', 'c.id', '=', 'g.category_id')
             ->orderBy('products.id')
-            ->get(['products.id', 'products.brand_name', 'g.generic_name', 'c.category_name'])
+            ->get(['products.id', 'products.brand_name', 'g.generic_name', 'g.unit', 'c.category_name'])
             ->each(function ($product) {
-                $key = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . ($product->brand_name ?? ''));
-                $this->productIds[$key] ??= $product->id;
+                $catGenericBrand = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . ($product->brand_name ?? ''));
+                $this->productIds[$catGenericBrand . '|' . mb_strtolower($product->unit)] = $product->id;
+
+                if (isset($this->productIdsByName[$catGenericBrand]) && $this->productIdsByName[$catGenericBrand] !== $product->id) {
+                    $this->ambiguousNameKeys[$catGenericBrand] = true;
+                } else {
+                    $this->productIdsByName[$catGenericBrand] = $product->id;
+                }
             });
 
         DB::table('product_batches')->select('product_id', 'batch_no')->get()->each(function ($batch) {
@@ -108,6 +125,7 @@ class InventoryOpeningImport implements ToCollection, WithHeadingRow
         $category = trim((string) ($row['category'] ?? ''));
         $generic = trim((string) ($row['generic_description'] ?? ''));
         $brand = trim((string) ($row['brand'] ?? '')) ?: null;
+        $unit = trim((string) ($row['unit'] ?? ''));
         $qtyRaw = $row['qty'] ?? null;
         $lotRaw = $row['lot_no'] ?? $row['lot'] ?? $row['batch_no'] ?? null;
         $expiryRaw = $row['expiry_date'] ?? $row['expiration_date'] ?? null;
@@ -129,6 +147,7 @@ class InventoryOpeningImport implements ToCollection, WithHeadingRow
             'Category' => $category,
             'Generic Description' => $generic,
             'Brand' => $brand,
+            'Unit' => $unit,
             'Lot No' => $lot,
             'Expiry Date' => is_scalar($expiryRaw) ? (string) $expiryRaw : null,
             'Qty' => is_scalar($qtyRaw) ? (string) $qtyRaw : null,
@@ -154,10 +173,19 @@ class InventoryOpeningImport implements ToCollection, WithHeadingRow
             return;
         }
 
-        $productKey = mb_strtolower($category . '|' . $generic . '|' . ($brand ?? ''));
-        $productId = $this->productIds[$productKey] ?? null;
+        $catGenericBrand = mb_strtolower($category . '|' . $generic . '|' . ($brand ?? ''));
+        if ($unit !== '') {
+            $productId = $this->productIds[$catGenericBrand . '|' . mb_strtolower($unit)] ?? null;
+        } elseif (isset($this->ambiguousNameKeys[$catGenericBrand])) {
+            $this->skip($rowData, ImportSkippedRow::REASON_INVALID_DATA, 'More than one product shares this Category, Generic Description and Brand with different Units. Add the Unit column to identify the exact one.');
+
+            return;
+        } else {
+            $productId = $this->productIdsByName[$catGenericBrand] ?? null;
+        }
+
         if ($productId === null) {
-            $this->skip($rowData, ImportSkippedRow::REASON_PRODUCT_NOT_FOUND, 'No product with this Category, Generic Description and Brand exists. Import it on the PRODUCTS sheet first.');
+            $this->skip($rowData, ImportSkippedRow::REASON_PRODUCT_NOT_FOUND, 'No product with this Category, Generic Description, Brand' . ($unit !== '' ? ' and Unit' : '') . ' exists. Import it on the PRODUCTS sheet first.');
 
             return;
         }
