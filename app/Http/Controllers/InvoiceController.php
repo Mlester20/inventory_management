@@ -59,7 +59,7 @@ class InvoiceController extends Controller
             ->withSum(['locationStocks as pos_qty' => fn ($q) => $q->where('location_id', $posLocationId)], 'qty')
             ->orderBy('item_name')->get();
         $salesNo = $this->generateSalesNo();
-        $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
+        $activeVatRate = Taxes::activeRate();
         $users = User::orderBy('name')->get();
         $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name']);
 
@@ -106,7 +106,7 @@ class InvoiceController extends Controller
 
         // Per BIR rules, VAT is computed using the currently active VAT rate
         // in the taxes table, not each item's individually linked tax rate.
-        $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
+        $activeVatRate = Taxes::activeRate();
 
         try {
             $invoice = DB::transaction(function () use ($validated, $activeVatRate, $customerPaymentService) {

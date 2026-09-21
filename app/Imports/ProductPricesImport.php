@@ -80,8 +80,13 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
     public function __construct()
     {
         $this->batchId = (string) Str::uuid();
-        $this->vatTax = Taxes::whereRaw('LOWER(name) = ?', ['vat'])->first();
-        $this->zeroTax = Taxes::where('name', 'like', 'zero%')->first();
+        // By rate, not by name: the Taxes page lets admins rename/create tax rows
+        // freely (e.g. "VAT" -> "VAT-INC"), so matching a literal name here would
+        // silently break. This mirrors Product::taxClassification() exactly:
+        // rate > 0 is VATable, rate = 0 is Zero-Rated. Prefer the active one of
+        // each so a deactivated leftover doesn't get picked over the real one.
+        $this->vatTax = Taxes::where('rate', '>', 0)->orderByDesc('is_active')->orderBy('id')->first();
+        $this->zeroTax = Taxes::where('rate', 0)->orderByDesc('is_active')->orderBy('id')->first();
 
         $fields = ['unit_cost', 'unit_price', 'unit_price_percent', 'tax_id'];
         foreach (self::TIERS as $percentField => [$priceField]) {

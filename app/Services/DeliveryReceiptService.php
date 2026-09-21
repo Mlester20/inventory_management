@@ -246,7 +246,7 @@ class DeliveryReceiptService
     {
         return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId, $qtyOverrides, $poNo) {
             $customer = $deliveryReceipt->customer;
-            $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
+            $activeVatRate = Taxes::activeRate();
 
             // lockForUpdate() closes the same race as the other fixes in
             // this file: two near-simultaneous "Create Invoice" clicks on

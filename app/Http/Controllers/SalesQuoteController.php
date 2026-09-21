@@ -269,7 +269,7 @@ class SalesQuoteController extends Controller
         $vatexSales = $classified->where('tax_classification', 'vatex')->sum($lineTotal);
         $zeroSales = $classified->where('tax_classification', 'zero')->sum($lineTotal);
 
-        $activeVatRate = (float) (Taxes::where('is_active', true)->value('rate') ?? 0);
+        $activeVatRate = Taxes::activeRate();
         $vatAmount = round($vatSales * ($activeVatRate / 100), 2);
 
         $hasUnclassifiedLines = $items->contains(fn ($i) => $i->tax_classification === null);

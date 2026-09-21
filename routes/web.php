@@ -94,7 +94,7 @@ Route::middleware(['auth'])->group(function() {
 
     // POS - Point of Sale
     Route::get('/pos', function() {
-        $activeVatRate = (float) (\App\Models\Taxes::where('is_active', true)->value('rate') ?? 0);
+        $activeVatRate = \App\Models\Taxes::activeRate();
         return view('pages.pos', compact('activeVatRate'));
     })->name('pos');
 
