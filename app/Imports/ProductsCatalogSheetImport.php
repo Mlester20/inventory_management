@@ -34,13 +34,16 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     /** @var array<string,int> category_name => id */
     protected array $categoryIds;
 
-    /** @var array<string,int> generic_name => id */
+    /** @var array<string,int> "{generic_name}|{unit}" => id — same Generic Description can exist in more than one
+     * packaging/Unit (a manufacturer's BX vs PC of the same item), each its own generic_names row. */
     protected array $genericNameIds;
 
-    /** @var array<string,int> generic_name => category_id it was created under */
-    protected array $genericNameCategory;
+    /** @var array<string,int> lower-cased generic_name (unit-independent) => category_id, for the
+     * cross-category check only — a generic description under a wrong category is still wrong
+     * regardless of which Unit packaging triggered the check. */
+    protected array $genericNameCategoryByName = [];
 
-    /** @var array<string,int> "{category}|{generic}|{brand}" => sheet row it was first seen on this run */
+    /** @var array<string,int> "{category}|{generic}|{brand}|{unit}" => sheet row it was first seen on this run */
     protected array $seenProductKeys = [];
 
     /** @var string[] human-readable notes for skipped cross-category rows */
@@ -58,7 +61,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     protected ?int $defaultTaxId = null;
     public int $alreadyInSystemSkipped = 0;
 
-    /** @var array<string,string> "{category}|{generic}|{brand}" of products already in the DB => product code */
+    /** @var array<string,string> "{category}|{generic}|{brand}|{unit}" of products already in the DB => product code */
     protected array $existingProductKeys = [];
 
     /** Groups this run's skipped rows on the Import Results page. */
@@ -86,13 +89,13 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         Product::query()
             ->join('generic_names as g', 'g.id', '=', 'products.generic_name_id')
             ->join('categories as c', 'c.id', '=', 'g.category_id')
-            ->get(['products.code', 'products.brand_name', 'g.generic_name', 'c.category_name'])
+            ->get(['products.code', 'products.brand_name', 'g.generic_name', 'g.unit', 'c.category_name'])
             ->each(function ($product) {
-                $key = mb_strtolower($product->category_name . '|' . $product->generic_name . '|' . ($product->brand_name ?? ''));
+                $key = $this->identityKey($product->category_name, $product->generic_name, $product->brand_name, $product->unit);
                 $this->existingProductKeys[$key] ??= $product->code;
             });
 
-        // Keyed case-insensitively: generic_names.generic_name has a
+        // Keyed case-insensitively: generic_names.generic_name+unit has a
         // case-insensitive unique index at the DB level (default collation),
         // but a plain PHP array key comparison is case-sensitive — without
         // normalizing, two source rows differing only by case (confirmed in
@@ -100,12 +103,15 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         // both look like a "new" generic name to this map, and the second
         // create() would fail against the DB's own constraint instead of
         // being caught here and reused like it should be.
-        $this->genericNameIds = GenericName::pluck('id', 'generic_name')
-            ->mapWithKeys(fn ($id, $name) => [$this->genericKey($name) => $id])
+        $existingGenericNames = GenericName::get(['id', 'generic_name', 'unit', 'category_id']);
+        $this->genericNameIds = $existingGenericNames
+            ->mapWithKeys(fn ($g) => [$this->genericKey($g->generic_name, $g->unit) => $g->id])
             ->all();
-        $this->genericNameCategory = GenericName::pluck('category_id', 'generic_name')
-            ->mapWithKeys(fn ($categoryId, $name) => [$this->genericKey($name) => $categoryId])
-            ->all();
+        // First-seen category per name, Unit-independent — feeds the
+        // cross-category check only (see genericNameCategoryByName's docblock).
+        foreach ($existingGenericNames as $g) {
+            $this->genericNameCategoryByName[mb_strtolower($g->generic_name)] ??= $g->category_id;
+        }
 
         // Seeded once from the current max — this import is synchronous and
         // transactional, so nothing else is inserting concurrently; matches
@@ -152,6 +158,11 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             return;
         }
 
+        // Blank Unit falls back to 'PC' the same way createGenericName() always
+        // has — normalize it here too, so a lookup and the row that created the
+        // entry always agree on the same key.
+        $normalizedUnit = $unit !== '' ? $unit : 'PC';
+
         $rowData = [
             'Category' => $category,
             'Unit' => $unit,
@@ -161,13 +172,16 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             'Unit Price' => $row['unit_price'] ?? $row['n_r_php'] ?? null,
         ];
 
-        $productKey = mb_strtolower($category . '|' . $generic . '|' . ($brand ?? ''));
+        // Identity includes Unit: the same manufacturer item can come in more
+        // than one packaging (e.g. a BX and a PC of the same Category/Generic
+        // Description/Brand) — those are two different products, not duplicates.
+        $productKey = $this->identityKey($category, $generic, $brand, $normalizedUnit);
         if (isset($this->seenProductKeys[$productKey])) {
             $this->duplicatesSkipped++;
             $this->pendingSkips[] = [
                 'sheet_row' => $this->currentRow,
                 'reason' => ImportSkippedRow::REASON_DUPLICATE_IN_FILE,
-                'details' => "Same Category, Generic Description and Brand as row {$this->seenProductKeys[$productKey]} of this file.",
+                'details' => "Same Category, Generic Description, Brand and Unit as row {$this->seenProductKeys[$productKey]} of this file.",
                 'row_data' => $rowData,
             ];
 
@@ -180,7 +194,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             $this->pendingSkips[] = [
                 'sheet_row' => $this->currentRow,
                 'reason' => ImportSkippedRow::REASON_ALREADY_IN_SYSTEM,
-                'details' => "Already in the system as product code {$this->existingProductKeys[$productKey]} (same Category, Generic Description and Brand).",
+                'details' => "Already in the system as product code {$this->existingProductKeys[$productKey]} (same Category, Generic Description, Brand and Unit).",
                 'row_data' => $rowData,
             ];
 
@@ -188,32 +202,37 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         }
 
         $categoryId = $this->resolveCategory($category);
-        $genericKey = $this->genericKey($generic);
+        $genericNameByName = mb_strtolower($generic);
 
+        // Cross-category check stays Unit-independent: the same generic
+        // description entered under a genuinely different category is still a
+        // likely typo no matter which packaging/Unit triggered the check.
+        if (isset($this->genericNameCategoryByName[$genericNameByName]) && $this->genericNameCategoryByName[$genericNameByName] !== $categoryId) {
+            $existingCategory = $this->categoryNames[$this->genericNameCategoryByName[$genericNameByName]] ?? 'another category';
+            $this->skippedCrossCategory[] = "\"{$generic}\" (row wants \"{$category}\", already exists under a different category)";
+            $this->pendingSkips[] = [
+                'sheet_row' => $this->currentRow,
+                'reason' => ImportSkippedRow::REASON_DIFFERENT_CATEGORY,
+                'details' => "\"{$generic}\" already exists under category \"{$existingCategory}\"; this row wants \"{$category}\".",
+                'row_data' => $rowData,
+            ];
+
+            return;
+        }
+
+        $genericKey = $this->genericKey($generic, $normalizedUnit);
         if (isset($this->genericNameIds[$genericKey])) {
-            if ($this->genericNameCategory[$genericKey] !== $categoryId) {
-                $existingCategory = $this->categoryNames[$this->genericNameCategory[$genericKey]] ?? 'another category';
-                $this->skippedCrossCategory[] = "\"{$generic}\" (row wants \"{$category}\", already exists under a different category)";
-                $this->pendingSkips[] = [
-                    'sheet_row' => $this->currentRow,
-                    'reason' => ImportSkippedRow::REASON_DIFFERENT_CATEGORY,
-                    'details' => "\"{$generic}\" already exists under category \"{$existingCategory}\"; this row wants \"{$category}\".",
-                    'row_data' => $rowData,
-                ];
-
-                return;
-            }
             $genericNameId = $this->genericNameIds[$genericKey];
         } else {
-            $genericNameId = $this->createGenericName($generic, $categoryId, $unit);
+            $genericNameId = $this->createGenericName($generic, $categoryId, $normalizedUnit);
         }
+        $this->genericNameCategoryByName[$genericNameByName] ??= $categoryId;
 
         Product::create([
             'code' => $this->nextProductCode(),
             'generic_name_id' => $genericNameId,
             'brand_name' => $brand,
             'description' => trim((string) ($row['item_description'] ?? '')) ?: null,
-            'unit' => $unit,
             'unit_cost' => $this->parseDecimal($row['cost'] ?? null),
             // No source row in the real sheet has pricing today, but a
             // future corrected file (or the template's own Unit Price
@@ -241,27 +260,32 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         return $category->id;
     }
 
+    /** @param string $unit already normalized (never blank — importRow() falls back to 'PC') */
     protected function createGenericName(string $generic, int $categoryId, string $unit): int
     {
         $genericName = GenericName::create([
             'code' => $this->nextGenericCode(),
             'generic_name' => $generic,
             'category_id' => $categoryId,
-            'unit' => $unit ?: 'PC',
+            'unit' => $unit,
             'vat_type' => 'VAT',
         ]);
 
-        $key = $this->genericKey($generic);
-        $this->genericNameIds[$key] = $genericName->id;
-        $this->genericNameCategory[$key] = $categoryId;
+        $this->genericNameIds[$this->genericKey($generic, $unit)] = $genericName->id;
         $this->genericNamesCreated++;
 
         return $genericName->id;
     }
 
-    protected function genericKey(string $genericName): string
+    protected function genericKey(string $genericName, string $unit): string
     {
-        return mb_strtolower($genericName);
+        return mb_strtolower($genericName . '|' . $unit);
+    }
+
+    /** Product identity: Category + Generic Description + Brand + Unit. */
+    protected function identityKey(string $category, string $generic, ?string $brand, string $unit): string
+    {
+        return mb_strtolower($category . '|' . $generic . '|' . ($brand ?? '') . '|' . $unit);
     }
 
     protected function nextGenericCode(): string

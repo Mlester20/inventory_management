@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\GenericName;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class GenericNameController extends Controller
@@ -29,10 +30,18 @@ class GenericNameController extends Controller
     {
         $request->validate([
             'code' => 'required|string|max:50|unique:generic_names,code',
-            'generic_name' => 'required|unique:generic_names,generic_name',
+            // Unique per (name, unit) — not name alone, so the same generic
+            // description can exist in more than one packaging/Unit (e.g. a
+            // manufacturer's BX vs PC of the same item), each with its own Unit.
+            'generic_name' => [
+                'required',
+                Rule::unique('generic_names', 'generic_name')->where(fn ($q) => $q->where('unit', $request->unit)),
+            ],
             'category_id' => 'required|exists:categories,id',
             'unit' => 'required|string|max:50',
             'vat_type' => 'required|in:' . implode(',', array_keys(GenericName::VAT_TYPES)),
+        ], [
+            'generic_name.unique' => 'A generic item with this description and unit already exists.',
         ]);
 
         $genericName = GenericName::create([
@@ -61,10 +70,17 @@ class GenericNameController extends Controller
     {
         $request->validate([
             'code' => 'required|string|max:50|unique:generic_names,code,' . $genericName->id,
-            'generic_name' => 'required|unique:generic_names,generic_name,' . $genericName->id,
+            'generic_name' => [
+                'required',
+                Rule::unique('generic_names', 'generic_name')
+                    ->where(fn ($q) => $q->where('unit', $request->unit))
+                    ->ignore($genericName->id),
+            ],
             'category_id' => 'required|exists:categories,id',
             'unit' => 'required|string|max:50',
             'vat_type' => 'required|in:' . implode(',', array_keys(GenericName::VAT_TYPES)),
+        ], [
+            'generic_name.unique' => 'A generic item with this description and unit already exists.',
         ]);
 
         $original = $genericName->getOriginal();

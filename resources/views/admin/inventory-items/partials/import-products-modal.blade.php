@@ -22,10 +22,11 @@
                     </div>
                     <div class="alert alert-info small mb-0">
                         A Category or Generic Description that doesn't exist yet is created automatically.
-                        Rows repeating the same Category + Generic Description + Brand are skipped as
-                        duplicates, and a Generic Description that already exists under a different
-                        Category is skipped and reported rather than guessed. Products with no Unit Price
-                        in the file import at ₱0.00, pending the real price.
+                        Rows repeating the same Category + Generic Description + Brand + <strong>Unit</strong>
+                        are skipped as duplicates — a different Unit (e.g. a BX and a PC of the same item) is
+                        treated as a different product, not a duplicate. A Generic Description that already
+                        exists under a different Category is skipped and reported rather than guessed.
+                        Products with no Unit Price in the file import at ₱0.00, pending the real price.
                     </div>
                 </div>
                 <div class="modal-footer">
