@@ -166,19 +166,6 @@
                 </li>
               </ul>
             </li>
-            <li class="menu-item {{ request()->routeIs('purchases.*') ? 'active open' : '' }}">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-cart"></i>
-                <div data-i18n="Purchases">Purchases</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item {{ request()->routeIs('purchases.*') ? 'active' : '' }}">
-                  <a href="{{ route('purchases.index') }}" class="menu-link">
-                    <div data-i18n="Error">Purchases</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
             <li class="menu-item {{ request()->routeIs('return-items.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-box"></i>
