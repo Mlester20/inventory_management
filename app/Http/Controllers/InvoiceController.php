@@ -140,10 +140,17 @@ class InvoiceController extends Controller
                     // per line (e.g. SC/PWD) regardless of the product's default.
                     $classification = $line['tax_override'] ?? $product->taxClassification();
 
+                    // Per Sir: Price is the VAT-inclusive amount the customer
+                    // actually pays, not a net-of-VAT base price — so a
+                    // VATable line's own amount already has VAT inside it.
+                    // VAT is extracted back out of it here, not added on top
+                    // (adding on top double-charges VAT — the same bug fixed
+                    // for Sales Order/Sales Quote).
                     $lineVat = 0;
                     if ($classification === 'vatable') {
-                        $vatSales += $lineAmount;
-                        $lineVat = round($lineAmount * ($activeVatRate / 100), 2);
+                        $lineNet = round($lineAmount / (1 + $activeVatRate / 100), 2);
+                        $lineVat = round($lineAmount - $lineNet, 2);
+                        $vatSales += $lineNet;
                         $vatAmount += $lineVat;
                     } elseif ($classification === 'zero') {
                         $zeroSales += $lineAmount;

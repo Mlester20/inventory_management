@@ -441,10 +441,14 @@
             const amount = (qty * price) - dis;
 
             const classification = classifyRow(card);
+            // Price is VAT-inclusive (Sir's rule) — VAT is extracted back out
+            // of a VATable line's amount here, not added on top (mirrors the
+            // PHP computation in InvoiceController::store).
             let lineVat = 0;
             if (classification === 'vatable') {
-                vatSales += amount;
-                lineVat = amount * (ACTIVE_VAT_RATE / 100);
+                const lineNet = amount / (1 + (ACTIVE_VAT_RATE / 100));
+                lineVat = amount - lineNet;
+                vatSales += lineNet;
                 vatAmount += lineVat;
             } else if (classification === 'zero') {
                 zeroSales += amount;

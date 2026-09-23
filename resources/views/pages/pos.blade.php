@@ -480,13 +480,17 @@
     }
 
     function computeVatBreakdown(cartSnapshot) {
-        let vatSales = 0;
+        // item.total_price is VAT-inclusive (Sir's rule) — VAT is extracted
+        // back out of the VATable portion here, not added on top, so
+        // "Total Sales" comes out equal to what the customer actually pays
+        // (matches InvoiceController::store's computation).
+        let vatInclusiveVatable = 0;
         let vatexSales = 0;
         let zeroSales = 0;
 
         cartSnapshot.forEach(item => {
             if (item.taxable) {
-                vatSales += item.total_price;
+                vatInclusiveVatable += item.total_price;
             } else if (item.tax_classification === 'zero') {
                 zeroSales += item.total_price;
             } else {
@@ -494,10 +498,11 @@
             }
         });
 
-        vatSales = round2(vatSales);
+        vatInclusiveVatable = round2(vatInclusiveVatable);
         vatexSales = round2(vatexSales);
         zeroSales = round2(zeroSales);
-        const vatAmount = round2(vatSales * (ACTIVE_VAT_RATE / 100));
+        const vatSales = round2(vatInclusiveVatable / (1 + (ACTIVE_VAT_RATE / 100)));
+        const vatAmount = round2(vatInclusiveVatable - vatSales);
         const totalSales = round2(vatSales + vatexSales + zeroSales + vatAmount);
 
         return { vatSales, vatexSales, zeroSales, vatAmount, totalSales, amountDue: totalSales };
