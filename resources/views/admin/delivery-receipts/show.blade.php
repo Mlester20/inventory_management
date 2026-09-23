@@ -204,17 +204,22 @@
                 @endif
 
                 <div class="row align-items-end">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="text-muted small">Prepared By</label>
                         <p class="fw-bold mb-0">{{ $deliveryReceipt->preparedBy->name ?? '—' }}</p>
                     </div>
                     @if(!$deliveryReceipt->isDraft())
-                        <div class="col-md-4 no-print">
+                        <div class="col-md-3 no-print">
                             <label for="dr_po_no" class="form-label small mb-1">Customer PO #</label>
                             <input type="text" name="po_no" id="dr_po_no" class="form-control form-control-sm"
                                 value="{{ $deliveryReceipt->salesOrder?->po_no }}" placeholder="Optional">
                         </div>
-                        <div class="col-md-4 text-md-end mt-3 mt-md-0 no-print">
+                        <div class="col-md-3 no-print">
+                            <label for="dr_less_wt" class="form-label small mb-1">Withholding Tax (₱)</label>
+                            <input type="number" name="less_wt" id="dr_less_wt" class="form-control form-control-sm"
+                                step="0.01" min="0" value="{{ old('less_wt') }}" placeholder="Optional">
+                        </div>
+                        <div class="col-md-3 text-md-end mt-3 mt-md-0 no-print">
                             <button type="submit" class="btn btn-primary" id="createInvoiceBtn" disabled>
                                 <i class="bx bx-receipt"></i> Create Invoice
                             </button>

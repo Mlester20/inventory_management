@@ -242,9 +242,9 @@ class DeliveryReceiptService
      * same resolution Sales Order already uses — a Delivery Receipt line
      * carries no price of its own.
      */
-    public function createInvoiceFromLines(DeliveryReceipt $deliveryReceipt, array $deliveryReceiptItemIds, ?int $userId = null, array $qtyOverrides = [], ?string $poNo = null): Invoice
+    public function createInvoiceFromLines(DeliveryReceipt $deliveryReceipt, array $deliveryReceiptItemIds, ?int $userId = null, array $qtyOverrides = [], ?string $poNo = null, float $lessWt = 0): Invoice
     {
-        return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId, $qtyOverrides, $poNo) {
+        return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId, $qtyOverrides, $poNo, $lessWt) {
             $customer = $deliveryReceipt->customer;
             $activeVatRate = Taxes::activeRate();
 
@@ -338,6 +338,15 @@ class DeliveryReceiptService
 
             $totalSales = $vatSales + $vatexSales + $zeroSales + $vatAmount;
 
+            // Withholding tax is typed in by hand (Sir: an editable field, so a
+            // correction can always be encoded) — it's subtracted from what the
+            // customer owes, and can't exceed the invoice total.
+            if ($lessWt > round($totalSales, 2)) {
+                throw ValidationException::withMessages([
+                    'less_wt' => 'Withholding Tax cannot be more than the invoice total (' . number_format($totalSales, 2) . ').',
+                ]);
+            }
+
             $invoice = Invoice::create([
                 'customer_name' => $customer->customer_name,
                 'customer_id' => $customer->id,
@@ -352,8 +361,8 @@ class DeliveryReceiptService
                 'less_vat' => 0,
                 'amount_net' => round($totalSales, 2),
                 'less_sc' => 0,
-                'less_wt' => 0,
-                'amount_due' => round($totalSales, 2),
+                'less_wt' => round($lessWt, 2),
+                'amount_due' => round($totalSales - $lessWt, 2),
                 'add_vat' => 0,
             ]);
 

@@ -258,6 +258,7 @@ class DeliveryReceiptController extends Controller
             'qty' => 'nullable|array',
             'qty.*' => 'nullable|integer|min:1',
             'po_no' => 'nullable|string|max:255',
+            'less_wt' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -266,7 +267,8 @@ class DeliveryReceiptController extends Controller
                 $validated['line_ids'],
                 Auth::id(),
                 array_filter($validated['qty'] ?? []),
-                $validated['po_no'] ?? null
+                $validated['po_no'] ?? null,
+                (float) ($validated['less_wt'] ?? 0)
             );
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
