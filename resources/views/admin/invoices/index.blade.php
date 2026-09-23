@@ -60,12 +60,15 @@
                         <tr>
                             <td>{{ $invoice->id }}</td>
                             <td>{{ $invoice->sales_no }}</td>
-                            <td>{{ $invoice->customer_name }}</td>
+                            <td>{{ $invoice->customer_name !== '' ? $invoice->customer_name : '—' }}</td>
                             <td>{{ $invoice->po_no ?? '—' }}</td>
-                            <td>₱{{ number_format($invoice->total_sales, 2) }}</td>
-                            <td>₱{{ number_format($invoice->amount_due, 2) }}</td>
+                            <td>{{ $invoice->isDraft() ? '—' : '₱' . number_format($invoice->total_sales, 2) }}</td>
+                            <td>{{ $invoice->isDraft() ? '—' : '₱' . number_format($invoice->amount_due, 2) }}</td>
                             <td>
                                 {{ $invoice->created_at->format('M d, Y') }}
+                                @if($invoice->isDraft())
+                                    <span class="badge bg-secondary">DRAFT</span>
+                                @endif
                                 @if($invoice->isCancelled())
                                     <span class="badge bg-danger">CANCELLED</span>
                                 @endif
@@ -86,6 +89,23 @@
                                                     @method('PATCH')
                                                     <button type="submit" class="dropdown-item text-success" onclick="return confirmSubmit(this.form, 'Restore this invoice?')">
                                                         <i class="bx bx-undo me-1"></i> Restore
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        @elseif($invoice->isDraft())
+                                            <a href="{{ route('invoices.edit', $invoice) }}" class="dropdown-item">
+                                                <i class="bx bx-edit-alt me-1"></i> Continue Editing
+                                            </a>
+                                            <a href="{{ route('invoices.show', $invoice) }}" class="dropdown-item">
+                                                <i class="bx bx-show me-1"></i> View Draft
+                                            </a>
+                                            @if(Auth::user()->role === 'admin')
+                                                <div class="dropdown-divider"></div>
+                                                <form action="{{ route('invoices.destroy', $invoice) }}" method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="dropdown-item text-danger" onclick="return confirmSubmit(this.form, 'Delete draft {{ $invoice->sales_no }}?')">
+                                                        <i class="bx bx-trash me-1"></i> Delete Draft
                                                     </button>
                                                 </form>
                                             @endif

@@ -1,10 +1,10 @@
 @extends(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? 'layout.app' : 'layout.user')
 
-@section('title', 'New Invoice')
+@section('title', $editingInvoice ? 'Edit Draft — ' . $editingInvoice->sales_no : 'New Invoice')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Sales Invoice</h5>
+        <h5 class="card-header">{{ $editingInvoice ? 'Edit Draft — ' . $editingInvoice->sales_no : 'New Sales Invoice' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,8 +16,11 @@
                 </div>
             @endif
 
-            <form action="{{ route('invoices.store') }}" method="POST" id="invoiceForm">
+            <form action="{{ $editingInvoice ? route('invoices.update', $editingInvoice) : route('invoices.store') }}" method="POST" id="invoiceForm">
                 @csrf
+                @if($editingInvoice)
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
@@ -29,7 +32,7 @@
                             list="customerNamesList"
                             autocomplete="off"
                             class="form-control @error('customer_name') is-invalid @enderror"
-                            value="{{ old('customer_name') }}"
+                            value="{{ old('customer_name', $editingInvoice?->customer_name) }}"
                             required
                         >
                         <datalist id="customerNamesList">
@@ -50,7 +53,7 @@
                             name="po_no"
                             id="po_no"
                             class="form-control @error('po_no') is-invalid @enderror"
-                            value="{{ old('po_no') }}"
+                            value="{{ old('po_no', $editingInvoice?->po_no) }}"
                         >
                         @error('po_no')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -78,7 +81,7 @@
                             name="osca_no"
                             id="osca_no"
                             class="form-control @error('osca_no') is-invalid @enderror"
-                            value="{{ old('osca_no') }}"
+                            value="{{ old('osca_no', $editingInvoice?->osca_no) }}"
                             placeholder="Leave blank if not applicable"
                         >
                         @error('osca_no')
@@ -96,7 +99,7 @@
                             name="less_wt"
                             id="less_wt"
                             class="form-control @error('less_wt') is-invalid @enderror"
-                            value="{{ old('less_wt', 0) }}"
+                            value="{{ old('less_wt', $editingInvoice?->less_wt ?? 0) }}"
                         >
                         @error('less_wt')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -114,7 +117,7 @@
                         >
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingInvoice?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                                     {{ $user->name }}
                                 </option>
                             @endforeach
@@ -133,7 +136,7 @@
                             id="approved_by"
                             class="form-control @error('approved_by') is-invalid @enderror"
                             placeholder="Leave blank if not yet approved"
-                            value="{{ old('approved_by') }}"
+                            value="{{ old('approved_by', $editingInvoice?->approved_by) }}"
                         >
                         @error('approved_by')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -207,7 +210,10 @@
                     <button type="button" class="btn btn-secondary" id="addRowBtn">
                         <i class="bx bx-plus"></i> Add Item
                     </button>
-                    <button type="submit" class="btn btn-primary">Save Invoice</button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Invoice</button>
                     <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -218,6 +224,7 @@
 @section('scripts')
 <script>
     const ITEMS = @json($itemsForJs);
+    const PREFILL_LINES = @json($prefillLines);
 
     const ACTIVE_VAT_RATE = {{ $activeVatRate }};
 
@@ -300,7 +307,7 @@
         });
     }
 
-    function addRow() {
+    function addRow(prefill = {}) {
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -371,6 +378,34 @@
         document.getElementById('lineItemsBody').appendChild(card);
         bindRowEvents(card);
         renumberRows();
+
+        // A draft's saved line (or a failed-validation redirect's flashed line)
+        // is re-applied here. The item is set directly instead of dispatching
+        // its input event, which would overwrite the saved price/description/
+        // unit with the item's defaults.
+        if (prefill.item_id) {
+            const item = ITEMS.find(i => String(i.id) === String(prefill.item_id));
+            if (item) {
+                card.querySelector('.item-search-input').value = itemLabel(item);
+                card.querySelector('.item-id-input').value = item.id;
+                updateDefaultTaxLabel(card, item);
+            }
+        }
+        const setValue = (selector, value) => {
+            if (value !== null && value !== undefined && value !== '') {
+                card.querySelector(selector).value = value;
+            }
+        };
+        setValue('.desc-input', prefill.desc);
+        setValue('.unit-input', prefill.unit);
+        setValue('.batch-input', prefill.batch_no);
+        setValue('.exp-input', prefill.exp);
+        setValue('.qty-input', prefill.qty);
+        setValue('.price-input', prefill.price !== null && prefill.price !== undefined ? Number(prefill.price).toFixed(2) : null);
+        setValue('.dis-input', prefill.dis);
+        setValue('.tax-select', prefill.tax_override);
+        syncTaxTitle(card);
+
         computeTotals();
     }
 
@@ -484,11 +519,16 @@
         document.getElementById('totalAmountDue').textContent = '₱' + amountDue.toFixed(2);
     }
 
-    document.getElementById('addRowBtn').addEventListener('click', addRow);
+    document.getElementById('addRowBtn').addEventListener('click', () => addRow());
     document.getElementById('osca_no').addEventListener('input', computeTotals);
     document.getElementById('less_wt').addEventListener('input', computeTotals);
 
-    // Start with one empty row
-    addRow();
+    // One row per saved line of the draft being resumed, or a single empty
+    // row for a brand new invoice.
+    if (PREFILL_LINES.length > 0) {
+        PREFILL_LINES.forEach(line => addRow(line));
+    } else {
+        addRow();
+    }
 </script>
 @endsection

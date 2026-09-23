@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Taxes;
 use App\Models\User;
 use App\Services\CustomerPaymentService;
+use App\Services\InvoiceDraftService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,8 @@ use RealRashid\SweetAlert\Facades\Alert;
 
 class InvoiceController extends Controller
 {
+    public function __construct(protected InvoiceDraftService $invoiceDraftService) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -28,7 +31,10 @@ class InvoiceController extends Controller
         $showTrashed = $request->boolean('show_trashed');
         $showArchived = $request->boolean('show_archived');
 
+        // Drafts are hidden from every query by the model's 'notDraft' global
+        // scope; the list is one of the few places that has to show them.
         $invoices = Invoice::query()
+            ->withoutGlobalScope('notDraft')
             ->when($showTrashed, fn ($q) => $q->onlyTrashed())
             ->when(! $showTrashed && $showArchived, fn ($q) => $q->whereNotNull('archived_at'))
             ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))
@@ -50,6 +56,18 @@ class InvoiceController extends Controller
      */
     public function create()
     {
+        return view('admin.invoices.create', $this->formData());
+    }
+
+    /**
+     * Data shared by the create form and the edit-draft form. When editing a
+     * draft, its saved lines are mapped into the shape the line-item JS
+     * prefills from; a failed validation redirect flashes the submitted
+     * `items` via old() and takes precedence (the user's latest, unsaved
+     * edits) — same approach Sales Order/Sales Quote use.
+     */
+    protected function formData(?Invoice $editing = null): array
+    {
         // Invoice checkout deducts via FEFO at the POS location (same
         // immediate-sale semantics as the POS screen, just issued from the
         // admin/back-office side) — availability shown here must match.
@@ -58,7 +76,7 @@ class InvoiceController extends Controller
         $products = Product::with('tax')
             ->withSum(['locationStocks as pos_qty' => fn ($q) => $q->where('location_id', $posLocationId)], 'qty')
             ->orderBy('item_name')->get();
-        $salesNo = $this->generateSalesNo();
+        $salesNo = $editing?->sales_no ?? $this->generateSalesNo();
         $activeVatRate = Taxes::activeRate();
         $users = User::orderBy('name')->get();
         $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name']);
@@ -76,7 +94,39 @@ class InvoiceController extends Controller
             ];
         })->values();
 
-        return view('admin.invoices.create', compact('products', 'salesNo', 'activeVatRate', 'itemsForJs', 'users', 'customers'));
+        $prefillLines = [];
+
+        if ($editing) {
+            $editing->load('draftItems');
+
+            $prefillLines = $editing->draftItems->map(fn ($line) => [
+                'item_id' => $line->product_id,
+                'desc' => $line->desc,
+                'unit' => $line->unit,
+                'batch_no' => $line->batch_no,
+                'exp' => $line->exp?->toDateString(),
+                'qty' => $line->qty,
+                'price' => $line->price !== null ? (float) $line->price : null,
+                'dis' => $line->dis !== null ? (float) $line->dis : null,
+                'tax_override' => $line->tax_override,
+            ])->values();
+        }
+
+        if (old('items')) {
+            $prefillLines = collect(old('items'))->map(fn ($line) => [
+                'item_id' => $line['item_id'] ?? null,
+                'desc' => $line['desc'] ?? null,
+                'unit' => $line['unit'] ?? null,
+                'batch_no' => $line['batch_no'] ?? null,
+                'exp' => $line['exp'] ?? null,
+                'qty' => $line['qty'] ?? null,
+                'price' => $line['price'] ?? null,
+                'dis' => $line['dis'] ?? null,
+                'tax_override' => $line['tax_override'] ?? null,
+            ])->values();
+        }
+
+        return compact('products', 'salesNo', 'activeVatRate', 'itemsForJs', 'users', 'customers', 'prefillLines') + ['editingInvoice' => $editing];
     }
 
     /**
@@ -84,7 +134,59 @@ class InvoiceController extends Controller
      */
     public function store(Request $request, CustomerPaymentService $customerPaymentService)
     {
-        $validated = $request->validate([
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+
+            $invoice = $this->invoiceDraftService->saveDraft($validated, Auth::id());
+
+            ActivityLog::record(
+                module: 'Invoice',
+                action: 'draft_saved',
+                loggable: $invoice,
+                description: "Saved draft Invoice {$invoice->sales_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the Invoices list before posting.');
+            return redirect()->route('invoices.show', $invoice);
+        }
+
+        return $this->postInvoice($request->validate($this->postedValidationRules()), null, $customerPaymentService);
+    }
+
+    /**
+     * Loose rules for a draft — an interrupted encoder can leave anything
+     * blank or half-typed, so nothing here can block the save.
+     */
+    protected function draftValidationRules(): array
+    {
+        return [
+            'customer_name' => 'nullable|string|max:255',
+            'customer_id' => 'nullable|exists:customers,id',
+            'po_no' => 'nullable|string|max:255',
+            'osca_no' => 'nullable|string|max:255',
+            'prepared_by' => 'nullable|exists:users,id',
+            'approved_by' => 'nullable|string|max:255',
+            'less_wt' => 'nullable|numeric|min:0',
+            'items' => 'nullable|array',
+            'items.*.item_id' => 'nullable|exists:products,id',
+            'items.*.qty' => 'nullable|integer|min:1',
+            'items.*.price' => 'nullable|numeric|min:0',
+            'items.*.dis' => 'nullable|numeric|min:0',
+            'items.*.desc' => 'nullable|string|max:255',
+            'items.*.unit' => 'nullable|string|max:50',
+            'items.*.batch_no' => 'nullable|string|max:100',
+            'items.*.exp' => 'nullable|date',
+            'items.*.tax_override' => 'nullable|in:vatable,vatex,zero',
+        ];
+    }
+
+    /**
+     * Strict rules for the moment stock actually moves — whether that's a
+     * direct Save or posting a draft, the data must be complete.
+     */
+    protected function postedValidationRules(): array
+    {
+        return [
             'customer_name' => 'required|string|max:255',
             'customer_id' => 'nullable|exists:customers,id',
             'po_no' => 'nullable|string|max:255',
@@ -102,14 +204,37 @@ class InvoiceController extends Controller
             'items.*.batch_no' => 'nullable|string|max:100',
             'items.*.exp' => 'nullable|date',
             'items.*.tax_override' => 'nullable|in:vatable,vatex,zero',
-        ]);
+        ];
+    }
 
+    /**
+     * Post an Invoice — deducts stock (FEFO, at the POS location) and records
+     * the VAT breakdown. Used by a direct Save and by posting a draft; with a
+     * draft, the existing row (and its sales_no) is turned into the real
+     * invoice instead of creating a second one.
+     */
+    protected function postInvoice(array $validated, ?Invoice $draft, CustomerPaymentService $customerPaymentService)
+    {
         // Per BIR rules, VAT is computed using the currently active VAT rate
         // in the taxes table, not each item's individually linked tax rate.
         $activeVatRate = Taxes::activeRate();
 
         try {
-            $invoice = DB::transaction(function () use ($validated, $activeVatRate, $customerPaymentService) {
+            $invoice = DB::transaction(function () use ($validated, $draft, $activeVatRate, $customerPaymentService) {
+                if ($draft) {
+                    // Re-fetch under a row lock instead of trusting the route-bound
+                    // model's already-loaded flag: two near-simultaneous "Post"
+                    // submissions of the same draft (e.g. a double-click) would
+                    // otherwise both see is_draft=true and both deduct stock.
+                    $draft = Invoice::withoutGlobalScope('notDraft')->lockForUpdate()->findOrFail($draft->id);
+
+                    if (! $draft->isDraft()) {
+                        throw ValidationException::withMessages([
+                            'status' => 'This Invoice has already been posted.',
+                        ]);
+                    }
+                }
+
                 $stockService = new StockService();
                 $userId = Auth::id();
                 $posLocation = Location::pos();
@@ -190,14 +315,16 @@ class InvoiceController extends Controller
                 $lessWt = (float) ($validated['less_wt'] ?? 0);
                 $amountDue = $amountNet - $lessSc - $lessWt;
 
-                $salesNo = $this->generateSalesNo();
+                // A draft already holds its number from when it was first saved.
+                $salesNo = $draft?->sales_no ?? $this->generateSalesNo();
 
-                $invoice = Invoice::create([
+                $attributes = [
                     'customer_name' => $validated['customer_name'],
                     'customer_id' => $validated['customer_id'] ?? null,
                     'po_no' => $validated['po_no'] ?? null,
                     'osca_no' => $oscaNo,
                     'sales_no' => $salesNo,
+                    'is_draft' => false,
                     'prepared_by' => $validated['prepared_by'] ?? $userId,
                     'approved_by' => $validated['approved_by'] ?? null,
                     'vat_sales' => round($vatSales, 2),
@@ -211,7 +338,15 @@ class InvoiceController extends Controller
                     'less_wt' => round($lessWt, 2),
                     'amount_due' => round($amountDue, 2),
                     'add_vat' => 0,
-                ]);
+                ];
+
+                if ($draft) {
+                    $draft->update($attributes);
+                    $draft->draftItems()->delete();
+                    $invoice = $draft;
+                } else {
+                    $invoice = Invoice::create($attributes);
+                }
 
                 foreach ($saleLines as $line) {
                     $movements = $stockService->deductFefo($line['product'], $line['qty'], $posLocation, 'Invoice ' . $salesNo, $userId, $invoice);
@@ -264,6 +399,12 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
+        if ($invoice->isDraft()) {
+            $invoice->load('draftItems.product', 'preparedBy', 'customer');
+
+            return view('admin.invoices.draft', compact('invoice'));
+        }
+
         $invoice->load('sales.productBatch.product.tax', 'preparedBy', 'customer');
 
         return view('admin.invoices.show', compact('invoice'));
@@ -274,17 +415,47 @@ class InvoiceController extends Controller
      */
     public function edit(Invoice $invoice)
     {
-        Alert::info('Not supported', 'Editing an issued invoice is not supported.');
-        return redirect()->route('invoices.show', $invoice);
+        // Only a draft can be edited — an issued invoice already deducted
+        // stock and recorded its VAT breakdown, so editing that isn't supported.
+        if (! $invoice->isDraft()) {
+            Alert::info('Not supported', 'Editing an issued invoice is not supported.');
+            return redirect()->route('invoices.show', $invoice);
+        }
+
+        return view('admin.invoices.create', $this->formData($invoice));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Invoice $invoice)
+    public function update(Request $request, Invoice $invoice, CustomerPaymentService $customerPaymentService)
     {
-        Alert::info('Not supported', 'Editing an issued invoice is not supported.');
-        return redirect()->route('invoices.show', $invoice);
+        if (! $invoice->isDraft()) {
+            Alert::info('Not supported', 'Editing an issued invoice is not supported.');
+            return redirect()->route('invoices.show', $invoice);
+        }
+
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+
+            try {
+                $invoice = $this->invoiceDraftService->saveDraft($validated, Auth::id(), $invoice);
+            } catch (ValidationException $e) {
+                return back()->withErrors($e->errors())->withInput();
+            }
+
+            ActivityLog::record(
+                module: 'Invoice',
+                action: 'draft_updated',
+                loggable: $invoice,
+                description: "Updated draft Invoice {$invoice->sales_no}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the Invoices list before posting.');
+            return redirect()->route('invoices.show', $invoice);
+        }
+
+        return $this->postInvoice($request->validate($this->postedValidationRules()), $invoice, $customerPaymentService);
     }
 
     /**
@@ -326,7 +497,7 @@ class InvoiceController extends Controller
             return redirect()->route('invoices.index');
         }
 
-        $invoice = Invoice::onlyTrashed()->findOrFail($id);
+        $invoice = Invoice::withoutGlobalScope('notDraft')->onlyTrashed()->findOrFail($id);
         $invoice->restore();
 
         ActivityLog::record(
@@ -407,26 +578,6 @@ class InvoiceController extends Controller
      */
     private function generateSalesNo(): string
     {
-        $year = now()->year;
-        $prefix = "INV-{$year}-";
-
-        // lockForUpdate() blocks a concurrent caller until this transaction
-        // commits, preventing two requests from generating the same number.
-        // (The create()-page call isn't inside a transaction — that copy is
-        // display-only and store() always regenerates the real number.)
-        // withTrashed() is required: Invoice is soft-deletable but sales_no
-        // stays unique at the DB level even for trashed rows.
-        $lastSalesNo = Invoice::withTrashed()
-            ->where('sales_no', 'like', "{$prefix}%")
-            ->orderByDesc('sales_no')
-            ->lockForUpdate()
-            ->value('sales_no');
-
-        $nextSequence = 1;
-        if ($lastSalesNo) {
-            $nextSequence = (int) substr($lastSalesNo, strlen($prefix)) + 1;
-        }
-
-        return $prefix . str_pad((string) $nextSequence, 5, '0', STR_PAD_LEFT);
+        return Invoice::nextSalesNo();
     }
 }

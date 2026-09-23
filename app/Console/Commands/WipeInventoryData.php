@@ -20,7 +20,7 @@ class WipeInventoryData extends Command
         'sales_quote_items', 'sales_quotes',
         'sales_order_items', 'sales_orders',
         'delivery_receipt_items', 'delivery_receipts',
-        'sales', 'invoices', 'purchases', 'customer_payments',
+        'sales', 'invoice_draft_items', 'invoices', 'purchases', 'customer_payments',
         'purchase_order_items', 'purchase_orders',
         'goods_receipt_items', 'goods_receipts',
         'purchase_invoices', 'supplier_payments',

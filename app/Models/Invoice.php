@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,6 +18,7 @@ class Invoice extends Model
         'po_no',
         'osca_no',
         'sales_no',
+        'is_draft',
         'prepared_by',
         'approved_by',
         'vat_sales',
@@ -36,6 +38,7 @@ class Invoice extends Model
     ];
 
     protected $casts = [
+        'is_draft' => 'boolean',
         'vat_sales' => 'decimal:2',
         'vatex_sales' => 'decimal:2',
         'zero_sales' => 'decimal:2',
@@ -51,6 +54,74 @@ class Invoice extends Model
         'archived_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
+
+    /**
+     * A draft Sales Invoice (saved but not yet posted) must never count toward
+     * any total, receivable, customer balance or report — and none of those
+     * queries know about drafts. Hiding them behind a global scope means every
+     * existing Invoice query (dashboard, sales report, customer receivables/
+     * credit application, relation counts) excludes them automatically, the
+     * same way SoftDeletes already does. The few places that genuinely need
+     * drafts (the Invoices list, opening/editing/deleting a draft, and the
+     * sales_no generators, which must not reuse a draft's number) opt back in
+     * with ->withoutGlobalScope('notDraft').
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('notDraft', function (Builder $query) {
+            $query->where($query->getModel()->getTable() . '.is_draft', false);
+        });
+    }
+
+    /**
+     * Route model binding has to resolve drafts too (show/edit/update/destroy
+     * a draft by URL) — the scope above only hides them from queries.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $this->withoutGlobalScope('notDraft')
+            ->where($field ?? $this->getRouteKeyName(), $value)
+            ->first();
+    }
+
+    /**
+     * Next sequential Invoice number for the current year, e.g. INV-2026-00001.
+     * The single source of truth for the direct Invoice form, Delivery Receipt
+     * -> Invoice conversion and Save Draft.
+     *
+     * lockForUpdate() blocks a concurrent caller until its transaction
+     * commits, preventing two requests from generating the same number (a
+     * display-only call outside a transaction just previews it; the real
+     * number is always regenerated when saved). withTrashed() is required:
+     * Invoice is soft-deletable but sales_no stays unique at the DB level even
+     * for trashed rows — and so is withoutGlobalScope('notDraft'), since a
+     * draft already holds its number too and must not have it reused.
+     */
+    public static function nextSalesNo(): string
+    {
+        $prefix = 'INV-' . now()->year . '-';
+
+        $lastSalesNo = static::withTrashed()
+            ->withoutGlobalScope('notDraft')
+            ->where('sales_no', 'like', "{$prefix}%")
+            ->orderByDesc('sales_no')
+            ->lockForUpdate()
+            ->value('sales_no');
+
+        $nextSequence = $lastSalesNo ? (int) substr($lastSalesNo, strlen($prefix)) + 1 : 1;
+
+        return $prefix . str_pad((string) $nextSequence, 5, '0', STR_PAD_LEFT);
+    }
+
+    public function isDraft(): bool
+    {
+        return (bool) $this->is_draft;
+    }
+
+    public function draftItems(): HasMany
+    {
+        return $this->hasMany(InvoiceDraftItem::class);
+    }
 
     public function isArchived(): bool
     {

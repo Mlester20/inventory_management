@@ -373,25 +373,7 @@ class DeliveryReceiptService
      */
     protected function generateSalesNo(): string
     {
-        $year = now()->year;
-        $prefix = "INV-{$year}-";
-
-        // lockForUpdate() blocks a concurrent caller until this transaction
-        // commits, preventing two requests from generating the same number.
-        // withTrashed() is required: Invoice is soft-deletable but sales_no
-        // stays unique at the DB level even for trashed rows.
-        $lastSalesNo = Invoice::withTrashed()
-            ->where('sales_no', 'like', "{$prefix}%")
-            ->orderByDesc('sales_no')
-            ->lockForUpdate()
-            ->value('sales_no');
-
-        $nextSequence = 1;
-        if ($lastSalesNo) {
-            $nextSequence = (int) substr($lastSalesNo, strlen($prefix)) + 1;
-        }
-
-        return $prefix . str_pad((string) $nextSequence, 5, '0', STR_PAD_LEFT);
+        return Invoice::nextSalesNo();
     }
 
     /**
