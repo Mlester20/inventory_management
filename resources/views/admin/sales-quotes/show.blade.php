@@ -116,7 +116,7 @@
                 <thead>
                     <tr class="table-header-bg">
                         <th>Generic Description</th>
-                        <th>Brand</th>
+                        <th>Item Description</th>
                         <th class="text-end">Qty</th>
                         <th class="text-end">Price</th>
                         <th class="text-end">Amount</th>
@@ -128,7 +128,7 @@
                             <td>{{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }})</td>
                             <td>
                                 @if($item->product)
-                                    {{ $item->product->brand_name ?: $item->product->item_name }}
+                                    {{ $item->product->description ?: ($item->product->brand_name ?: $item->product->item_name) }}
                                 @else
                                     <span class="text-muted">Not identified yet</span>
                                 @endif
