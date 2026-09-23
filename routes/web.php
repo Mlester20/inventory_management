@@ -43,6 +43,7 @@ use App\Http\Controllers\Admin\GoodsReceiptController;
 use App\Http\Controllers\Admin\PurchaseInvoiceController;
 use App\Http\Controllers\Admin\StockTransferController;
 use App\Http\Controllers\Admin\StockDisposalController;
+use App\Http\Controllers\Admin\RepackController;
 use App\Http\Controllers\Api\ItemController as ApiItemController;
 use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
 use App\Http\Controllers\Api\CustomerController as ApiCustomerController;
@@ -223,6 +224,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/goods-receipts', GoodsReceiptController::class);
     Route::resource('admin/purchase-invoices', PurchaseInvoiceController::class);
     Route::resource('admin/stock-transfers', StockTransferController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::resource('admin/repacks', RepackController::class)->only(['index', 'create', 'store', 'show']);
     Route::resource('admin/stock-disposals', StockDisposalController::class)->only(['index', 'create', 'store', 'show']);
 
     // Invoices, Sales Orders, Delivery Receipts, and Customers are usable by

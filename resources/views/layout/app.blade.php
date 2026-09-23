@@ -396,6 +396,24 @@
                 </li>
               </ul>
             </li>
+            <li class="menu-item {{ request()->routeIs('repacks.*') ? 'active open' : '' }}">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons bx bx-package"></i>
+                <div data-i18n="Repack">Repack</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item {{ request()->routeIs('repacks.*') ? 'active' : '' }}">
+                  <a href="{{ route('repacks.index') }}" class="menu-link">
+                    <div data-i18n="Error">Repacks</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="{{ route('repacks.create') }}" class="menu-link">
+                    <div data-i18n="Error">New Repack</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
 
             <!-- Expenses -->
             <li class="menu-header small text-uppercase">
