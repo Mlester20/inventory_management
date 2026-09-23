@@ -72,9 +72,15 @@ class InvoiceController extends Controller
         // immediate-sale semantics as the POS screen, just issued from the
         // admin/back-office side) — availability shown here must match.
         $posLocationId = Location::pos()->id;
+        $warehouseLocationId = Location::warehouse()->id;
 
+        // The Warehouse quantity is shown for information only — a direct
+        // Invoice never reads or deducts it, but without it a product that is
+        // stocked in the Warehouse and not yet transferred to POS just looks
+        // like it has no stock at all.
         $products = Product::with('tax')
             ->withSum(['locationStocks as pos_qty' => fn ($q) => $q->where('location_id', $posLocationId)], 'qty')
+            ->withSum(['locationStocks as warehouse_qty' => fn ($q) => $q->where('location_id', $warehouseLocationId)], 'qty')
             ->orderBy('item_name')->get();
         $salesNo = $editing?->sales_no ?? $this->generateSalesNo();
         $activeVatRate = Taxes::activeRate();
@@ -88,6 +94,7 @@ class InvoiceController extends Controller
                 'name' => $product->description ?: $product->item_name,
                 'price' => (float) $product->unit_price,
                 'quantity' => (int) ($product->pos_qty ?? 0),
+                'warehouse_quantity' => (int) ($product->warehouse_qty ?? 0),
                 'unit' => 'pc',
                 'tax_classification' => $product->taxClassification(),
                 'taxable' => $product->taxClassification() === 'vatable',
@@ -252,7 +259,8 @@ class InvoiceController extends Controller
                     $available = $product->quantityAtLocation($posLocation->id);
                     if ($available < $qty) {
                         throw ValidationException::withMessages([
-                            'items' => "Insufficient stock for {$product->item_name}. Available: {$available}",
+                            'items' => "Insufficient stock for {$product->item_name} at {$posLocation->name}. Available at {$posLocation->name}: {$available}"
+                                . $this->warehouseHint($product),
                         ]);
                     }
 
@@ -576,6 +584,20 @@ class InvoiceController extends Controller
      * Generate the next sequential sales number for the current year,
      * e.g. INV-2026-00001.
      */
+    /**
+     * A direct Invoice only sells what is at the POS location. When the
+     * product does have stock in the Warehouse, say so — otherwise "Available:
+     * 0" looks like the item is out of stock everywhere.
+     */
+    private function warehouseHint(Product $product): string
+    {
+        $warehouseQty = $product->quantityAtLocation(Location::warehouse()->id);
+
+        return $warehouseQty > 0
+            ? " ({$warehouseQty} in the Warehouse — transfer it to POS with a Stock Transfer first.)"
+            : '';
+    }
+
     private function generateSalesNo(): string
     {
         return Invoice::nextSalesNo();

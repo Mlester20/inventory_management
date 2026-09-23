@@ -144,6 +144,14 @@
                     </div>
                 </div>
 
+                <div class="alert alert-info small">
+                    A direct invoice sells from the <strong>POS stock</strong> only. Each item shows its POS stock and
+                    its Warehouse stock — stock that is still in the Warehouse has to be transferred to POS first.
+                    @if(in_array(Auth::user()->role, ['admin', 'admin_staff'], true))
+                        <a href="{{ route('stock-transfers.create') }}" target="_blank">New Stock Transfer</a>
+                    @endif
+                </div>
+
                 <hr>
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -250,7 +258,7 @@
     // long <select> — the label the user types/picks is matched back to the
     // real product_id.
     function itemLabel(item) {
-        return `${item.name} (Stock: ${item.quantity})`;
+        return `${item.name} (POS: ${item.quantity}, Warehouse: ${item.warehouse_quantity})`;
     }
 
     function itemDatalistOptions() {
@@ -274,6 +282,24 @@
     function syncTaxTitle(card) {
         const select = card.querySelector('.tax-select');
         select.title = select.selectedOptions.length ? select.selectedOptions[0].textContent : '';
+    }
+
+    // Spell out what the stock numbers mean for the picked item, so a product
+    // that is in the Warehouse but not at POS doesn't just read as "no stock".
+    function updateStockHint(card) {
+        const hint = card.querySelector('.stock-hint');
+        const itemId = card.querySelector('.item-id-input').value;
+        const item = ITEMS.find(i => String(i.id) === String(itemId));
+        const qty = parseInt(card.querySelector('.qty-input').value, 10) || 0;
+        hint.className = 'form-text stock-hint';
+        hint.textContent = '';
+        if (!item || qty <= item.quantity) {
+            return;
+        }
+        hint.classList.add('text-danger');
+        hint.textContent = item.warehouse_quantity > 0
+            ? `Only ${item.quantity} at POS (${item.warehouse_quantity} in the Warehouse). Transfer stock to POS first.`
+            : `Only ${item.quantity} at POS, and none in the Warehouse.`;
     }
 
     function findItemByLabel(label) {
@@ -327,6 +353,7 @@
                         placeholder="Search item..." autocomplete="off" required>
                     <datalist id="item-list-${index}">${itemDatalistOptions()}</datalist>
                     <input type="hidden" name="items[${index}][item_id]" class="item-id-input">
+                    <div class="form-text stock-hint"></div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small mb-1">Description</label>
@@ -405,6 +432,7 @@
         setValue('.dis-input', prefill.dis);
         setValue('.tax-select', prefill.tax_override);
         syncTaxTitle(card);
+        updateStockHint(card);
 
         computeTotals();
     }
@@ -437,6 +465,7 @@
                 }
             }
             updateDefaultTaxLabel(card, item);
+            updateStockHint(card);
             computeTotals();
         });
 
@@ -444,6 +473,7 @@
             el.addEventListener('input', computeTotals);
             el.addEventListener('change', computeTotals);
         });
+        card.querySelector('.qty-input').addEventListener('input', () => updateStockHint(card));
         card.querySelector('.tax-select').addEventListener('change', () => syncTaxTitle(card));
 
         card.querySelector('.remove-row-btn').addEventListener('click', function () {
