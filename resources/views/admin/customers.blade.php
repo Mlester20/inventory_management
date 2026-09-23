@@ -191,6 +191,20 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="wt_rate_goods" class="form-label">
+                                        Withholding Tax % (Goods)
+                                    </label>
+                                    <input type="number" step="0.01" min="0" max="100" name="wt_rate_goods" id="wt_rate_goods" class="form-control" placeholder="Leave blank if none">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="wt_rate_services" class="form-label">
+                                        Withholding Tax % (Services)
+                                    </label>
+                                    <input type="number" step="0.01" min="0" max="100" name="wt_rate_services" id="wt_rate_services" class="form-control" placeholder="Leave blank if none">
+                                </div>
+                            </div>
                         </div>
 
                         <div class="modal-footer">
@@ -263,6 +277,16 @@
                             <div class="col-md-6">
                                 <label><strong>VAT Type:</strong></label>
                                 <p id="view_vat_type" class="text-muted"></p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label><strong>Withholding Tax % (Goods):</strong></label>
+                                <p id="view_wt_rate_goods" class="text-muted"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label><strong>Withholding Tax % (Services):</strong></label>
+                                <p id="view_wt_rate_services" class="text-muted"></p>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -528,6 +552,20 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_wt_rate_goods" class="form-label">
+                                        Withholding Tax % (Goods)
+                                    </label>
+                                    <input type="number" step="0.01" min="0" max="100" name="wt_rate_goods" id="update_wt_rate_goods" class="form-control" placeholder="Leave blank if none">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="update_wt_rate_services" class="form-label">
+                                        Withholding Tax % (Services)
+                                    </label>
+                                    <input type="number" step="0.01" min="0" max="100" name="wt_rate_services" id="update_wt_rate_services" class="form-control" placeholder="Leave blank if none">
+                                </div>
+                            </div>
                         </div>
 
                         <div class="modal-footer">
@@ -645,6 +683,8 @@
                                             data-address="{{ $customer->delivery_address }}"
                                             data-price-level="{{ \App\Models\Customer::PRICE_LEVELS[$customer->price_level] ?? $customer->price_level }}"
                                             data-vat-type="{{ $customer->vat_type }}"
+                                            data-wt-goods="{{ $customer->wt_rate_goods }}"
+                                            data-wt-services="{{ $customer->wt_rate_services }}"
                                             data-advances="{{ $customer->advances_count }}"
                                             data-balance="{{ $customer->balances_count }}"
                                             data-receivables="{{ number_format($customer->receivables, 2) }}"
@@ -675,6 +715,8 @@
                                             data-address="{{ $customer->delivery_address }}"
                                             data-price-level="{{ $customer->price_level }}"
                                             data-vat-type="{{ $customer->vat_type }}"
+                                            data-wt-goods="{{ $customer->wt_rate_goods }}"
+                                            data-wt-services="{{ $customer->wt_rate_services }}"
                                         >
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </button>
@@ -733,6 +775,10 @@
             document.getElementById('view_delivery_address').textContent = this.getAttribute('data-address') || 'N/A';
             document.getElementById('view_price_level').textContent = this.getAttribute('data-price-level') || 'N/A';
             document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type') || 'N/A';
+            const wtGoods = this.getAttribute('data-wt-goods');
+            const wtServices = this.getAttribute('data-wt-services');
+            document.getElementById('view_wt_rate_goods').textContent = wtGoods !== null && wtGoods !== '' ? wtGoods + '%' : 'None';
+            document.getElementById('view_wt_rate_services').textContent = wtServices !== null && wtServices !== '' ? wtServices + '%' : 'None';
 
             document.getElementById('view_advances').textContent = this.getAttribute('data-advances') || '0';
             document.getElementById('view_balance').textContent = this.getAttribute('data-balance') || '0';
@@ -798,6 +844,8 @@
             document.getElementById('update_delivery_address').value = this.getAttribute('data-address') || '';
             document.getElementById('update_price_level').value = this.getAttribute('data-price-level') || 'retail';
             document.getElementById('update_vat_type').value = this.getAttribute('data-vat-type') || 'VAT';
+            document.getElementById('update_wt_rate_goods').value = this.getAttribute('data-wt-goods') || '';
+            document.getElementById('update_wt_rate_services').value = this.getAttribute('data-wt-services') || '';
 
             // Set the form action to the update route
             const form = document.getElementById('updateCustomerForm');
@@ -816,6 +864,8 @@
         document.getElementById('customer_type').value = '';
         document.getElementById('price_level').value = 'retail';
         document.getElementById('vat_type').value = 'VAT';
+        document.getElementById('wt_rate_goods').value = '';
+        document.getElementById('wt_rate_services').value = '';
     });
 </script>
 @endsection

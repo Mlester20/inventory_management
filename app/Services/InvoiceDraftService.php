@@ -20,7 +20,7 @@ class InvoiceDraftService
      * a product is the only thing that gives a line any meaning.
      *
      * @param array $data ['customer_name', 'customer_id', 'po_no', 'osca_no', 'less_wt', 'prepared_by',
-     *                     'approved_by', 'items' => [['item_id','desc','unit','batch_no','exp','qty','price','dis','tax_override'], ...]]
+     *                     'approved_by', 'items' => [['item_id','desc','unit','batch_no','exp','qty','price','dis','tax_override','wt_type'], ...]]
      */
     public function saveDraft(array $data, ?int $userId = null, ?Invoice $existing = null): Invoice
     {
@@ -73,6 +73,7 @@ class InvoiceDraftService
                     'price' => $line['price'] ?? null,
                     'dis' => $line['dis'] ?? null,
                     'tax_override' => $line['tax_override'] ?? null,
+                    'wt_type' => $line['wt_type'] ?? null,
                 ]);
             }
 

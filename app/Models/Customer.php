@@ -19,6 +19,8 @@ class Customer extends Model
         'delivery_address',
         'price_level',
         'vat_type',
+        'wt_rate_goods',
+        'wt_rate_services',
     ];
 
     /**

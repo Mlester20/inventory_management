@@ -23,6 +23,7 @@ class InvoiceDraftItem extends Model
         'price',
         'dis',
         'tax_override',
+        'wt_type',
     ];
 
     protected $casts = [

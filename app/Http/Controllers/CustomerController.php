@@ -123,6 +123,8 @@ class CustomerController extends Controller
             'customer_type' => 'required|string|max:255',
             'price_level' => 'required|in:' . implode(',', array_keys(Customer::PRICE_LEVELS)),
             'vat_type' => 'required|in:' . implode(',', array_keys(Customer::VAT_TYPES)),
+            'wt_rate_goods' => 'nullable|numeric|min:0|max:100',
+            'wt_rate_services' => 'nullable|numeric|min:0|max:100',
         ]);
         $customer = Customer::create([
             'customer_name' => $request->customer_name,
@@ -133,6 +135,9 @@ class CustomerController extends Controller
             'customer_type' => $request->customer_type,
             'price_level' => $request->price_level,
             'vat_type' => $request->vat_type,
+            // Blank = no withholding for that kind of sale (the field is optional).
+            'wt_rate_goods' => $request->wt_rate_goods,
+            'wt_rate_services' => $request->wt_rate_services,
         ]);
 
         ActivityLog::record(
@@ -173,6 +178,8 @@ class CustomerController extends Controller
             'customer_type' => 'required|string|max:255',
             'price_level' => 'required|in:' . implode(',', array_keys(Customer::PRICE_LEVELS)),
             'vat_type' => 'required|in:' . implode(',', array_keys(Customer::VAT_TYPES)),
+            'wt_rate_goods' => 'nullable|numeric|min:0|max:100',
+            'wt_rate_services' => 'nullable|numeric|min:0|max:100',
         ]);
         //update the customer
         $original = $customer->getOriginal();
@@ -185,6 +192,9 @@ class CustomerController extends Controller
             'customer_type' => $request->customer_type,
             'price_level' => $request->price_level,
             'vat_type' => $request->vat_type,
+            // Blank = no withholding for that kind of sale (the field is optional).
+            'wt_rate_goods' => $request->wt_rate_goods,
+            'wt_rate_services' => $request->wt_rate_services,
         ]);
 
         $changes = $customer->getChanges();

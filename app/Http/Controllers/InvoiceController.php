@@ -85,7 +85,16 @@ class InvoiceController extends Controller
         $salesNo = $editing?->sales_no ?? $this->generateSalesNo();
         $activeVatRate = Taxes::activeRate();
         $users = User::orderBy('name')->get();
-        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name']);
+        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name', 'wt_rate_goods', 'wt_rate_services']);
+
+        // The customers' withholding rates ride along so the form can suggest the
+        // Withholding Tax (see the Invoice form's script).
+        $customersForJs = $customers->map(fn ($c) => [
+            'id' => $c->id,
+            'name' => $c->customer_name,
+            'wt_goods' => $c->wt_rate_goods !== null ? (float) $c->wt_rate_goods : null,
+            'wt_services' => $c->wt_rate_services !== null ? (float) $c->wt_rate_services : null,
+        ])->values();
 
         $itemsForJs = $products->map(function ($product) {
             return [
@@ -116,6 +125,7 @@ class InvoiceController extends Controller
                 'price' => $line->price !== null ? (float) $line->price : null,
                 'dis' => $line->dis !== null ? (float) $line->dis : null,
                 'tax_override' => $line->tax_override,
+                'wt_type' => $line->wt_type,
             ])->values();
         }
 
@@ -130,10 +140,11 @@ class InvoiceController extends Controller
                 'price' => $line['price'] ?? null,
                 'dis' => $line['dis'] ?? null,
                 'tax_override' => $line['tax_override'] ?? null,
+                'wt_type' => $line['wt_type'] ?? null,
             ])->values();
         }
 
-        return compact('products', 'salesNo', 'activeVatRate', 'itemsForJs', 'users', 'customers', 'prefillLines') + ['editingInvoice' => $editing];
+        return compact('products', 'salesNo', 'activeVatRate', 'itemsForJs', 'users', 'customers', 'customersForJs', 'prefillLines') + ['editingInvoice' => $editing];
     }
 
     /**
@@ -184,6 +195,7 @@ class InvoiceController extends Controller
             'items.*.batch_no' => 'nullable|string|max:100',
             'items.*.exp' => 'nullable|date',
             'items.*.tax_override' => 'nullable|in:vatable,vatex,zero',
+            'items.*.wt_type' => 'nullable|in:goods,services',
         ];
     }
 
@@ -211,6 +223,7 @@ class InvoiceController extends Controller
             'items.*.batch_no' => 'nullable|string|max:100',
             'items.*.exp' => 'nullable|date',
             'items.*.tax_override' => 'nullable|in:vatable,vatex,zero',
+            'items.*.wt_type' => 'nullable|in:goods,services',
         ];
     }
 
