@@ -215,7 +215,7 @@
     }
 
     function addRow(prefill = {}) {
-        const { genericLabel: prefillGenericLabel = '', qty = '', price = null, taxClassification = '', brandLabel = '' } = prefill;
+        const { genericLabel: prefillGenericLabel = '', qty = '', price = null, taxClassification = '', itemDescriptionLabel = '' } = prefill;
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -237,10 +237,10 @@
                     <input type="hidden" name="items[${index}][generic_name_id]" class="generic-id-input">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small mb-1">Brand <span class="text-muted">(optional)</span></label>
-                    <input type="text" class="form-control brand-search-input" list="brand-list-${index}"
-                        placeholder="Search brand..." autocomplete="off">
-                    <datalist id="brand-list-${index}" class="brand-datalist"></datalist>
+                    <label class="form-label small mb-1">Item Description <span class="text-muted">(optional)</span></label>
+                    <input type="text" class="form-control item-description-search-input" list="item-description-list-${index}"
+                        placeholder="Search item description..." autocomplete="off">
+                    <datalist id="item-description-list-${index}" class="item-description-datalist"></datalist>
                     <input type="hidden" name="items[${index}][product_id]" class="product-id-input">
                 </div>
                 <div class="col-6 col-md-3">
@@ -273,13 +273,13 @@
             genericSearchInput.value = prefillGenericLabel;
             genericSearchInput.dispatchEvent(new Event('input'));
 
-            // Brand is set directly (not dispatched) so it doesn't re-run
-            // the brand-picked price auto-suggest below and clobber the
+            // Item Description is set directly (not dispatched) so it doesn't
+            // re-run the picked-price auto-suggest below and clobber the
             // line's own saved price, set right after this.
-            if (brandLabel) {
-                card.querySelector('.brand-search-input').value = brandLabel;
+            if (itemDescriptionLabel) {
+                card.querySelector('.item-description-search-input').value = itemDescriptionLabel;
                 const generic = findGenericByLabel(prefillGenericLabel);
-                const product = generic && generic.products ? generic.products.find(p => p.brand_name === brandLabel) : null;
+                const product = generic && generic.products ? generic.products.find(p => p.item_description === itemDescriptionLabel) : null;
                 if (product) card.querySelector('.product-id-input').value = product.id;
             }
 
@@ -295,13 +295,13 @@
         const genericSearchInput = card.querySelector('.generic-search-input');
         const genericIdInput = card.querySelector('.generic-id-input');
         const priceInput = card.querySelector('.price-input');
-        const brandSearchInput = card.querySelector('.brand-search-input');
-        const brandDatalist = card.querySelector('.brand-datalist');
+        const itemDescriptionSearchInput = card.querySelector('.item-description-search-input');
+        const itemDescriptionDatalist = card.querySelector('.item-description-datalist');
         const productIdInput = card.querySelector('.product-id-input');
 
-        function brandOptionsHtml(generic) {
+        function itemDescriptionOptionsHtml(generic) {
             return (generic && generic.products ? generic.products : [])
-                .map(p => `<option value="${p.brand_name}"></option>`)
+                .map(p => `<option value="${p.item_description}"></option>`)
                 .join('');
         }
 
@@ -316,22 +316,22 @@
                 }
             }
 
-            // Brand is scoped to whichever generic is currently selected —
-            // changing the generic invalidates any previously picked brand,
-            // since it may not even exist under the new one.
-            brandDatalist.innerHTML = brandOptionsHtml(generic);
-            brandSearchInput.value = '';
+            // Item Description is scoped to whichever generic is currently
+            // selected — changing the generic invalidates any previously
+            // picked one, since it may not even exist under the new one.
+            itemDescriptionDatalist.innerHTML = itemDescriptionOptionsHtml(generic);
+            itemDescriptionSearchInput.value = '';
             productIdInput.value = '';
 
             computeTotals();
         });
 
-        brandSearchInput.addEventListener('input', function () {
+        itemDescriptionSearchInput.addEventListener('input', function () {
             const generic = findGenericByLabel(genericSearchInput.value);
-            const product = generic && generic.products ? generic.products.find(p => p.brand_name === this.value) : null;
+            const product = generic && generic.products ? generic.products.find(p => p.item_description === this.value) : null;
             productIdInput.value = product ? product.id : '';
 
-            // Per Sir's direction: once a specific Brand is identified, its
+            // Per Sir's direction: once a specific product is identified, its
             // own price replaces whatever's in the field (still editable
             // after). Left blank, Price stays exactly as manually entered.
             if (product) {
@@ -383,8 +383,8 @@
             const priceInput = card.querySelector('.price-input');
             const generic = GENERIC_NAMES.find(g => String(g.id) === String(genericIdInput.value));
 
-            // Prefer the identified Brand's own price when one's picked for
-            // this line; otherwise fall back to the generic-wide suggestion.
+            // Prefer the identified product's own price when one's picked
+            // for this line; otherwise fall back to the generic-wide suggestion.
             const product = generic && productIdInput.value
                 ? (generic.products || []).find(p => String(p.id) === String(productIdInput.value))
                 : null;
@@ -409,7 +409,7 @@
                 qty: line.qty,
                 price: line.price,
                 taxClassification: line.tax_classification,
-                brandLabel: line.brand_label,
+                itemDescriptionLabel: line.item_description_label,
             });
         });
     } else {

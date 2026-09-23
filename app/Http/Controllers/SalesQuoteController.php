@@ -89,15 +89,19 @@ class SalesQuoteController extends Controller
                     'price_level_2' => $firstProduct?->price_2,
                     'price_level_3' => $firstProduct?->price_3,
                 ],
-                // Optional per-line Brand picker: every Product under this
-                // generic, with its own prices, so picking one can
-                // auto-suggest that specific brand's price instead of the
+                // Optional per-line Item Description picker: every Product
+                // under this generic, with its own prices, so picking one can
+                // auto-suggest that specific product's price instead of the
                 // generic-wide fallback above. Purely a convenience — never
                 // required, and unrelated to Delivery Receipt's own
-                // brand/batch selection.
+                // brand/batch selection. Per Sir: Item Description (not
+                // Brand) carries the detail that actually tells two products
+                // under the same Generic Description apart, so it's what the
+                // picker searches — falling back to Brand, then the item
+                // name, for a product with no Item Description on file.
                 'products' => $genericName->products->map(fn (Product $product) => [
                     'id' => $product->id,
-                    'brand_name' => $product->brand_name ?: $product->item_name,
+                    'item_description' => $product->description ?: ($product->brand_name ?: $product->item_name),
                     'prices' => [
                         'retail' => $product->unit_price,
                         'wholesale' => $product->wholesale_price,
@@ -123,7 +127,7 @@ class SalesQuoteController extends Controller
                     'price' => $line->price !== null ? (float) $line->price : null,
                     'tax_classification' => $line->tax_classification,
                     'product_id' => $line->product_id,
-                    'brand_label' => $line->product ? ($line->product->brand_name ?: $line->product->item_name) : null,
+                    'item_description_label' => $line->product ? ($line->product->description ?: ($line->product->brand_name ?: $line->product->item_name)) : null,
                 ])
                 ->values();
         }
@@ -150,7 +154,7 @@ class SalesQuoteController extends Controller
                         'price' => $line['price'] ?? null,
                         'tax_classification' => $line['tax_classification'] ?? null,
                         'product_id' => $line['product_id'] ?? null,
-                        'brand_label' => $product ? ($product->brand_name ?: $product->item_name) : null,
+                        'item_description_label' => $product ? ($product->description ?: ($product->brand_name ?: $product->item_name)) : null,
                     ];
                 })
                 ->values();
