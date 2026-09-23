@@ -294,8 +294,13 @@
             </div>
 
             @include('partials.print.sales-totals-footer', array_merge([
-                // "Add: VAT" is added on top of the line amounts (same as the Invoice), so the total due includes it.
-                'totalAmountDue' => number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)) + ($vatPreview['addVat'] ?? 0), 2),
+                // Per Sir: line Prices are already VAT-inclusive, so the line
+                // amounts themselves are the total due — "Add: VAT" is the
+                // portion already inside them (see buildVatPreview()), not an
+                // addition on top. This also makes the VATable Sales /
+                // VAT-Exempt / Zero-Rated / Add: VAT rows foot exactly to
+                // this total, matching the printed layout.
+                'totalAmountDue' => number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2),
                 'preparedByValue' => $salesOrder->preparedBy->name ?? '',
                 'notes' => $salesOrder->notes,
             ], $vatPreview ?? []))

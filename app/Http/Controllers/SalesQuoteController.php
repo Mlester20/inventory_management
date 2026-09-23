@@ -269,12 +269,21 @@ class SalesQuoteController extends Controller
 
         $lineTotal = fn ($i) => ($i->qty ?? 0) * ($i->price ?? 0);
 
-        $vatSales = $classified->where('tax_classification', 'vatable')->sum($lineTotal);
+        // Per Sir: the Price typed per line is already VAT-inclusive (the
+        // final amount the customer pays), not a net-of-VAT base price. So a
+        // VATable line's own amount is the GROSS figure — VATable Sales here
+        // is the NET portion extracted back out of it, and Add: VAT is what
+        // was extracted, not a 12% addition on top (that would double-charge
+        // VAT, which is the bug this replaces). VAT-exempt and zero-rated
+        // lines have no VAT to extract either way, so their amounts are
+        // unchanged.
+        $vatInclusiveVatable = $classified->where('tax_classification', 'vatable')->sum($lineTotal);
         $vatexSales = $classified->where('tax_classification', 'vatex')->sum($lineTotal);
         $zeroSales = $classified->where('tax_classification', 'zero')->sum($lineTotal);
 
         $activeVatRate = Taxes::activeRate();
-        $vatAmount = round($vatSales * ($activeVatRate / 100), 2);
+        $vatSales = $vatInclusiveVatable / (1 + $activeVatRate / 100);
+        $vatAmount = round($vatInclusiveVatable - $vatSales, 2);
 
         $hasUnclassifiedLines = $items->contains(fn ($i) => $i->tax_classification === null);
 
