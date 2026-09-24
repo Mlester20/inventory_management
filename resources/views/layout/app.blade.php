@@ -29,6 +29,10 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/apex-charts/apex-charts.css') }}" />
     <style>
+        /* The theme puts Bootstrap modals at z-index 1090 but SweetAlert2 defaults to 1060,
+           so an alert fired while a modal is open (e.g. POS "Insufficient Amount" over the
+           Payment modal) rendered behind it. Keep alerts above modals. */
+        .swal2-container { z-index: 2000 !important; }
         .search-results-dropdown {
             position: absolute;
             top: 100%;
