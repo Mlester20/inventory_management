@@ -90,6 +90,7 @@
                     <label for="amountTenderedInput" class="form-label">Cash Tendered</label>
                     <input type="number" id="amountTenderedInput" class="form-control form-control-lg"
                         step="0.01" min="0" placeholder="0.00">
+                    <div class="invalid-feedback" id="amountTenderedError"></div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="fw-bold">Change</span>
@@ -413,6 +414,7 @@
         document.getElementById('paymentTotalDue').textContent = '₱' + cartTotalForPayment.toFixed(2);
         document.getElementById('amountTenderedInput').value = '';
         document.getElementById('paymentChange').textContent = '₱0.00';
+        validateTendered(false);
 
         new bootstrap.Modal(document.getElementById('paymentModal')).show();
     });
@@ -421,15 +423,33 @@
         document.getElementById('amountTenderedInput').focus();
     });
 
-    document.getElementById('amountTenderedInput').addEventListener('input', (e) => {
-        const tendered = parseFloat(e.target.value) || 0;
+    // Cash tendered is checked right on the input: when it is short of the
+    // total due the field turns red with how much is missing, and Confirm
+    // Payment stays disabled until it is enough. showError is false when the
+    // modal first opens so an untouched, empty field isn't flagged yet.
+    function validateTendered(showError) {
+        const input = document.getElementById('amountTenderedInput');
+        const tendered = round2(parseFloat(input.value) || 0);
+        const short = round2(cartTotalForPayment - tendered);
+        const insufficient = short > 0;
+
+        input.classList.toggle('is-invalid', insufficient && showError);
+        document.getElementById('amountTenderedError').textContent =
+            insufficient ? 'Insufficient amount. Short by ₱' + short.toFixed(2) + '.' : '';
+        document.getElementById('confirmPaymentBtn').disabled = insufficient;
+
         const change = round2(tendered - cartTotalForPayment);
         document.getElementById('paymentChange').textContent = '₱' + (change > 0 ? change.toFixed(2) : '0.00');
-    });
+    }
+
+    document.getElementById('amountTenderedInput').addEventListener('input', () => validateTendered(true));
 
     document.getElementById('amountTenderedInput').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            // Enter on a short amount can't click the disabled button, so
+            // flag the field instead of silently doing nothing.
+            validateTendered(true);
             document.getElementById('confirmPaymentBtn').click();
         }
     });
