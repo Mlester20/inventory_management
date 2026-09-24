@@ -515,7 +515,7 @@
 
         const itemsHtml = cartSnapshot.map(item =>
             '<tr>' +
-            '<td>' + item.quantity + '</td>' +
+            '<td class="text-nowrap">' + item.quantity + (item.unit ? ' ' + item.unit : '') + '</td>' +
             '<td>' + item.item_name + '</td>' +
             '<td class="text-end">' + item.unit_price.toFixed(2) + '</td>' +
             '<td class="text-end">' + item.total_price.toFixed(2) + '</td>' +
