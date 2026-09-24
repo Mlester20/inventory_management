@@ -782,7 +782,7 @@
                                             $source instanceof \App\Models\Invoice => 'Invoice',
                                             $source instanceof \App\Models\StockTransfer => 'Stock Transfer',
                                             $source instanceof \App\Models\StockDisposal => 'Stock Disposal',
-                                            $source instanceof \App\Models\Repack => 'Repack',
+                                            $source instanceof \App\Models\Repack => str_starts_with((string) $movement->remarks, 'Void ') ? 'Repack (Void)' : 'Repack',
                                             default => $movement->type === 'in' ? 'Stock In' : 'Stock Out',
                                         };
                                         $customer = $source instanceof \App\Models\DeliveryReceipt ? $source->customer?->customer_name : null;

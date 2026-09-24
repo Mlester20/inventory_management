@@ -101,8 +101,41 @@ class RepackController extends Controller
 
     public function show(Repack $repack)
     {
-        $repack->load('location', 'preparedBy', 'lines.sourceBatch.product', 'lines.destinationProduct', 'lines.destinationBatch');
+        $repack->load('location', 'preparedBy', 'voidedBy', 'lines.sourceBatch.product', 'lines.destinationProduct', 'lines.destinationBatch');
 
         return view('admin.repacks.show', compact('repack'));
+    }
+
+    /**
+     * Void a Repack while every piece it produced is still there — see
+     * RepackService::voidRepack(). Restricted to full admin accounts, same as
+     * cancelling an Invoice.
+     */
+    public function void(Request $request, Repack $repack)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Voiding a Repack is restricted to full admin accounts.');
+            return redirect()->route('repacks.show', $repack);
+        }
+
+        $validated = $request->validate([
+            'void_reason' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $repack = $this->repackService->voidRepack($repack, auth()->id(), $validated['void_reason'] ?? null);
+        } catch (ValidationException $e) {
+            return redirect()->route('repacks.show', $repack)->withErrors($e->errors());
+        }
+
+        ActivityLog::record(
+            module: 'Repack',
+            action: 'voided',
+            loggable: $repack,
+            description: "Voided Repack {$repack->reference}" . ($repack->void_reason ? " ({$repack->void_reason})" : ''),
+        );
+
+        Alert::success('Repack voided', 'The pieces were taken back out and the source stock was returned.');
+        return redirect()->route('repacks.show', $repack);
     }
 }

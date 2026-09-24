@@ -20,6 +20,8 @@
                 Converts stock of one product into stock of another at the same location (e.g. breaking a BX
                 into loose PC). The destination lot carries the source lot's own Batch No/Expiry by default —
                 override them only if this repack should land in a different lot.
+                If a repack was a mistake, it can be voided from its page while every piece it produced is still
+                there; once some are sold or moved, correct the quantity with an Inventory Adjustment instead.
             </p>
 
             <form action="{{ route('repacks.store') }}" method="POST" id="repackForm">

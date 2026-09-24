@@ -31,6 +31,7 @@
                     <tr>
                         <th>#</th>
                         <th>Reference</th>
+                        <th>Status</th>
                         <th>Date</th>
                         <th>Location</th>
                         <th>Lines</th>
@@ -43,6 +44,11 @@
                         <tr>
                             <td>{{ $repack->id }}</td>
                             <td>{{ $repack->reference }}</td>
+                            <td>
+                                <span class="badge bg-{{ $repack->isVoided() ? 'danger' : 'success' }}">
+                                    {{ \App\Models\Repack::STATUSES[$repack->status] ?? $repack->status }}
+                                </span>
+                            </td>
                             <td>{{ $repack->date?->format('M d, Y') ?? '—' }}</td>
                             <td>{{ $repack->location->name ?? '—' }}</td>
                             <td>{{ $repack->lines()->count() }}</td>
@@ -55,7 +61,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted">No Repacks found.</td>
+                            <td colspan="8" class="text-center text-muted">No Repacks found.</td>
                         </tr>
                     @endforelse
                 </tbody>

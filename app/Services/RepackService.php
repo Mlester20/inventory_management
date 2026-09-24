@@ -56,6 +56,75 @@ class RepackService
         });
     }
 
+    /**
+     * Void a Repack — allowed only while it is still complete: every piece it
+     * produced must still be at the location. Once some are sold or moved the
+     * void is refused (nothing is changed) and the difference has to be
+     * corrected with an Inventory Adjustment instead, as Sir asked.
+     *
+     * All-or-nothing: every destination lot is checked before anything moves.
+     * Two lines producing into the same destination lot are added together,
+     * so a lot that can cover each line alone but not both is still refused.
+     * Voiding takes the produced pieces back out and puts the source quantity
+     * back into its original lot, both through StockService so they appear in
+     * Product History like every other movement. The row is never deleted.
+     */
+    public function voidRepack(Repack $repack, ?int $userId = null, ?string $reason = null): Repack
+    {
+        return DB::transaction(function () use ($repack, $userId, $reason) {
+            // Re-fetch under a row lock rather than trusting the route-bound
+            // model's flag: two near-simultaneous void clicks would otherwise
+            // both pass the check and take the stock back twice.
+            $repack = Repack::lockForUpdate()->findOrFail($repack->id);
+
+            if ($repack->isVoided()) {
+                throw ValidationException::withMessages([
+                    'void' => 'This Repack has already been voided.',
+                ]);
+            }
+
+            $repack->load('location', 'lines.sourceBatch.product', 'lines.destinationBatch.product');
+            $location = $repack->location;
+
+            $producedByLot = [];
+            foreach ($repack->lines as $line) {
+                $producedByLot[$line->destination_batch_id] = ($producedByLot[$line->destination_batch_id] ?? 0) + $line->destination_qty;
+            }
+
+            $short = [];
+            foreach ($producedByLot as $batchId => $produced) {
+                $batch = $repack->lines->firstWhere('destination_batch_id', $batchId)->destinationBatch;
+                $left = $batch->qtyAtLocation($location->id);
+
+                if ($left < $produced) {
+                    $short[] = "{$batch->product->item_name}: {$produced} were produced but only {$left} are left at {$location->name}";
+                }
+            }
+
+            if ($short !== []) {
+                throw ValidationException::withMessages([
+                    'void' => 'Cannot void: some of the repacked pieces are already gone (' . implode('; ', $short)
+                        . '). Use an Inventory Adjustment to correct the quantity instead.',
+                ]);
+            }
+
+            $remarks = "Void Repack {$repack->reference}";
+            foreach ($repack->lines as $line) {
+                $this->stockService->deduct($line->destinationBatch, $line->destination_qty, $location, $remarks, $userId, $repack);
+                $this->stockService->restock($line->sourceBatch, $line->source_qty, $location, $remarks, $userId, $repack);
+            }
+
+            $repack->update([
+                'status' => 'voided',
+                'voided_at' => now(),
+                'voided_by' => $userId,
+                'void_reason' => $reason,
+            ]);
+
+            return $repack;
+        });
+    }
+
     protected function applyLine(Repack $repack, Location $location, array $line, ?int $userId): void
     {
         $sourceBatch = ProductBatch::with('product')->findOrFail($line['source_batch_id']);

@@ -7,7 +7,36 @@
         <a href="{{ route('repacks.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Repacks
         </a>
+        @if(! $repack->isVoided() && Auth::user()->role === 'admin')
+            <form action="{{ route('repacks.void', $repack) }}" method="POST" class="d-flex gap-2"
+                onsubmit="return confirmSubmit(this, 'Void {{ $repack->reference }}? The repacked pieces are taken back out and the source stock is returned. This only works while every piece is still there.');">
+                @csrf
+                <input type="text" name="void_reason" class="form-control form-control-sm" placeholder="Reason (optional)" maxlength="500" style="min-width: 220px;">
+                <button type="submit" class="btn btn-outline-danger btn-sm text-nowrap">
+                    <i class="bx bx-block"></i> Void Repack
+                </button>
+            </form>
+        @endif
     </div>
+
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    @if($repack->isVoided())
+        <div class="alert alert-secondary">
+            <strong>Voided</strong> {{ $repack->voided_at?->format('M d, Y h:i A') }}
+            @if($repack->voidedBy) by {{ $repack->voidedBy->name }} @endif
+            @if($repack->void_reason) &mdash; {{ $repack->void_reason }} @endif
+            <div class="small">The pieces were taken back out and the source stock was returned. Both movements are in Product History.</div>
+        </div>
+    @endif
 
     <div class="card mb-4">
         <div class="card-body">
@@ -15,6 +44,14 @@
                 <div class="col-md-3">
                     <label class="text-muted small">Reference</label>
                     <p class="fw-bold mb-0">{{ $repack->reference }}</p>
+                </div>
+                <div class="col-md-3">
+                    <label class="text-muted small">Status</label>
+                    <p class="mb-0">
+                        <span class="badge bg-{{ $repack->isVoided() ? 'danger' : 'success' }}">
+                            {{ \App\Models\Repack::STATUSES[$repack->status] ?? $repack->status }}
+                        </span>
+                    </p>
                 </div>
                 <div class="col-md-3">
                     <label class="text-muted small">Date</label>

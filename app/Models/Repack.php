@@ -15,15 +15,30 @@ class Repack extends Model
         'prepared_by',
         'status',
         'remarks',
+        'voided_at',
+        'voided_by',
+        'void_reason',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'voided_at' => 'datetime',
     ];
 
     public const STATUSES = [
         'posted' => 'Posted',
+        'voided' => 'Voided',
     ];
+
+    public function isVoided(): bool
+    {
+        return $this->status === 'voided';
+    }
+
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by');
+    }
 
     public function location(): BelongsTo
     {
