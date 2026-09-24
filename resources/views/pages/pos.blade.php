@@ -166,12 +166,12 @@
                 '<div class="card h-100 items-card' + (item.quantity === 0 ? ' opacity-50' : '') + '"' +
                 (isAvailable ? ' onclick="addItemToCartDirect(' + item.id + ')"' : '') + '>' +
                 '<div class="card-body">' +
-                '<h6 class="card-title">' + item.item_name + '</h6>' +
+                '<h6 class="card-title">' + item.item_name + (item.unit ? ' <span class="badge bg-secondary align-middle">' + item.unit + '</span>' : '') + '</h6>' +
                 '<p class="text-muted small mb-2">' + item.category.category_name + '</p>' +
                 '<div class="d-flex justify-content-between align-items-center">' +
                 '<div>' +
                 '<p class="mb-0"><strong>₱' + parseFloat(item.unit_price).toFixed(2) + '</strong></p>' +
-                '<small class="text-muted">Stock: ' + item.quantity + '</small>' +
+                '<small class="text-muted">Stock: ' + item.quantity + (item.unit ? ' ' + item.unit : '') + '</small>' +
                 '</div>' +
                 '<span class="badge ' + (isAvailable ? 'bg-success' : 'bg-danger') + '">' +
                 (isAvailable ? 'Available' : 'Out of Stock') +
@@ -201,6 +201,7 @@
                 id: Date.now(),
                 product_id: product.id,
                 item_name: product.item_name,
+                unit: product.unit || null,
                 unit_price: parseFloat(product.unit_price),
                 quantity: quantity,
                 total_price: quantity * parseFloat(product.unit_price),
@@ -251,7 +252,7 @@
             return '<div class="cart-item mb-3 pb-3 border-bottom">' +
                 '<div class="d-flex justify-content-between align-items-start mb-1">' +
                 '<div>' +
-                '<h6 class="mb-0">' + item.item_name + '</h6>' +
+                '<h6 class="mb-0">' + item.item_name + (item.unit ? ' <span class="badge bg-secondary">' + item.unit + '</span>' : '') + '</h6>' +
                 '<small class="text-muted">₱' + item.unit_price.toFixed(2) + ' each</small>' +
                 '</div>' +
                 '<button class="btn btn-sm btn-danger" onclick="removeFromCart(' + item.id + ')">' +
