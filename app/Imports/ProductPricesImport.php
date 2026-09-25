@@ -82,6 +82,15 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
     /** @var array<int,array> product id => current cost/price/percent/tax values */
     protected array $current = [];
 
+    /** @var array<int,int> product id => its Generic Item id (Product Type lives on the Generic Item) */
+    protected array $genericOf = [];
+
+    /** @var array<int,string> Generic Item id => current Product Type ('goods'|'services') */
+    protected array $genericTypes = [];
+
+    /** @var array<int,array{type:string,row:int}> Generic Item id => Product Type an earlier row of this file set */
+    protected array $genericTypeInFile = [];
+
     /** @var array<int,int> product id => sheet row already handled in this file */
     protected array $seen = [];
 
@@ -108,7 +117,7 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             ->join('categories as c', 'c.id', '=', 'g.category_id')
             ->orderBy('products.id')
             ->get(array_merge(
-                ['products.id', 'products.code', 'products.brand_name', 'products.description', 'g.generic_name', 'g.unit', 'c.category_name'],
+                ['products.id', 'products.code', 'products.brand_name', 'products.description', 'products.generic_name_id', 'g.generic_name', 'g.unit', 'g.product_type', 'c.category_name'],
                 array_map(fn ($field) => "products.{$field}", $fields),
             ))
             ->each(function ($product) use ($fields) {
@@ -127,6 +136,8 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
                 }
 
                 $this->codeIds[mb_strtolower((string) $product->code)] = $product->id;
+                $this->genericOf[$product->id] = $product->generic_name_id;
+                $this->genericTypes[$product->generic_name_id] = $product->product_type;
                 $this->current[$product->id] = $product->only(array_merge($fields, ['brand_name', 'description']));
             });
     }
@@ -176,8 +187,9 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
         $taxRaw = $this->firstPresent($row, ['tax', 'n_tax']);
         $descriptionRaw = $this->firstPresent($row, ['item_description']);
         $newBrandRaw = $this->firstPresent($row, ['new_brand']);
+        $productTypeRaw = $this->firstPresent($row, ['product_type']);
 
-        $requested = array_merge($amounts, $percents, ['tax' => $taxRaw, 'retail_markup' => $retailMarkupRaw, 'description' => $descriptionRaw, 'new_brand' => $newBrandRaw]);
+        $requested = array_merge($amounts, $percents, ['tax' => $taxRaw, 'retail_markup' => $retailMarkupRaw, 'description' => $descriptionRaw, 'new_brand' => $newBrandRaw, 'product_type' => $productTypeRaw]);
         $noChangeRequested = collect($requested)->every(fn ($v) => $v === null);
 
         if ($code === null && $category === '' && $generic === '' && $noChangeRequested) {
@@ -200,6 +212,7 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             'P2 %' => $percents['price_2_percent'],
             'P3 %' => $percents['price_3_percent'],
             'Tax' => $taxRaw,
+            'Product Type' => $productTypeRaw,
         ];
 
         if ($code === null && ($category === '' || $generic === '')) {
@@ -329,6 +342,34 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             $update['tax_id'] = $resolved;
         }
 
+        // Product Type is a property of the Generic Item, shared by every brand of it, so a
+        // row can only set it when it agrees with the other rows of this file for that item.
+        $typeChange = null;
+        if ($productTypeRaw !== null) {
+            $type = match (strtolower($productTypeRaw)) {
+                'goods', 'good' => 'goods',
+                'services', 'service' => 'services',
+                default => null,
+            };
+            if ($type === null) {
+                $this->skip($rowData, ImportSkippedRow::REASON_INVALID_DATA, "Product Type \"{$productTypeRaw}\" is not recognised. Use Goods or Services.");
+
+                return;
+            }
+
+            $genericId = $this->genericOf[$productId];
+            $earlier = $this->genericTypeInFile[$genericId] ?? null;
+            if ($earlier !== null && $earlier['type'] !== $type) {
+                $this->skip($rowData, ImportSkippedRow::REASON_INVALID_DATA, "Row {$earlier['row']} of this file already sets this Generic Description and Unit to " . ucfirst($earlier['type']) . ". Product Type is shared by every brand of it, so all its rows must say the same.");
+
+                return;
+            }
+
+            if (($this->genericTypes[$genericId] ?? 'goods') !== $type) {
+                $typeChange = $type;
+            }
+        }
+
         $textChanges = [];
         if ($descriptionRaw !== null || $newBrandRaw !== null) {
             // Description/Brand text is changed by Code only: without it the
@@ -364,6 +405,9 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
         // Only a row that passed validation claims the product, so a later row
         // isn't called a "duplicate" of one that was itself rejected.
         $this->seen[$productId] = $this->currentRow;
+        if ($productTypeRaw !== null) {
+            $this->genericTypeInFile[$this->genericOf[$productId]] ??= ['type' => $type, 'row' => $this->currentRow];
+        }
 
         $retail = (float) ($update['unit_price'] ?? $current['unit_price'] ?? 0);
         $retailChanged = array_key_exists('unit_price', $update);
@@ -382,7 +426,7 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
         }
 
         $priceChanged = $this->differs($current, $update);
-        if (! $priceChanged && $textChanges === []) {
+        if (! $priceChanged && $textChanges === [] && $typeChange === null) {
             $this->unchanged++;
 
             return;
@@ -391,6 +435,12 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
         if ($priceChanged) {
             DB::table('products')->where('id', $productId)->update($update + $derived + ['updated_at' => now()]);
             $this->current[$productId] = array_merge($current, $update, $derived);
+        }
+
+        if ($typeChange !== null) {
+            $genericId = $this->genericOf[$productId];
+            DB::table('generic_names')->where('id', $genericId)->update(['product_type' => $typeChange, 'updated_at' => now()]);
+            $this->genericTypes[$genericId] = $typeChange;
         }
 
         if ($textChanges !== []) {

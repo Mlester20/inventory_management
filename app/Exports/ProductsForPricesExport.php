@@ -37,7 +37,7 @@ class ProductsForPricesExport implements FromArray, WithHeadings, WithTitle
                 'products.code', 'c.category_name', 'g.generic_name', 'products.brand_name', 'g.unit', 'products.description',
                 'products.unit_cost', 'products.unit_price', 'products.unit_price_percent',
                 'products.wholesale_percent', 'products.price_1_percent', 'products.price_2_percent', 'products.price_3_percent',
-                't.name as tax_name',
+                't.name as tax_name', 'g.product_type',
             ])
             ->map(fn ($p) => [
                 $p->code, $p->category_name, $p->generic_name, $p->brand_name, $p->unit,
@@ -55,6 +55,7 @@ class ProductsForPricesExport implements FromArray, WithHeadings, WithTitle
                     str_starts_with(mb_strtolower($p->tax_name), 'zero') => 'Zero Vat',
                     default => 'VAT Inc',
                 },
+                \App\Models\GenericName::PRODUCT_TYPES[$p->product_type] ?? 'Goods',
             ])
             ->all();
     }

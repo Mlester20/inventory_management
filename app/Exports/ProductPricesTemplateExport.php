@@ -15,8 +15,10 @@ use Maatwebsite\Excel\Concerns\WithTitle;
  * text and need the Code.
  * Cost is PHP. Retail is EITHER a mark-up % on Cost (Retail Markup %, price
  * computed) OR a typed Retail Price with the % blank. Wholesale/P1-P3 are the %
- * off Retail and their peso amounts are computed by the system. A blank cell
- * keeps the current value.
+ * off Retail and their peso amounts are computed by the system. Product Type
+ * (Goods or Services) belongs to the Generic Item, so every product row of the
+ * same Generic Description and Unit must agree. A blank cell keeps the current
+ * value.
  */
 class ProductPricesTemplateExport implements FromArray, WithHeadings, WithTitle
 {
@@ -27,13 +29,13 @@ class ProductPricesTemplateExport implements FromArray, WithHeadings, WithTitle
 
     public function headings(): array
     {
-        return ['Code', 'Category', 'Generic Description', 'Brand', 'Unit', 'Item Description', 'New Brand', 'Cost', 'Retail Markup %', 'Retail Price', 'Wholesale %', 'P1 %', 'P2 %', 'P3 %', 'Tax'];
+        return ['Code', 'Category', 'Generic Description', 'Brand', 'Unit', 'Item Description', 'New Brand', 'Cost', 'Retail Markup %', 'Retail Price', 'Wholesale %', 'P1 %', 'P2 %', 'P3 %', 'Tax', 'Product Type'];
     }
 
     public function array(): array
     {
         return [
-            ['00001', 'Pain Relief', 'Paracetamol 500mg', 'Biogesic', 'BX', 'Pain reliever and fever reducer', null, 10, 100, null, 10, 8, 6, 4, 'VAT Inc'],
+            ['00001', 'Pain Relief', 'Paracetamol 500mg', 'Biogesic', 'BX', 'Pain reliever and fever reducer', null, 10, 100, null, 10, 8, 6, 4, 'VAT Inc', 'Goods'],
         ];
     }
 }

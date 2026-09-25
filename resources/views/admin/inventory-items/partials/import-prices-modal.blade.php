@@ -11,7 +11,7 @@
                     <p class="text-muted small">
                         <strong>1.</strong> <a href="{{ route('products.export-prices') }}">Download all products</a>
                         (each with its Code), or <a href="{{ route('products.import-prices.template') }}">a blank template</a>.<br>
-                        <strong>2.</strong> Fill in Cost, Retail, Wholesale % / P1 % / P2 % / P3 % and Tax, and/or change the
+                        <strong>2.</strong> Fill in Cost, Retail, Wholesale % / P1 % / P2 % / P3 %, Tax and Product Type, and/or change the
                         <strong>Item Description</strong> and <strong>New Brand</strong>, then upload it here.
                         Retail: either a <strong>Retail Markup %</strong> (price = Cost &times; (1 + %), needs a Cost)
                         or a typed <strong>Retail Price</strong> with the % left blank.
@@ -29,7 +29,9 @@
                         tell them apart, is skipped and reported. A blank cell keeps the current value.
                         Item Description and New Brand need the Code; the Category and Generic Description never change.
                         Wholesale and P1–P3 are a % <em>off</em> Retail; their peso amount is computed for you. Tax is VAT Inc
-                        (VATable), VAT Ex (VAT-exempt) or Zero Vat. You can correct the file and import it
+                        (VATable), VAT Ex (VAT-exempt) or Zero Vat. Product Type is Goods or Services and
+                        belongs to the Generic Description (all its brands share it, so they must agree in the file);
+                        it sets the withholding tax rate (Goods 1%, Services 2%). You can correct the file and import it
                         again at any time.
                     </div>
                 </div>
