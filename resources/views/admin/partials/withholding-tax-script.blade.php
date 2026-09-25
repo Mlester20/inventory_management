@@ -4,7 +4,8 @@
 
     Per line, using the item's Product Type (Goods 1% / Services 2%, fixed):
         VATable line       amount / (1 + VAT rate) x rate
-        VAT-Exempt / Zero  amount x rate
+        VAT-Exempt line    amount x rate
+        Zero-Rated line    nothing (Sir: it is not the same as VAT-Exempt, so it defaults to zero)
     plus, only for a customer that has a Withholding VAT % (Government):
         VATable line       amount / (1 + VAT rate) x Withholding VAT %
 
@@ -41,7 +42,7 @@
                 lines.filter(l => l.type === type).forEach(l => {
                     if (l.classification === 'vatable') {
                         vatable += l.amount;
-                    } else {
+                    } else if (l.classification !== 'zero') {
                         exempt += l.amount;
                     }
                 });
