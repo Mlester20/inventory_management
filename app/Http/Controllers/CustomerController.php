@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\CustomersForWithholdingExport;
 use App\Exports\CustomersTemplateExport;
 use App\Imports\CustomersImport;
+use App\Imports\CustomerWithholdingVatImport;
 use App\Imports\NamedSheetImport;
 use App\Imports\SheetPicker;
 use App\Models\ActivityLog;
@@ -297,6 +299,62 @@ class CustomerController extends Controller
         );
 
         return redirect()->route('import-results.index', ['batch' => $batchId]);
+    }
+
+    /**
+     * Update the Withholding VAT % of EXISTING customers from Excel (Government accounts) -
+     * so it can be filled in one sheet instead of editing each customer by hand.
+     */
+    public function importWithholdingVat(Request $request)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Updating Withholding VAT by import is restricted to full admin accounts.');
+            return redirect()->route('customers.index');
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        $file = $request->file('file');
+        $import = new CustomerWithholdingVatImport();
+        Excel::import(new NamedSheetImport($import, SheetPicker::key($file, 'CUSTOMERS')), $file);
+
+        if ($import->headingsMissing) {
+            Alert::error('Import failed', 'This sheet needs the columns Customer Name and Withholding VAT %. Please use the downloaded customers file (the tab is named "CUSTOMERS").');
+            return redirect()->route('customers.index');
+        }
+
+        ActivityLog::record(
+            module: 'Customer',
+            action: 'withholding_vat_imported',
+            description: "Updated Withholding VAT of {$import->updated} customer(s) from Excel; {$import->unchanged} already up to date, {$import->skipped} row(s) skipped, {$import->ignoredBlank} row(s) with a blank % ignored",
+        );
+
+        $summary = "{$import->updated} customer(s) updated"
+            . ($import->unchanged > 0 ? ", {$import->unchanged} already up to date" : '')
+            . ($import->ignoredBlank > 0 ? ", {$import->ignoredBlank} row(s) with a blank % left as they are" : '') . '.';
+
+        if ($import->skipped === 0) {
+            Alert::success('Success', $summary);
+            return redirect()->route('customers.index');
+        }
+
+        Alert::error('Updated with some rows skipped', "{$summary} {$import->skipped} row(s) were skipped - the full list is below, so you can correct them in your Excel file.");
+        return redirect()->route('import-results.index', ['batch' => $import->batchId]);
+    }
+
+    /**
+     * Every customer with their current Withholding VAT %, ready to edit and import back.
+     */
+    public function exportWithholdingVat()
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Exporting customers for a Withholding VAT update is restricted to full admin accounts.');
+            return redirect()->route('customers.index');
+        }
+
+        return Excel::download(new CustomersForWithholdingExport(), 'customers-withholding-vat-' . now()->format('Ymd-His') . '.xlsx');
     }
 
     /**

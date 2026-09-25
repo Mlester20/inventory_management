@@ -16,6 +16,14 @@
                 <i class="bx bx-upload me-1"></i> Import Customers
             </button>
             <button
+                type="button"
+                class="btn btn-outline-secondary"
+                data-bs-toggle="modal"
+                data-bs-target="#withholdingVatModal"
+            >
+                <i class="bx bx-edit me-1"></i> Update Withholding VAT
+            </button>
+            <button
             type="button"
             class="btn btn-primary"
             data-bs-toggle="modal"
@@ -23,6 +31,44 @@
             >
                 New Customer
             </button>
+        </div>
+
+        <!-- Update Withholding VAT Modal - sets the % of customers that already exist -->
+        <div class="modal fade" id="withholdingVatModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form action="{{ route('customers.withholding-vat.import') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Update Withholding VAT</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">
+                                <strong>1.</strong> <a href="{{ route('customers.withholding-vat.export') }}">Download all customers</a>
+                                (each with their current Withholding VAT %).<br>
+                                <strong>2.</strong> Fill in the <strong>Withholding VAT %</strong> of the Government accounts
+                                (e.g. 5), then upload it here.
+                            </p>
+                            <div class="mb-3">
+                                <label for="wvat_import_file" class="form-label">File</label>
+                                <input type="file" name="file" id="wvat_import_file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                            </div>
+                            <div class="alert alert-info small mb-0">
+                                Only existing customers are updated, found by Customer Name - nothing is created. A blank
+                                cell keeps the current value; enter <strong>0</strong> or <strong>none</strong> to remove a customer's
+                                Withholding VAT. A customer with a Withholding VAT % is set to VAT Type VAT.
+                                Rows that can't be applied are skipped and reported. If the file has multiple sheets,
+                                only the one named "CUSTOMERS" is read.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <!-- Import Customers Modal -->

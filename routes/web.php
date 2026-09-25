@@ -226,6 +226,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('admin/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
     Route::post('admin/customers/import', [CustomerController::class, 'import'])->name('customers.import');
     Route::get('admin/customers/import/template', [CustomerController::class, 'downloadTemplate'])->name('customers.import.template');
+    Route::post('admin/customers/withholding-vat/import', [CustomerController::class, 'importWithholdingVat'])->name('customers.withholding-vat.import');
+    Route::get('admin/customers/withholding-vat/export', [CustomerController::class, 'exportWithholdingVat'])->name('customers.withholding-vat.export');
 
     // Return Items Actions
     Route::post('admin/return-items/{returnItem}/approve', [ReturnItemController::class, 'approve'])->name('return-items.approve');
