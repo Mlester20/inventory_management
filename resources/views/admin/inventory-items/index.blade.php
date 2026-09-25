@@ -73,6 +73,7 @@
                                 <th>General Item Description</th>
                                 <th>Unit</th>
                                 <th>VAT Type</th>
+                                <th>Product Type</th>
                                 <th>Products</th>
                                 <th>Qty</th>
                                 <th>Actions</th>
@@ -92,6 +93,7 @@
                                     </td>
                                     <td>{{ $genericName->unit }}</td>
                                     <td>{{ $genericName->vat_type }}</td>
+                                    <td>{{ \App\Models\GenericName::PRODUCT_TYPES[$genericName->product_type] ?? 'Goods' }}</td>
                                     <td>{{ $genericName->products_count }}</td>
                                     <td>
                                         <a href="{{ route('inventory-items.index', ['tab' => 'products', 'search' => $genericName->generic_name]) }}">
@@ -122,7 +124,8 @@
                                                         data-name="{{ $genericName->generic_name }}"
                                                         data-category="{{ $genericName->category_id }}"
                                                         data-unit="{{ $genericName->unit }}"
-                                                        data-vat-type="{{ $genericName->vat_type }}">
+                                                        data-vat-type="{{ $genericName->vat_type }}"
+                                                        data-product-type="{{ $genericName->product_type }}">
                                                         <i class="bx bx-edit-alt me-1"></i> Edit
                                                     </button>
 
@@ -159,7 +162,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="9" class="text-center text-muted py-4">No generic items yet.</td></tr>
+                                <tr><td colspan="10" class="text-center text-muted py-4">No generic items yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -219,6 +222,17 @@
                                         </select>
                                     </div>
                                 </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Product Type</label>
+                                        <select name="product_type" class="form-select" required>
+                                            @foreach (\App\Models\GenericName::PRODUCT_TYPES as $value => $label)
+                                                <option value="{{ $value }}" {{ old('form') === 'new_generic' && old('product_type') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                        <div class="form-text">Goods = 1% income tax, Services = 2% (used for the suggested Withholding Tax).</div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
@@ -272,6 +286,17 @@
                                                 <option value="{{ $value }}">{{ $label }}</option>
                                             @endforeach
                                         </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Product Type</label>
+                                        <select name="product_type" id="update_generic_product_type" class="form-select" required>
+                                            @foreach (\App\Models\GenericName::PRODUCT_TYPES as $value => $label)
+                                                <option value="{{ $value }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                        <div class="form-text">Goods = 1% income tax, Services = 2% (used for the suggested Withholding Tax).</div>
                                     </div>
                                 </div>
                             </div>
@@ -791,6 +816,7 @@
             document.getElementById('update_generic_category_id').value = get('data-category') || '';
             document.getElementById('update_generic_unit').value = get('data-unit') || '';
             document.getElementById('update_generic_vat_type').value = get('data-vat-type') || '';
+            document.getElementById('update_generic_product_type').value = get('data-product-type') || 'goods';
 
             const form = document.getElementById('updateGenericItemForm');
             form.action = `{{ url('admin/generic-names') }}/${get('data-id')}`;

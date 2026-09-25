@@ -78,22 +78,21 @@ class InvoiceController extends Controller
         // Invoice never reads or deducts it, but without it a product that is
         // stocked in the Warehouse and not yet transferred to POS just looks
         // like it has no stock at all.
-        $products = Product::with('tax')
+        $products = Product::with('tax', 'genericName')
             ->withSum(['locationStocks as pos_qty' => fn ($q) => $q->where('location_id', $posLocationId)], 'qty')
             ->withSum(['locationStocks as warehouse_qty' => fn ($q) => $q->where('location_id', $warehouseLocationId)], 'qty')
             ->orderBy('item_name')->get();
         $salesNo = $editing?->sales_no ?? $this->generateSalesNo();
         $activeVatRate = Taxes::activeRate();
         $users = User::orderBy('name')->get();
-        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name', 'wt_rate_goods', 'wt_rate_services']);
+        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name', 'withholding_vat_rate']);
 
-        // The customers' withholding rates ride along so the form can suggest the
-        // Withholding Tax (see the Invoice form's script).
+        // The customers' Withholding VAT % rides along so the form can suggest the
+        // Withholding Tax (see the withholding-tax partial).
         $customersForJs = $customers->map(fn ($c) => [
             'id' => $c->id,
             'name' => $c->customer_name,
-            'wt_goods' => $c->wt_rate_goods !== null ? (float) $c->wt_rate_goods : null,
-            'wt_services' => $c->wt_rate_services !== null ? (float) $c->wt_rate_services : null,
+            'withholding_vat' => $c->withholding_vat_rate !== null ? (float) $c->withholding_vat_rate : null,
         ])->values();
 
         $itemsForJs = $products->map(function ($product) {
@@ -107,6 +106,8 @@ class InvoiceController extends Controller
                 'unit' => 'pc',
                 'tax_classification' => $product->taxClassification(),
                 'taxable' => $product->taxClassification() === 'vatable',
+                // Goods or Services (from the Generic Item) sets the withholding rate.
+                'product_type' => $product->genericName?->product_type ?? 'goods',
             ];
         })->values();
 
@@ -125,7 +126,6 @@ class InvoiceController extends Controller
                 'price' => $line->price !== null ? (float) $line->price : null,
                 'dis' => $line->dis !== null ? (float) $line->dis : null,
                 'tax_override' => $line->tax_override,
-                'wt_type' => $line->wt_type,
             ])->values();
         }
 
@@ -140,7 +140,6 @@ class InvoiceController extends Controller
                 'price' => $line['price'] ?? null,
                 'dis' => $line['dis'] ?? null,
                 'tax_override' => $line['tax_override'] ?? null,
-                'wt_type' => $line['wt_type'] ?? null,
             ])->values();
         }
 
@@ -195,7 +194,6 @@ class InvoiceController extends Controller
             'items.*.batch_no' => 'nullable|string|max:100',
             'items.*.exp' => 'nullable|date',
             'items.*.tax_override' => 'nullable|in:vatable,vatex,zero',
-            'items.*.wt_type' => 'nullable|in:goods,services',
         ];
     }
 
@@ -223,7 +221,6 @@ class InvoiceController extends Controller
             'items.*.batch_no' => 'nullable|string|max:100',
             'items.*.exp' => 'nullable|date',
             'items.*.tax_override' => 'nullable|in:vatable,vatex,zero',
-            'items.*.wt_type' => 'nullable|in:goods,services',
         ];
     }
 

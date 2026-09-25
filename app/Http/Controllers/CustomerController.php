@@ -123,8 +123,10 @@ class CustomerController extends Controller
             'customer_type' => 'required|string|max:255',
             'price_level' => 'required|in:' . implode(',', array_keys(Customer::PRICE_LEVELS)),
             'vat_type' => 'required|in:' . implode(',', array_keys(Customer::VAT_TYPES)),
-            'wt_rate_goods' => 'nullable|numeric|min:0|max:100',
-            'wt_rate_services' => 'nullable|numeric|min:0|max:100',
+            // Withholding VAT: the checkbox turns it on and the % is then required;
+            // unchecked means the customer has none (Private) and the % is dropped.
+            'has_withholding_vat' => 'nullable|boolean',
+            'withholding_vat_rate' => 'nullable|required_if:has_withholding_vat,1|numeric|min:0|max:100',
         ]);
         $customer = Customer::create([
             'customer_name' => $request->customer_name,
@@ -134,10 +136,9 @@ class CustomerController extends Controller
             'contact_person' => $request->contact_person,
             'customer_type' => $request->customer_type,
             'price_level' => $request->price_level,
-            'vat_type' => $request->vat_type,
-            // Blank = no withholding for that kind of sale (the field is optional).
-            'wt_rate_goods' => $request->wt_rate_goods,
-            'wt_rate_services' => $request->wt_rate_services,
+            // A customer that withholds VAT is a VAT customer (the form locks the field).
+            'vat_type' => $request->boolean('has_withholding_vat') ? 'VAT' : $request->vat_type,
+            'withholding_vat_rate' => $request->boolean('has_withholding_vat') ? $request->withholding_vat_rate : null,
         ]);
 
         ActivityLog::record(
@@ -178,8 +179,10 @@ class CustomerController extends Controller
             'customer_type' => 'required|string|max:255',
             'price_level' => 'required|in:' . implode(',', array_keys(Customer::PRICE_LEVELS)),
             'vat_type' => 'required|in:' . implode(',', array_keys(Customer::VAT_TYPES)),
-            'wt_rate_goods' => 'nullable|numeric|min:0|max:100',
-            'wt_rate_services' => 'nullable|numeric|min:0|max:100',
+            // Withholding VAT: the checkbox turns it on and the % is then required;
+            // unchecked means the customer has none (Private) and the % is dropped.
+            'has_withholding_vat' => 'nullable|boolean',
+            'withholding_vat_rate' => 'nullable|required_if:has_withholding_vat,1|numeric|min:0|max:100',
         ]);
         //update the customer
         $original = $customer->getOriginal();
@@ -191,10 +194,9 @@ class CustomerController extends Controller
             'contact_person' => $request->contact_person,
             'customer_type' => $request->customer_type,
             'price_level' => $request->price_level,
-            'vat_type' => $request->vat_type,
-            // Blank = no withholding for that kind of sale (the field is optional).
-            'wt_rate_goods' => $request->wt_rate_goods,
-            'wt_rate_services' => $request->wt_rate_services,
+            // A customer that withholds VAT is a VAT customer (the form locks the field).
+            'vat_type' => $request->boolean('has_withholding_vat') ? 'VAT' : $request->vat_type,
+            'withholding_vat_rate' => $request->boolean('has_withholding_vat') ? $request->withholding_vat_rate : null,
         ]);
 
         $changes = $customer->getChanges();

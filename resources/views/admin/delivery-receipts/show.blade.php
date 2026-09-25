@@ -154,7 +154,6 @@
                                 @if(!$deliveryReceipt->isDraft())
                                     <th class="text-end">Invoiced</th>
                                     <th class="text-end no-print" style="width: 110px;">Qty to Invoice</th>
-                                    <th class="no-print" style="width: 120px;" title="Which of the customer's withholding tax rates applies to this line">Sale Type</th>
                                 @endif
                             </tr>
                         </thead>
@@ -174,7 +173,7 @@
                                     @if(!$deliveryReceipt->isDraft())
                                         <td class="no-print">
                                             <input type="checkbox" class="form-check-input line-checkbox" name="line_ids[]" value="{{ $line->id }}"
-                                                data-price="{{ $linePrice }}" data-class="{{ $lineProduct->taxClassification() }}"
+                                                data-price="{{ $linePrice }}" data-class="{{ $lineProduct->taxClassification() }}" data-type="{{ $lineProduct->genericName?->product_type ?? 'goods' }}"
                                                 {{ $fullyInvoiced ? 'disabled' : '' }}>
                                         </td>
                                     @endif
@@ -199,12 +198,6 @@
                                             <input type="number" name="qty[{{ $line->id }}]" value="{{ $remaining }}"
                                                 min="1" max="{{ $remaining }}" class="form-control form-control-sm text-end"
                                                 {{ $fullyInvoiced ? 'disabled' : '' }}>
-                                        </td>
-                                        <td class="no-print">
-                                            <select class="form-select form-select-sm wt-type-select" {{ $fullyInvoiced ? 'disabled' : '' }}>
-                                                <option value="goods">Goods</option>
-                                                <option value="services">Services</option>
-                                            </select>
                                         </td>
                                     @endif
                                 </tr>
@@ -383,6 +376,7 @@
 @endsection
 
 @section('scripts')
+@include('admin.partials.withholding-tax-script')
 <script>
     function refreshCreateInvoiceBtn() {
         const anyChecked = document.querySelectorAll('.line-checkbox:checked').length > 0;
@@ -393,22 +387,18 @@
         cb.addEventListener('change', refreshCreateInvoiceBtn);
     });
 
-    // Withholding Tax suggestion for the checked lines (Sir's rule: net of VAT x the
-    // customer's rate for that kind of sale). Only a pre-filled value — the field stays
-    // editable, and once someone types in it their number is left alone (the link
-    // brings the suggestion back). Offered only when every checked line is VATable:
-    // how a mixed VAT / VAT-exempt invoice is worked out is still to be confirmed.
+    // Withholding Tax suggestion for the checked lines (Sir's formula, see the
+    // withholding-tax partial): each item's Product Type (Goods 1% / Services 2%) sets
+    // the rate, and a customer with a Withholding VAT % adds that on the VATable part.
+    // Only a pre-filled value — the field stays editable, and once someone types in it
+    // their number is left alone (the link brings the suggestion back).
     const DR_CUSTOMER = @json([
-        'wt_goods' => $deliveryReceipt->customer?->wt_rate_goods !== null ? (float) $deliveryReceipt->customer->wt_rate_goods : null,
-        'wt_services' => $deliveryReceipt->customer?->wt_rate_services !== null ? (float) $deliveryReceipt->customer->wt_rate_services : null,
+        'withholding_vat' => $deliveryReceipt->customer?->withholding_vat_rate !== null ? (float) $deliveryReceipt->customer->withholding_vat_rate : null,
     ]);
+    const DR_HAS_CUSTOMER = @json($deliveryReceipt->customer !== null);
     const DR_VAT_RATE = {{ \App\Models\Taxes::activeRate() }};
     const wtInput = document.getElementById('dr_less_wt');
     let wtDirty = wtInput ? parseFloat(wtInput.value) > 0 : false;
-
-    function money(n) {
-        return '₱' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    }
 
     function refreshWithholdingSuggestion() {
         if (!wtInput) {
@@ -419,51 +409,27 @@
         hint.textContent = '';
         applyBtn.classList.add('d-none');
 
-        const gross = { goods: 0, services: 0 };
-        let allVatable = true, checked = 0;
+        const lines = [];
         document.querySelectorAll('.line-checkbox:checked').forEach(cb => {
             const row = cb.closest('tr');
             const qty = parseFloat(row.querySelector('input[type=number]').value) || 0;
-            checked++;
-            if (cb.dataset.class === 'vatable') {
-                gross[row.querySelector('.wt-type-select').value === 'services' ? 'services' : 'goods'] += qty * parseFloat(cb.dataset.price);
-            } else {
-                allVatable = false;
-            }
+            lines.push({ amount: qty * parseFloat(cb.dataset.price), classification: cb.dataset.class, type: cb.dataset.type });
         });
 
-        if ((DR_CUSTOMER.wt_goods === null && DR_CUSTOMER.wt_services === null) || checked === 0) {
+        const result = WithholdingTax.compute(lines, DR_HAS_CUSTOMER ? DR_CUSTOMER : null, DR_VAT_RATE);
+        if (!result) {
             return;
         }
-        if (!allVatable) {
-            hint.textContent = 'Mixed VAT / VAT-exempt lines: enter the withholding tax by hand.';
-            return;
-        }
-
-        const divisor = 1 + (DR_VAT_RATE / 100);
-        let total = 0;
-        const parts = [];
-        [['goods', 'Goods', DR_CUSTOMER.wt_goods], ['services', 'Services', DR_CUSTOMER.wt_services]].forEach(([key, label, rate]) => {
-            if (gross[key] <= 0) {
-                return;
-            }
-            const net = gross[key] / divisor;
-            const wt = rate === null ? 0 : Math.round(net * (rate / 100) * 100) / 100;
-            total += wt;
-            parts.push(rate === null ? `${label}: no rate set` : `${label} ${money(net)} x ${rate}%`);
-        });
-
-        const suggested = Math.round(total * 100) / 100;
-        hint.textContent = `Suggested ${money(suggested)} (net of VAT x customer rate: ${parts.join(' + ')}).`;
+        hint.textContent = result.text;
 
         if (!wtDirty) {
-            wtInput.value = suggested.toFixed(2);
-        } else if (Math.abs((parseFloat(wtInput.value) || 0) - suggested) > 0.004) {
+            wtInput.value = result.total.toFixed(2);
+        } else if (Math.abs((parseFloat(wtInput.value) || 0) - result.total) > 0.004) {
             applyBtn.classList.remove('d-none');
         }
     }
 
-    document.querySelectorAll('.line-checkbox, .wt-type-select, #createInvoiceForm input[type=number][name^="qty"]').forEach(el => {
+    document.querySelectorAll('.line-checkbox, #createInvoiceForm input[type=number][name^="qty"]').forEach(el => {
         el.addEventListener('change', refreshWithholdingSuggestion);
         el.addEventListener('input', refreshWithholdingSuggestion);
     });

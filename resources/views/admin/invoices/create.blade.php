@@ -232,6 +232,7 @@
 @endsection
 
 @section('scripts')
+@include('admin.partials.withholding-tax-script')
 <script>
     const ITEMS = @json($itemsForJs);
     const PREFILL_LINES = @json($prefillLines);
@@ -378,7 +379,7 @@
                     <label class="form-label small mb-1">Batch No.</label>
                     <input type="text" name="items[${index}][batch_no]" class="form-control batch-input">
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Expiry</label>
                     <input type="date" name="items[${index}][exp]" class="form-control exp-input">
                 </div>
@@ -390,20 +391,13 @@
                     <label class="form-label small mb-1">Discount</label>
                     <input type="number" name="items[${index}][dis]" class="form-control dis-input" step="0.01" min="0" value="0">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label small mb-1">Tax</label>
                     <select name="items[${index}][tax_override]" class="form-select tax-select">
                         <option value="">Default</option>
                         <option value="vatable">VATable</option>
                         <option value="vatex">VAT-Exempt</option>
                         <option value="zero">Zero-Rated</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small mb-1">Sale Type</label>
-                    <select name="items[${index}][wt_type]" class="form-select wt-type-select" title="Which of the customer's withholding tax rates applies to this line">
-                        <option value="goods">Goods</option>
-                        <option value="services">Services</option>
                     </select>
                 </div>
             </div>
@@ -442,7 +436,6 @@
         setValue('.price-input', prefill.price !== null && prefill.price !== undefined ? Number(prefill.price).toFixed(2) : null);
         setValue('.dis-input', prefill.dis);
         setValue('.tax-select', prefill.tax_override);
-        setValue('.wt-type-select', prefill.wt_type);
         syncTaxTitle(card);
         updateStockHint(card);
 
@@ -481,7 +474,7 @@
             computeTotals();
         });
 
-        card.querySelectorAll('.qty-input, .price-input, .dis-input, .tax-select, .wt-type-select').forEach(el => {
+        card.querySelectorAll('.qty-input, .price-input, .dis-input, .tax-select').forEach(el => {
             el.addEventListener('input', computeTotals);
             el.addEventListener('change', computeTotals);
         });
@@ -508,57 +501,34 @@
         return (item && item.taxable) ? 'vatable' : 'vatex';
     }
 
-    // Withholding Tax suggestion (Sir's rule: net of VAT x the customer's rate for
-    // that kind of sale). It is only ever a pre-filled value — the field stays
-    // editable, and once someone types in it their number is left alone (the
-    // "Use suggested amount" link brings the suggestion back). It is only offered
-    // when every line is VATable: how a mixed VAT / VAT-exempt invoice is worked
-    // out is still to be confirmed, so that case is left to be typed by hand.
+    // Withholding Tax suggestion (Sir's formula, see the withholding-tax partial): the
+    // item's Product Type (Goods 1% / Services 2%) sets the rate, and a customer with a
+    // Withholding VAT % adds that on the VATable part. It is only ever a pre-filled
+    // value — the field stays editable, and once someone types in it their number is
+    // left alone (the "Use suggested amount" link brings the suggestion back).
     let wtDirty = parseFloat(document.getElementById('less_wt').value) > 0;
     let suggestedWt = null;
-
-    function money(n) {
-        return '₱' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    }
 
     function currentCustomer() {
         const id = document.getElementById('customer_id').value;
         return CUSTOMERS.find(c => String(c.id) === String(id)) || null;
     }
 
-    function refreshWithholdingSuggestion(grossByType, allVatable, itemLines) {
+    function refreshWithholdingSuggestion(wtLines) {
         const hint = document.getElementById('wtHint');
         const applyBtn = document.getElementById('applyWtBtn');
-        const customer = currentCustomer();
         suggestedWt = null;
         hint.textContent = '';
         applyBtn.classList.add('d-none');
 
-        // Nothing to say for a walk-in, a customer with no rate set, or an empty invoice.
-        if (!customer || (customer.wt_goods === null && customer.wt_services === null) || itemLines === 0) {
-            return;
-        }
-        if (!allVatable) {
-            hint.textContent = 'Mixed VAT / VAT-exempt lines: enter the withholding tax by hand.';
+        // Nothing to suggest without a chosen customer or without any item lines.
+        const result = WithholdingTax.compute(wtLines, currentCustomer(), ACTIVE_VAT_RATE);
+        if (!result) {
             return;
         }
 
-        const vatDivisor = 1 + (ACTIVE_VAT_RATE / 100);
-        let total = 0;
-        const parts = [];
-        [['goods', 'Goods', customer.wt_goods], ['services', 'Services', customer.wt_services]].forEach(([key, label, rate]) => {
-            if (grossByType[key] <= 0) {
-                return;
-            }
-            const net = grossByType[key] / vatDivisor;
-            // A blank customer rate means no withholding on that kind of sale.
-            const wt = rate === null ? 0 : Math.round(net * (rate / 100) * 100) / 100;
-            total += wt;
-            parts.push(rate === null ? `${label}: no rate set` : `${label} ${money(net)} x ${rate}%`);
-        });
-
-        suggestedWt = Math.round(total * 100) / 100;
-        hint.textContent = `Suggested ${money(suggestedWt)} (net of VAT x customer rate: ${parts.join(' + ')}).`;
+        suggestedWt = result.total;
+        hint.textContent = result.text;
 
         if (!wtDirty) {
             document.getElementById('less_wt').value = suggestedWt.toFixed(2);
@@ -569,8 +539,7 @@
 
     function computeTotals() {
         let vatSales = 0, vatexSales = 0, zeroSales = 0, vatAmount = 0;
-        const wtGross = { goods: 0, services: 0 };
-        let wtAllVatable = true, wtItemLines = 0;
+        const wtLines = [];
 
         document.querySelectorAll('#lineItemsBody .line-item-card').forEach(card => {
             const qty = parseFloat(card.querySelector('.qty-input').value) || 0;
@@ -579,13 +548,10 @@
             const amount = (qty * price) - dis;
 
             const classification = classifyRow(card);
-            if (card.querySelector('.item-id-input').value !== '') {
-                wtItemLines++;
-                if (classification === 'vatable') {
-                    wtGross[card.querySelector('.wt-type-select').value === 'services' ? 'services' : 'goods'] += amount;
-                } else {
-                    wtAllVatable = false;
-                }
+            const wtItemId = card.querySelector('.item-id-input').value;
+            if (wtItemId !== '') {
+                const wtItem = ITEMS.find(i => String(i.id) === String(wtItemId));
+                wtLines.push({ amount, classification, type: wtItem ? wtItem.product_type : 'goods' });
             }
             // Price is VAT-inclusive (Sir's rule) — VAT is extracted back out
             // of a VATable line's amount here, not added on top (mirrors the
@@ -617,7 +583,7 @@
 
         // Suggest (and, unless someone typed their own, fill in) the withholding tax
         // before it is subtracted below.
-        refreshWithholdingSuggestion(wtGross, wtAllVatable, wtItemLines);
+        refreshWithholdingSuggestion(wtLines);
 
         const lessWt = parseFloat(document.getElementById('less_wt').value) || 0;
         const amountDue = amountNet - lessSc - lessWt;

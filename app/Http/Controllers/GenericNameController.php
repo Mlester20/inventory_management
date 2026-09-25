@@ -40,6 +40,7 @@ class GenericNameController extends Controller
             'category_id' => 'required|exists:categories,id',
             'unit' => 'required|string|max:50',
             'vat_type' => 'required|in:' . implode(',', array_keys(GenericName::VAT_TYPES)),
+            'product_type' => 'required|in:' . implode(',', array_keys(GenericName::PRODUCT_TYPES)),
         ], [
             'generic_name.unique' => 'A generic item with this description and unit already exists.',
         ]);
@@ -50,6 +51,7 @@ class GenericNameController extends Controller
             'category_id' => $request->category_id,
             'unit' => $request->unit,
             'vat_type' => $request->vat_type,
+            'product_type' => $request->product_type,
         ]);
 
         ActivityLog::record(
@@ -79,6 +81,7 @@ class GenericNameController extends Controller
             'category_id' => 'required|exists:categories,id',
             'unit' => 'required|string|max:50',
             'vat_type' => 'required|in:' . implode(',', array_keys(GenericName::VAT_TYPES)),
+            'product_type' => 'required|in:' . implode(',', array_keys(GenericName::PRODUCT_TYPES)),
         ], [
             'generic_name.unique' => 'A generic item with this description and unit already exists.',
         ]);
@@ -90,6 +93,7 @@ class GenericNameController extends Controller
             'category_id' => $request->category_id,
             'unit' => $request->unit,
             'vat_type' => $request->vat_type,
+            'product_type' => $request->product_type,
         ]);
 
         $changes = $genericName->getChanges();

@@ -163,6 +163,15 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         // entry always agree on the same key.
         $normalizedUnit = $unit !== '' ? $unit : 'PC';
 
+        // Optional Product Type column: Goods (default when blank) or Services. It only
+        // matters when this row creates a new Generic Item — an existing one keeps its own.
+        $productTypeRaw = trim((string) ($row['product_type'] ?? ''));
+        $productType = match (strtolower($productTypeRaw)) {
+            '', 'goods', 'good' => 'goods',
+            'services', 'service' => 'services',
+            default => null,
+        };
+
         $rowData = [
             'Category' => $category,
             'Unit' => $unit,
@@ -171,6 +180,17 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             'Cost' => $row['cost'] ?? null,
             'Unit Price' => $row['unit_price'] ?? $row['n_r_php'] ?? null,
         ];
+
+        if ($productType === null) {
+            $this->pendingSkips[] = [
+                'sheet_row' => $this->currentRow,
+                'reason' => ImportSkippedRow::REASON_INVALID_DATA,
+                'details' => "Product Type \"{$productTypeRaw}\" is not recognised — use Goods or Services (or leave it blank for Goods).",
+                'row_data' => $rowData,
+            ];
+
+            return;
+        }
 
         // Identity includes Unit: the same manufacturer item can come in more
         // than one packaging (e.g. a BX and a PC of the same Category/Generic
@@ -224,7 +244,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         if (isset($this->genericNameIds[$genericKey])) {
             $genericNameId = $this->genericNameIds[$genericKey];
         } else {
-            $genericNameId = $this->createGenericName($generic, $categoryId, $normalizedUnit);
+            $genericNameId = $this->createGenericName($generic, $categoryId, $normalizedUnit, $productType);
         }
         $this->genericNameCategoryByName[$genericNameByName] ??= $categoryId;
 
@@ -261,7 +281,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
     }
 
     /** @param string $unit already normalized (never blank — importRow() falls back to 'PC') */
-    protected function createGenericName(string $generic, int $categoryId, string $unit): int
+    protected function createGenericName(string $generic, int $categoryId, string $unit, string $productType = 'goods'): int
     {
         $genericName = GenericName::create([
             'code' => $this->nextGenericCode(),
@@ -269,6 +289,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             'category_id' => $categoryId,
             'unit' => $unit,
             'vat_type' => 'VAT',
+            'product_type' => $productType,
         ]);
 
         $this->genericNameIds[$this->genericKey($generic, $unit)] = $genericName->id;

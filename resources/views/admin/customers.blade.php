@@ -193,16 +193,12 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="wt_rate_goods" class="form-label">
-                                        Withholding Tax % (Goods)
-                                    </label>
-                                    <input type="number" step="0.01" min="0" max="100" name="wt_rate_goods" id="wt_rate_goods" class="form-control" placeholder="Leave blank if none">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="wt_rate_services" class="form-label">
-                                        Withholding Tax % (Services)
-                                    </label>
-                                    <input type="number" step="0.01" min="0" max="100" name="wt_rate_services" id="wt_rate_services" class="form-control" placeholder="Leave blank if none">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="has_withholding_vat" id="has_withholding_vat" value="1">
+                                        <label class="form-check-label" for="has_withholding_vat">Withholding VAT</label>
+                                    </div>
+                                    <input type="number" step="0.01" min="0" max="100" name="withholding_vat_rate" id="withholding_vat_rate" class="form-control" placeholder="Enter tax % value" disabled>
+                                    <div class="form-text">For Government accounts that withhold VAT. VAT Type is set to VAT while this is on.</div>
                                 </div>
                             </div>
                         </div>
@@ -281,12 +277,8 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label><strong>Withholding Tax % (Goods):</strong></label>
-                                <p id="view_wt_rate_goods" class="text-muted"></p>
-                            </div>
-                            <div class="col-md-6">
-                                <label><strong>Withholding Tax % (Services):</strong></label>
-                                <p id="view_wt_rate_services" class="text-muted"></p>
+                                <label><strong>Withholding VAT:</strong></label>
+                                <p id="view_withholding_vat" class="text-muted"></p>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -554,16 +546,12 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="update_wt_rate_goods" class="form-label">
-                                        Withholding Tax % (Goods)
-                                    </label>
-                                    <input type="number" step="0.01" min="0" max="100" name="wt_rate_goods" id="update_wt_rate_goods" class="form-control" placeholder="Leave blank if none">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="update_wt_rate_services" class="form-label">
-                                        Withholding Tax % (Services)
-                                    </label>
-                                    <input type="number" step="0.01" min="0" max="100" name="wt_rate_services" id="update_wt_rate_services" class="form-control" placeholder="Leave blank if none">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="has_withholding_vat" id="update_has_withholding_vat" value="1">
+                                        <label class="form-check-label" for="update_has_withholding_vat">Withholding VAT</label>
+                                    </div>
+                                    <input type="number" step="0.01" min="0" max="100" name="withholding_vat_rate" id="update_withholding_vat_rate" class="form-control" placeholder="Enter tax % value" disabled>
+                                    <div class="form-text">For Government accounts that withhold VAT. VAT Type is set to VAT while this is on.</div>
                                 </div>
                             </div>
                         </div>
@@ -683,8 +671,7 @@
                                             data-address="{{ $customer->delivery_address }}"
                                             data-price-level="{{ \App\Models\Customer::PRICE_LEVELS[$customer->price_level] ?? $customer->price_level }}"
                                             data-vat-type="{{ $customer->vat_type }}"
-                                            data-wt-goods="{{ $customer->wt_rate_goods }}"
-                                            data-wt-services="{{ $customer->wt_rate_services }}"
+                                            data-withholding-vat="{{ $customer->withholding_vat_rate }}"
                                             data-advances="{{ $customer->advances_count }}"
                                             data-balance="{{ $customer->balances_count }}"
                                             data-receivables="{{ number_format($customer->receivables, 2) }}"
@@ -715,8 +702,7 @@
                                             data-address="{{ $customer->delivery_address }}"
                                             data-price-level="{{ $customer->price_level }}"
                                             data-vat-type="{{ $customer->vat_type }}"
-                                            data-wt-goods="{{ $customer->wt_rate_goods }}"
-                                            data-wt-services="{{ $customer->wt_rate_services }}"
+                                            data-withholding-vat="{{ $customer->withholding_vat_rate }}"
                                         >
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </button>
@@ -775,10 +761,8 @@
             document.getElementById('view_delivery_address').textContent = this.getAttribute('data-address') || 'N/A';
             document.getElementById('view_price_level').textContent = this.getAttribute('data-price-level') || 'N/A';
             document.getElementById('view_vat_type').textContent = this.getAttribute('data-vat-type') || 'N/A';
-            const wtGoods = this.getAttribute('data-wt-goods');
-            const wtServices = this.getAttribute('data-wt-services');
-            document.getElementById('view_wt_rate_goods').textContent = wtGoods !== null && wtGoods !== '' ? wtGoods + '%' : 'None';
-            document.getElementById('view_wt_rate_services').textContent = wtServices !== null && wtServices !== '' ? wtServices + '%' : 'None';
+            const wvat = this.getAttribute('data-withholding-vat');
+            document.getElementById('view_withholding_vat').textContent = wvat !== null && wvat !== '' ? wvat + '%' : 'None';
 
             document.getElementById('view_advances').textContent = this.getAttribute('data-advances') || '0';
             document.getElementById('view_balance').textContent = this.getAttribute('data-balance') || '0';
@@ -844,8 +828,10 @@
             document.getElementById('update_delivery_address').value = this.getAttribute('data-address') || '';
             document.getElementById('update_price_level').value = this.getAttribute('data-price-level') || 'retail';
             document.getElementById('update_vat_type').value = this.getAttribute('data-vat-type') || 'VAT';
-            document.getElementById('update_wt_rate_goods').value = this.getAttribute('data-wt-goods') || '';
-            document.getElementById('update_wt_rate_services').value = this.getAttribute('data-wt-services') || '';
+            const updateWvat = this.getAttribute('data-withholding-vat') || '';
+            document.getElementById('update_has_withholding_vat').checked = updateWvat !== '';
+            document.getElementById('update_withholding_vat_rate').value = updateWvat;
+            syncWithholdingVat('update_');
 
             // Set the form action to the update route
             const form = document.getElementById('updateCustomerForm');
@@ -864,8 +850,32 @@
         document.getElementById('customer_type').value = '';
         document.getElementById('price_level').value = 'retail';
         document.getElementById('vat_type').value = 'VAT';
-        document.getElementById('wt_rate_goods').value = '';
-        document.getElementById('wt_rate_services').value = '';
+        document.getElementById('has_withholding_vat').checked = false;
+        document.getElementById('withholding_vat_rate').value = '';
+        syncWithholdingVat('');
+    });
+
+    // Withholding VAT (Government accounts): ticking it enables the % field and locks the
+    // VAT Type to VAT (the server enforces the same); unticking clears and re-opens both.
+    function syncWithholdingVat(prefix) {
+        const on = document.getElementById(prefix + 'has_withholding_vat').checked;
+        const rate = document.getElementById(prefix + 'withholding_vat_rate');
+        const vatType = document.getElementById(prefix + 'vat_type');
+        rate.disabled = !on;
+        rate.required = on;
+        if (!on) {
+            rate.value = '';
+        }
+        if (on) {
+            vatType.value = 'VAT';
+        }
+        // Locked rather than disabled, so the (forced) value is still submitted.
+        vatType.style.pointerEvents = on ? 'none' : '';
+        vatType.tabIndex = on ? -1 : 0;
+        vatType.classList.toggle('bg-light', on);
+    }
+    ['', 'update_'].forEach(prefix => {
+        document.getElementById(prefix + 'has_withholding_vat').addEventListener('change', () => syncWithholdingVat(prefix));
     });
 </script>
 @endsection
