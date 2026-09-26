@@ -27,7 +27,7 @@ class CustomerWithholdingVatImport implements ToCollection, WithHeadingRow
     public int $ignoredBlank = 0;
     public int $skipped = 0;
 
-    /** @var array<string,array{id:int,rate:?string,vat_type:string}> lower-cased name => current values */
+    /** @var array<string,array{id:int,rate:?string,vat_type:string,walk_in:bool}> lower-cased name => current values */
     protected array $customers = [];
 
     /** @var array<string,int> lower-cased name => sheet row already handled */
@@ -40,11 +40,12 @@ class CustomerWithholdingVatImport implements ToCollection, WithHeadingRow
     {
         $this->batchId = (string) Str::uuid();
 
-        Customer::get(['id', 'customer_name', 'withholding_vat_rate', 'vat_type'])->each(function ($c) {
+        Customer::get(['id', 'customer_name', 'withholding_vat_rate', 'vat_type', 'customer_type'])->each(function ($c) {
             $this->customers[mb_strtolower(trim($c->customer_name))] = [
                 'id' => $c->id,
                 'rate' => $c->withholding_vat_rate,
                 'vat_type' => $c->vat_type,
+                'walk_in' => $c->isWalkIn(),
             ];
         });
     }
@@ -112,6 +113,12 @@ class CustomerWithholdingVatImport implements ToCollection, WithHeadingRow
         }
         if (! is_numeric($clean) || (float) $clean < 0 || (float) $clean > 100) {
             $this->skip($rowData, "The value \"{$raw}\" is not a valid Withholding VAT % (use a number from 0 to 100, or 0 / none to remove it).");
+
+            return;
+        }
+
+        if ($this->customers[$key]['walk_in'] && (float) $clean > 0) {
+            $this->skip($rowData, 'This customer is a Walk-In (personal use), which is not covered by withholding tax, so it cannot have a Withholding VAT.');
 
             return;
         }

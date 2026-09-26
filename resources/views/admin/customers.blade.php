@@ -195,14 +195,26 @@
                                     <label for="customer_type" class="form-label">
                                         Customer Type
                                     </label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="customer_type"
                                         id="customer_type"
-                                        class="form-control"
-                                        placeholder="e.g. Pharmacy, Hospital, Clinic"
+                                        class="form-select"
                                         required
                                     >
+                                        <option value="">Select type...</option>
+                                        @foreach (\App\Models\Customer::typeOptions() as $type)
+                                            <option value="{{ $type }}">{{ $type }}</option>
+                                        @endforeach
+                                        <option value="__other__">Other...</option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        name="customer_type_other"
+                                        id="customer_type_other"
+                                        class="form-control mt-2 d-none"
+                                        placeholder="Type the new Customer Type"
+                                    >
+                                    <div class="form-text">Walk-In (personal use) has no withholding tax.</div>
                                 </div>
                             </div>
                             <div class="row">
@@ -548,14 +560,26 @@
                                     <label for="update_customer_type" class="form-label">
                                         Customer Type
                                     </label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="customer_type"
                                         id="update_customer_type"
-                                        class="form-control"
-                                        placeholder="e.g. Pharmacy, Hospital, Clinic"
+                                        class="form-select"
                                         required
                                     >
+                                        <option value="">Select type...</option>
+                                        @foreach (\App\Models\Customer::typeOptions() as $type)
+                                            <option value="{{ $type }}">{{ $type }}</option>
+                                        @endforeach
+                                        <option value="__other__">Other...</option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        name="customer_type_other"
+                                        id="update_customer_type_other"
+                                        class="form-control mt-2 d-none"
+                                        placeholder="Type the new Customer Type"
+                                    >
+                                    <div class="form-text">Walk-In (personal use) has no withholding tax.</div>
                                 </div>
                             </div>
                             <div class="row">
@@ -867,7 +891,7 @@
             const customerId = this.getAttribute('data-id');
 
             document.getElementById('update_customer_name').value = this.getAttribute('data-name');
-            document.getElementById('update_customer_type').value = this.getAttribute('data-type') || '';
+            setCustomerType('update_', this.getAttribute('data-type') || '');
             document.getElementById('update_contact_person').value = this.getAttribute('data-contact') || '';
             document.getElementById('update_contact_number').value = this.getAttribute('data-contact-number') || '';
             document.getElementById('update_email').value = this.getAttribute('data-email') || '';
@@ -894,6 +918,7 @@
         document.getElementById('email').value = '';
         document.getElementById('contact_person').value = '';
         document.getElementById('customer_type').value = '';
+        syncCustomerType('', false);
         document.getElementById('price_level').value = 'retail';
         document.getElementById('vat_type').value = 'VAT';
         document.getElementById('has_withholding_vat').checked = false;
@@ -922,6 +947,51 @@
     }
     ['', 'update_'].forEach(prefix => {
         document.getElementById(prefix + 'has_withholding_vat').addEventListener('change', () => syncWithholdingVat(prefix));
+    });
+
+    // Customer Type drop-down. "Other..." reveals a text box for a brand new type. A Walk-In
+    // (personal use) has no withholding tax: picking it resets Price Level to Retail and VAT Type
+    // to VAT, unticks Withholding VAT and locks it (the server enforces the same).
+    function isWalkInType(type) {
+        return String(type || '').toLowerCase().replace(/[^a-z]/g, '') === 'walkin';
+    }
+
+    function syncCustomerType(prefix, applyDefaults) {
+        const select = document.getElementById(prefix + 'customer_type');
+        const other = document.getElementById(prefix + 'customer_type_other');
+        const isOther = select.value === '__other__';
+        other.classList.toggle('d-none', !isOther);
+        other.required = isOther;
+        if (!isOther) {
+            other.value = '';
+        }
+
+        const walkIn = isWalkInType(isOther ? other.value : select.value);
+        const withholding = document.getElementById(prefix + 'has_withholding_vat');
+        if (walkIn && applyDefaults) {
+            document.getElementById(prefix + 'price_level').value = 'retail';
+            document.getElementById(prefix + 'vat_type').value = 'VAT';
+            withholding.checked = false;
+        }
+        withholding.disabled = walkIn;
+        syncWithholdingVat(prefix);
+    }
+
+    // Fill the drop-down for an existing customer; a type that is not in the list (e.g. added
+    // meanwhile) falls back to "Other..." so it is never lost. Does not touch price/VAT values.
+    function setCustomerType(prefix, type) {
+        const select = document.getElementById(prefix + 'customer_type');
+        select.value = type;
+        if (type && select.value !== type) {
+            select.value = '__other__';
+            document.getElementById(prefix + 'customer_type_other').value = type;
+        }
+        syncCustomerType(prefix, false);
+    }
+
+    ['', 'update_'].forEach(prefix => {
+        document.getElementById(prefix + 'customer_type').addEventListener('change', () => syncCustomerType(prefix, true));
+        document.getElementById(prefix + 'customer_type_other').addEventListener('input', () => syncCustomerType(prefix, true));
     });
 </script>
 @endsection

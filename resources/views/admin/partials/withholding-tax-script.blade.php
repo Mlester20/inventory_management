@@ -9,6 +9,8 @@
     plus, only for a customer that has a Withholding VAT % (Government):
         VATable line       amount / (1 + VAT rate) x Withholding VAT %
 
+    A Walk-In customer (personal use) is not covered by withholding tax at all: always 0.
+
     The result is only ever a pre-filled, still-editable value.
 --}}
 <script>
@@ -28,6 +30,10 @@
         compute(lines, customer, vatRate) {
             if (!customer || lines.length === 0) {
                 return null;
+            }
+
+            if (customer.walk_in) {
+                return { total: 0, text: 'Walk-In customer (personal use): not covered by withholding tax.' };
             }
 
             const divisor = 1 + (vatRate / 100);

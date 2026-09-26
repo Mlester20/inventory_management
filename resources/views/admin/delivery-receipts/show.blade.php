@@ -394,6 +394,7 @@
     // their number is left alone (the link brings the suggestion back).
     const DR_CUSTOMER = @json([
         'withholding_vat' => $deliveryReceipt->customer?->withholding_vat_rate !== null ? (float) $deliveryReceipt->customer->withholding_vat_rate : null,
+        'walk_in' => (bool) $deliveryReceipt->customer?->isWalkIn(),
     ]);
     const DR_HAS_CUSTOMER = @json($deliveryReceipt->customer !== null);
     const DR_VAT_RATE = {{ \App\Models\Taxes::activeRate() }};

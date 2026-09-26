@@ -85,7 +85,7 @@ class InvoiceController extends Controller
         $salesNo = $editing?->sales_no ?? $this->generateSalesNo();
         $activeVatRate = Taxes::activeRate();
         $users = User::orderBy('name')->get();
-        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name', 'withholding_vat_rate']);
+        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name', 'withholding_vat_rate', 'customer_type']);
 
         // The customers' Withholding VAT % rides along so the form can suggest the
         // Withholding Tax (see the withholding-tax partial).
@@ -93,6 +93,8 @@ class InvoiceController extends Controller
             'id' => $c->id,
             'name' => $c->customer_name,
             'withholding_vat' => $c->withholding_vat_rate !== null ? (float) $c->withholding_vat_rate : null,
+            // Walk-In = personal use, never any withholding tax.
+            'walk_in' => $c->isWalkIn(),
         ])->values();
 
         $itemsForJs = $products->map(function ($product) {

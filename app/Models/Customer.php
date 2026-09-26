@@ -43,6 +43,45 @@ class Customer extends Model
     ];
 
     /**
+     * Customer Type for a buyer purchasing for personal use. Per Sir, personal-use
+     * medicine is not covered by withholding tax, so a Walk-In customer never has
+     * any (no 1% / 2% and no Withholding VAT).
+     */
+    public const WALK_IN = 'Walk-In';
+
+    /** "Walk-In", "WALK-IN", "walk in"... all count. */
+    public static function isWalkInType(?string $type): bool
+    {
+        return preg_replace('/[^a-z]/', '', mb_strtolower((string) $type)) === 'walkin';
+    }
+
+    public function isWalkIn(): bool
+    {
+        return static::isWalkInType($this->customer_type);
+    }
+
+    /**
+     * The Customer Type drop-down: Walk-In first, then every type already in use
+     * (so existing customers always find their own type in the list).
+     *
+     * @return array<int,string>
+     */
+    public static function typeOptions(): array
+    {
+        $existing = static::query()
+            ->whereNotNull('customer_type')
+            ->where('customer_type', '!=', '')
+            ->distinct()
+            ->orderBy('customer_type')
+            ->pluck('customer_type')
+            ->reject(fn ($type) => static::isWalkInType($type))
+            ->values()
+            ->all();
+
+        return array_merge([static::WALK_IN], $existing);
+    }
+
+    /**
      * Which item price column this customer's price level should default to.
      */
     public function priceColumn(): string

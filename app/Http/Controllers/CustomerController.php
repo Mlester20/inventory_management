@@ -101,6 +101,27 @@ class CustomerController extends Controller
     }
 
     /**
+     * The Customer Type drop-down has an "Other..." choice that reveals a text box;
+     * fold what was typed there into customer_type before validating. (The quick-add
+     * popup on the Delivery Receipt form just sends a plain typed customer_type.)
+     */
+    protected function resolveCustomerType(Request $request): void
+    {
+        if ($request->customer_type === '__other__') {
+            $request->merge(['customer_type' => trim((string) $request->customer_type_other)]);
+        }
+    }
+
+    /**
+     * Whether this customer keeps a Withholding VAT: the box is ticked AND the customer
+     * is not a Walk-In (personal use is not covered by withholding tax).
+     */
+    protected function withholdsVat(Request $request): bool
+    {
+        return $request->boolean('has_withholding_vat') && ! Customer::isWalkInType($request->customer_type);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -116,6 +137,7 @@ class CustomerController extends Controller
         }
 
         //validate the request
+        $this->resolveCustomerType($request);
         $request->validate([
             'customer_name' => 'required|unique:customers,customer_name',
             'delivery_address' => 'nullable|string',
@@ -139,8 +161,8 @@ class CustomerController extends Controller
             'customer_type' => $request->customer_type,
             'price_level' => $request->price_level,
             // A customer that withholds VAT is a VAT customer (the form locks the field).
-            'vat_type' => $request->boolean('has_withholding_vat') ? 'VAT' : $request->vat_type,
-            'withholding_vat_rate' => $request->boolean('has_withholding_vat') ? $request->withholding_vat_rate : null,
+            'vat_type' => $this->withholdsVat($request) ? 'VAT' : $request->vat_type,
+            'withholding_vat_rate' => $this->withholdsVat($request) ? $request->withholding_vat_rate : null,
         ]);
 
         ActivityLog::record(
@@ -171,6 +193,8 @@ class CustomerController extends Controller
             return redirect()->route('customers.index');
         }
 
+        $this->resolveCustomerType($request);
+
         //validate the request
         $request->validate([
             'customer_name' => 'required|unique:customers,customer_name,' . $customer->id,
@@ -197,8 +221,8 @@ class CustomerController extends Controller
             'customer_type' => $request->customer_type,
             'price_level' => $request->price_level,
             // A customer that withholds VAT is a VAT customer (the form locks the field).
-            'vat_type' => $request->boolean('has_withholding_vat') ? 'VAT' : $request->vat_type,
-            'withholding_vat_rate' => $request->boolean('has_withholding_vat') ? $request->withholding_vat_rate : null,
+            'vat_type' => $this->withholdsVat($request) ? 'VAT' : $request->vat_type,
+            'withholding_vat_rate' => $this->withholdsVat($request) ? $request->withholding_vat_rate : null,
         ]);
 
         $changes = $customer->getChanges();
