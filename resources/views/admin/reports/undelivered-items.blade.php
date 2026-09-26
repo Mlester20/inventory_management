@@ -28,7 +28,7 @@
         <p class="text-muted mb-0 small">
             What is still owed on each customer's Sales Orders (ordered minus delivered), added up across all of
             their Sales Orders. Quantities only. Draft, cancelled and archived Sales Orders are not included.
-            Click a customer to see the details.
+            Click a customer to see the details. On hand is the Warehouse stock.
         </p>
     </div>
 
@@ -121,7 +121,7 @@
                                     <div class="d-flex justify-content-between align-items-start gap-2">
                                         <div>
                                             <div class="fw-semibold">{{ $item['generic_label'] }}</div>
-                                            <small class="text-muted">{{ number_format($item['ordered']) }} ordered &middot; {{ number_format($item['delivered']) }} delivered</small>
+                                            <small class="text-muted">{{ number_format($item['ordered']) }} ordered &middot; {{ number_format($item['delivered']) }} delivered &middot; {{ number_format($item['on_hand']) }} on hand</small>
                                         </div>
                                         <span class="badge bg-label-warning flex-shrink-0">{{ number_format($item['balance']) }} left</span>
                                     </div>
@@ -130,6 +130,7 @@
                                             <a href="{{ route('sales-orders.show', $order['so_id']) }}">{{ $order['so_no'] }}</a>
                                             {{ \Illuminate\Support\Carbon::parse($order['order_date'])->format('M d, Y') }}
                                             @if($order['product']) &middot; {{ $order['product'] }} @endif
+                                            @if($order['price'] !== null) &middot; ₱{{ number_format($order['price'], 2) }} @endif
                                             &mdash; {{ number_format($order['delivered']) }}/{{ number_format($order['ordered']) }} delivered,
                                             <strong class="text-body">{{ number_format($order['balance']) }} left</strong>
                                         </div>
