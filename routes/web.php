@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\CogsController;
 use App\Http\Controllers\Admin\ProductExpirationReportController;
 use App\Http\Controllers\Admin\InventoryReportController;
 use App\Http\Controllers\Admin\SalesReportController;
+use App\Http\Controllers\Admin\UndeliveredItemsReportController;
 use App\Http\Controllers\Admin\PurchaseReportController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ActivityLogController;
@@ -154,6 +155,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/reports/product-history', [InventoryReportController::class, 'productHistory'])->name('admin.reports.product-history');
     Route::get('admin/reports/sales-summary', [SalesReportController::class, 'summary'])->name('admin.reports.sales-summary');
     Route::get('admin/reports/sales-per-customer', [SalesReportController::class, 'perCustomer'])->name('admin.reports.sales-per-customer');
+    Route::get('admin/reports/undelivered-items', [UndeliveredItemsReportController::class, 'index'])->name('admin.reports.undelivered-items');
+    Route::get('admin/reports/undelivered-items/export', [UndeliveredItemsReportController::class, 'export'])->name('admin.reports.undelivered-items.export');
     Route::get('admin/reports/purchase-summary', [PurchaseReportController::class, 'summary'])->name('admin.reports.purchase-summary');
     Route::get('admin/reports/purchases-per-supplier', [PurchaseReportController::class, 'perSupplier'])->name('admin.reports.purchases-per-supplier');
     Route::get('admin/reports/expense-summary', [ExpenseReportController::class, 'summary'])->name('admin.reports.expense-summary');

@@ -421,7 +421,7 @@
             </li>
             @php
               $inventoryReportActive = request()->routeIs('admin.reports.inventory-summary') || request()->routeIs('admin.reports.product-history');
-              $salesReportActive = request()->routeIs('admin.reports.sales-summary') || request()->routeIs('admin.reports.sales-per-customer');
+              $salesReportActive = request()->routeIs('admin.reports.sales-summary') || request()->routeIs('admin.reports.sales-per-customer') || request()->routeIs('admin.reports.undelivered-items*');
               $purchaseReportActive = request()->routeIs('admin.reports.purchase-summary') || request()->routeIs('admin.reports.purchases-per-supplier');
             @endphp
             <li class="menu-item {{ $inventoryReportActive ? 'active open' : '' }}">
@@ -456,6 +456,11 @@
                 <li class="menu-item {{ request()->routeIs('admin.reports.sales-per-customer') ? 'active' : '' }}">
                   <a href="{{ route('admin.reports.sales-per-customer') }}" class="menu-link">
                     <div data-i18n="Error">Sales Per Customer</div>
+                  </a>
+                </li>
+                <li class="menu-item {{ request()->routeIs('admin.reports.undelivered-items*') ? 'active' : '' }}">
+                  <a href="{{ route('admin.reports.undelivered-items') }}" class="menu-link">
+                    <div data-i18n="Error">Undelivered Items</div>
                   </a>
                 </li>
               </ul>
