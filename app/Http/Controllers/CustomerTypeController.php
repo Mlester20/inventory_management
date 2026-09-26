@@ -18,7 +18,11 @@ class CustomerTypeController extends Controller
 {
     public function index()
     {
-        $types = CustomerType::orderBy('name')->get()->each(fn (CustomerType $type) => $type->customers_count = $type->customersCount());
+        // Walk-In (built in) first, then the rest A-Z.
+        $types = CustomerType::orderBy('name')->get()
+            ->sortBy(fn (CustomerType $type) => [$type->isProtected() ? 0 : 1, mb_strtolower($type->name)])
+            ->values()
+            ->each(fn (CustomerType $type) => $type->customers_count = $type->customersCount());
 
         return view('admin.customer-types', compact('types'));
     }

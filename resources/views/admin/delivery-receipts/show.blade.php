@@ -211,7 +211,9 @@
                     </p>
                 @endif
 
-                <div class="row align-items-end">
+                {{-- Fields hang from the top so Customer PO # and Withholding Tax line up even though
+                     the Withholding Tax block is taller (checkbox + hint); the button sits on the input line. --}}
+                <div class="row align-items-start">
                     <div class="col-md-3">
                         <label class="text-muted small">Prepared By</label>
                         <p class="fw-bold mb-0">{{ $deliveryReceipt->preparedBy->name ?? '—' }}</p>
@@ -233,7 +235,7 @@
                             <div class="form-text" id="drWtHint"></div>
                             <button type="button" class="btn btn-link btn-sm p-0 d-none" id="drApplyWtBtn">Use suggested amount</button>
                         </div>
-                        <div class="col-md-3 text-md-end mt-3 mt-md-0 no-print">
+                        <div class="col-md-3 text-md-end mt-3 mt-md-0 pt-md-4 no-print">
                             <button type="submit" class="btn btn-primary" id="createInvoiceBtn" disabled>
                                 <i class="bx bx-receipt"></i> Create Invoice
                             </button>
