@@ -183,7 +183,12 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Customer Type</label>
-                        <input type="text" id="nc_customer_type" class="form-control" placeholder="e.g. Pharmacy, Hospital, Clinic (optional)">
+                        <select id="nc_customer_type" class="form-select">
+                            <option value="">Select type (optional)</option>
+                            @foreach (\App\Models\Customer::typeOptions() as $type)
+                                <option value="{{ $type }}">{{ $type }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Price Level</label>

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\GenericNameController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\CustomerController;
@@ -162,6 +163,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::put('admin/profile', [ProfileController::class, 'update'])->name('admin.profile.update');
 
     Route::resource('admin/categories', CategoryController::class);
+    Route::resource('admin/customer-types', CustomerTypeController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('admin/generic-names', GenericNameController::class)->only(['store', 'update', 'destroy']);
     Route::patch('admin/generic-names/{id}/restore', [GenericNameController::class, 'restore'])->name('generic-names.restore');
     Route::post('admin/generic-names/{genericName}/archive', [GenericNameController::class, 'archive'])->name('generic-names.archive');

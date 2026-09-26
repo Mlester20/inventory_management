@@ -197,7 +197,7 @@
                 </li>
               </ul>
             </li>
-            <li class="menu-item {{ request()->routeIs('customers.*') ? 'active open' : '' }}">
+            <li class="menu-item {{ request()->routeIs('customers.*') || request()->routeIs('customer-types.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-group"></i>
                 <div data-i18n="Customers">Customers</div>
@@ -208,6 +208,13 @@
                     <div data-i18n="Customers">Customers</div>
                   </a>
                 </li>
+                @if(Auth::user()->role === 'admin')
+                <li class="menu-item {{ request()->routeIs('customer-types.*') ? 'active' : '' }}">
+                  <a href="{{ route('customer-types.index') }}" class="menu-link">
+                    <div data-i18n="Customer Types">Customer Types</div>
+                  </a>
+                </li>
+                @endif
               </ul>
             </li>
 

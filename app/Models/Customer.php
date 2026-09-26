@@ -61,24 +61,39 @@ class Customer extends Model
     }
 
     /**
-     * The Customer Type drop-down: Walk-In first, then every type already in use
-     * (so existing customers always find their own type in the list).
+     * The Customer Type drop-down: Walk-In first, then the rest of the managed list
+     * (Customer Types page).
      *
      * @return array<int,string>
      */
     public static function typeOptions(): array
     {
-        $existing = static::query()
-            ->whereNotNull('customer_type')
-            ->where('customer_type', '!=', '')
-            ->distinct()
-            ->orderBy('customer_type')
-            ->pluck('customer_type')
+        $others = CustomerType::orderBy('name')
+            ->pluck('name')
             ->reject(fn ($type) => static::isWalkInType($type))
             ->values()
             ->all();
 
-        return array_merge([static::WALK_IN], $existing);
+        return array_merge([static::WALK_IN], $others);
+    }
+
+    protected static function booted(): void
+    {
+        // Any spelling of walk-in is stored as the one built-in type, and a type that arrives
+        // any other way (Excel import, the quick-add on the Delivery Receipt form) joins the
+        // managed list instead of living only on the customer.
+        static::saving(function (Customer $customer) {
+            if (static::isWalkInType($customer->customer_type)) {
+                $customer->customer_type = static::WALK_IN;
+            }
+        });
+
+        static::saved(function (Customer $customer) {
+            $type = trim((string) $customer->customer_type);
+            if ($type !== '') {
+                CustomerType::firstOrCreate(['name' => $type]);
+            }
+        });
     }
 
     /**

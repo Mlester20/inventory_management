@@ -101,18 +101,6 @@ class CustomerController extends Controller
     }
 
     /**
-     * The Customer Type drop-down has an "Other..." choice that reveals a text box;
-     * fold what was typed there into customer_type before validating. (The quick-add
-     * popup on the Delivery Receipt form just sends a plain typed customer_type.)
-     */
-    protected function resolveCustomerType(Request $request): void
-    {
-        if ($request->customer_type === '__other__') {
-            $request->merge(['customer_type' => trim((string) $request->customer_type_other)]);
-        }
-    }
-
-    /**
      * Whether this customer keeps a Withholding VAT: the box is ticked AND the customer
      * is not a Walk-In (personal use is not covered by withholding tax).
      */
@@ -137,7 +125,6 @@ class CustomerController extends Controller
         }
 
         //validate the request
-        $this->resolveCustomerType($request);
         $request->validate([
             'customer_name' => 'required|unique:customers,customer_name',
             'delivery_address' => 'nullable|string',
@@ -192,8 +179,6 @@ class CustomerController extends Controller
             Alert::error('Not allowed', 'Editing customers is restricted to full admin accounts.');
             return redirect()->route('customers.index');
         }
-
-        $this->resolveCustomerType($request);
 
         //validate the request
         $request->validate([
