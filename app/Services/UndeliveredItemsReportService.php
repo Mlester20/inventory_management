@@ -45,6 +45,7 @@ class UndeliveredItemsReportService
             ->get([
                 'customers.id as customer_id',
                 'customers.customer_name',
+                'customers.delivery_address as customer_address',
                 'sales_orders.id as so_id',
                 'sales_orders.so_no',
                 'sales_orders.po_no',
@@ -100,6 +101,7 @@ class UndeliveredItemsReportService
             return [
                 'customer_id' => $first->customer_id,
                 'customer_name' => $first->customer_name,
+                'customer_address' => $first->customer_address,
                 'so_count' => $customerLines->pluck('so_id')->unique()->count(),
                 'item_count' => $items->count(),
                 'total_balance' => (int) $items->sum('balance'),

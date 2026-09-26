@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Services\UndeliveredItemsReportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
 class UndeliveredItemsReportController extends Controller
@@ -24,6 +25,7 @@ class UndeliveredItemsReportController extends Controller
             'customers' => $customers,
             'customerOptions' => Customer::orderBy('customer_name')->get(['id', 'customer_name']),
             'filters' => $filters,
+            'period' => $this->periodLabel($filters),
             'totals' => [
                 'customers' => $customers->count(),
                 'orders' => $customers->sum('so_count'),
@@ -38,6 +40,20 @@ class UndeliveredItemsReportController extends Controller
         $customers = $this->reportService->build($filters['customer_id'], $filters['start_date'], $filters['end_date']);
 
         return Excel::download(new UndeliveredItemsExport($customers), 'undelivered-items-per-customer-' . now()->format('Ymd-His') . '.xlsx');
+    }
+
+    /** What the printed sheet says it covers: every open Sales Order, or the SO date range that was filtered. */
+    protected function periodLabel(array $filters): string
+    {
+        $from = $filters['start_date'] ? Carbon::parse($filters['start_date'])->format('m/d/Y') : null;
+        $to = $filters['end_date'] ? Carbon::parse($filters['end_date'])->format('m/d/Y') : null;
+
+        return match (true) {
+            $from && $to => "SOs dated {$from} - {$to}",
+            (bool) $from => "SOs dated from {$from}",
+            (bool) $to => "SOs dated up to {$to}",
+            default => 'All open Sales Orders',
+        };
     }
 
     protected function filters(Request $request): array
