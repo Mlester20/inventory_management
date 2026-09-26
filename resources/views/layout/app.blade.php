@@ -253,7 +253,7 @@
               </ul>
             </li>
             @php
-              $salesOrderActive = request()->routeIs('sales-orders.*') || request()->routeIs('delivery-receipts.*') || request()->routeIs('advance-orders.*');
+              $salesOrderActive = request()->routeIs('sales-orders.*') || request()->routeIs('so-summary.*') || request()->routeIs('delivery-receipts.*') || request()->routeIs('advance-orders.*');
             @endphp
             <li class="menu-item {{ $salesOrderActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -264,6 +264,11 @@
                 <li class="menu-item {{ request()->routeIs('sales-orders.*') ? 'active' : '' }}">
                   <a href="{{ route('sales-orders.index') }}" class="menu-link">
                     <div data-i18n="Error">Sales Orders</div>
+                  </a>
+                </li>
+                <li class="menu-item {{ request()->routeIs('so-summary.*') ? 'active' : '' }}">
+                  <a href="{{ route('so-summary.index') }}" class="menu-link">
+                    <div data-i18n="Error">Sales Order Summary</div>
                   </a>
                 </li>
                 <li class="menu-item">
@@ -414,7 +419,7 @@
             </li>
             @php
               $inventoryReportActive = request()->routeIs('admin.reports.inventory-summary') || request()->routeIs('admin.reports.product-history');
-              $salesReportActive = request()->routeIs('admin.reports.sales-summary') || request()->routeIs('admin.reports.sales-per-customer') || request()->routeIs('admin.reports.undelivered-items*');
+              $salesReportActive = request()->routeIs('admin.reports.sales-summary') || request()->routeIs('admin.reports.sales-per-customer');
               $purchaseReportActive = request()->routeIs('admin.reports.purchase-summary') || request()->routeIs('admin.reports.purchases-per-supplier');
             @endphp
             <li class="menu-item {{ $inventoryReportActive ? 'active open' : '' }}">
@@ -449,11 +454,6 @@
                 <li class="menu-item {{ request()->routeIs('admin.reports.sales-per-customer') ? 'active' : '' }}">
                   <a href="{{ route('admin.reports.sales-per-customer') }}" class="menu-link">
                     <div data-i18n="Error">Sales Per Customer</div>
-                  </a>
-                </li>
-                <li class="menu-item {{ request()->routeIs('admin.reports.undelivered-items*') ? 'active' : '' }}">
-                  <a href="{{ route('admin.reports.undelivered-items') }}" class="menu-link">
-                    <div data-i18n="Error">Undelivered Items</div>
                   </a>
                 </li>
               </ul>

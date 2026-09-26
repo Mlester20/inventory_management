@@ -1,5 +1,5 @@
 {{--
-    One customer's Undelivered Items sheet: the same rows and columns as the Excel download
+    One customer's Sales Order Summary sheet: the same rows and columns as the Excel download
     (PO REF #, PO DATE, GENERIC ITEM, ITEM DESCRIPTION, PRICE, QTY ORDERED, QTY DELIVERED, BALANCE,
     QTY ON-HAND — the customer sits in the letterhead instead of repeating on every row), laid out
     like the other documents' prints (shared letterhead, bordered items table, signature box).
@@ -9,7 +9,7 @@
 --}}
 <div class="undelivered-sheet">
     @include('partials.print.letterhead', [
-        'docTitle' => 'UNDELIVERED ITEMS',
+        'docTitle' => 'SALES ORDER SUMMARY',
         'docNoLabel' => 'Covers',
         'docNo' => $period,
         'docDate' => now()->format('m/d/Y'),

@@ -19,7 +19,6 @@ use App\Http\Controllers\Admin\CogsController;
 use App\Http\Controllers\Admin\ProductExpirationReportController;
 use App\Http\Controllers\Admin\InventoryReportController;
 use App\Http\Controllers\Admin\SalesReportController;
-use App\Http\Controllers\Admin\UndeliveredItemsReportController;
 use App\Http\Controllers\Admin\PurchaseReportController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ActivityLogController;
@@ -34,6 +33,7 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\Admin\ExpenseReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\SalesOrderController;
+use App\Http\Controllers\SalesOrderSummaryController;
 use App\Http\Controllers\SalesQuoteController;
 use App\Http\Controllers\DeliveryReceiptController;
 use App\Http\Controllers\AdvanceOrderController;
@@ -126,6 +126,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('admin/sales-quotes/{salesQuote}/convert', [SalesQuoteController::class, 'convertToSalesOrder'])->name('sales-quotes.convert');
     Route::post('admin/sales-quotes/{salesQuote}/archive', [SalesQuoteController::class, 'archive'])->name('sales-quotes.archive');
     Route::post('admin/sales-quotes/{salesQuote}/unarchive', [SalesQuoteController::class, 'unarchive'])->name('sales-quotes.unarchive');
+    Route::get('admin/sales-order-summary', [SalesOrderSummaryController::class, 'index'])->name('so-summary.index');
+    Route::get('admin/sales-order-summary/orders', [SalesOrderSummaryController::class, 'orders'])->name('so-summary.orders');
+    Route::get('admin/sales-order-summary/items', [SalesOrderSummaryController::class, 'items'])->name('so-summary.items');
+    Route::get('admin/sales-order-summary/items/export', [SalesOrderSummaryController::class, 'exportItems'])->name('so-summary.items.export');
+    Route::get('admin/sales-order-summary/deliveries', [SalesOrderSummaryController::class, 'deliveries'])->name('so-summary.deliveries');
     Route::resource('admin/sales-orders', SalesOrderController::class)->except(['destroy']);
     Route::patch('admin/sales-orders/{sales_order}/notes', [SalesOrderController::class, 'updateNotes'])->name('sales-orders.update-notes');
     Route::post('admin/sales-orders/{sales_order}/archive', [SalesOrderController::class, 'archive'])->name('sales-orders.archive');
@@ -154,8 +159,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/reports/product-history', [InventoryReportController::class, 'productHistory'])->name('admin.reports.product-history');
     Route::get('admin/reports/sales-summary', [SalesReportController::class, 'summary'])->name('admin.reports.sales-summary');
     Route::get('admin/reports/sales-per-customer', [SalesReportController::class, 'perCustomer'])->name('admin.reports.sales-per-customer');
-    Route::get('admin/reports/undelivered-items', [UndeliveredItemsReportController::class, 'index'])->name('admin.reports.undelivered-items');
-    Route::get('admin/reports/undelivered-items/export', [UndeliveredItemsReportController::class, 'export'])->name('admin.reports.undelivered-items.export');
+    // The old Undelivered Items report became the Sales Order Summary (Sir); keep old links working.
+    Route::redirect('admin/reports/undelivered-items', '/admin/sales-order-summary');
     Route::get('admin/reports/purchase-summary', [PurchaseReportController::class, 'summary'])->name('admin.reports.purchase-summary');
     Route::get('admin/reports/purchases-per-supplier', [PurchaseReportController::class, 'perSupplier'])->name('admin.reports.purchases-per-supplier');
     Route::get('admin/reports/expense-summary', [ExpenseReportController::class, 'summary'])->name('admin.reports.expense-summary');

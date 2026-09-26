@@ -147,6 +147,11 @@
                   </a>
                 </li>
                 <li class="menu-item">
+                  <a href="{{ route('so-summary.index') }}" class="menu-link">
+                    <div data-i18n="Error">Sales Order Summary</div>
+                  </a>
+                </li>
+                <li class="menu-item">
                   <a href="{{ route('sales-orders.create') }}" class="menu-link">
                     <div data-i18n="Error">New Sales Order</div>
                   </a>
