@@ -51,8 +51,46 @@
                             <td class="text-muted">{{ \Illuminate\Support\Str::limit((string) $order->notes, 40) ?: '—' }}</td>
                             <td><span class="badge {{ $badge[$status] }}">{{ $status }}</span></td>
                             <td class="text-end">
-                                <a href="{{ route('sales-orders.show', $order) }}" class="btn btn-sm btn-outline-secondary">View</a>
-                                <a href="{{ route('so-summary.deliveries', ['sales_order_id' => $order->id]) }}" class="btn btn-sm btn-outline-secondary" title="Delivery Receipts of this Sales Order">Deliveries</a>
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end">
+                                        <a href="{{ route('sales-orders.show', $order) }}" class="dropdown-item">
+                                            <i class="bx bx-show me-1"></i> View
+                                        </a>
+                                        <a href="{{ route('so-summary.deliveries', ['sales_order_id' => $order->id]) }}" class="dropdown-item">
+                                            <i class="bx bx-package me-1"></i> Delivery Receipts
+                                        </a>
+
+                                        @if($order->isArchived())
+                                            <form action="{{ route('sales-orders.unarchive', $order) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="bx bx-undo me-1"></i> Unarchive
+                                                </button>
+                                            </form>
+                                        @else
+                                            <form action="{{ route('sales-orders.archive', $order) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="bx bx-archive me-1"></i> Archive
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        @if(Auth::user()->role === 'admin' && ! $order->isCancelled())
+                                            <div class="dropdown-divider"></div>
+                                            <form action="{{ route('sales-orders.cancel', $order) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item text-danger"
+                                                    onclick="return confirmSubmit(this.form, 'Cancel/void this Sales Order? The record and its delivery history stay, only the status changes.')">
+                                                    <i class="bx bx-block me-1"></i> Cancel/Void
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     @empty
