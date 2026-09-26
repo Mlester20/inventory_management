@@ -7,7 +7,7 @@
 <style>
     /* Compact customer cards; the details open in a modal that shows the printable sheet. */
     .undelivered-card { cursor: pointer; }
-    .undelivered-card .card-header { padding: .75rem 1rem; }
+    .undelivered-card .customer-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
     .undelivered-card:hover { box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .08); }
 
     /* The sheet takes the same shared print styles as the other documents' prints. */
@@ -51,8 +51,8 @@
     <!-- Filters -->
     <div class="card mb-3 no-print">
         <div class="card-body py-3">
-            <form method="GET" action="{{ route('admin.reports.undelivered-items') }}" class="row g-2 align-items-end">
-                <div class="col-lg-4 col-md-6">
+            <form method="GET" action="{{ route('admin.reports.undelivered-items') }}" class="d-flex flex-wrap align-items-end gap-3">
+                <div style="flex: 1 1 260px; max-width: 380px;">
                     <label for="customer_id" class="form-label mb-1">Customer</label>
                     <select name="customer_id" id="customer_id" class="form-select">
                         <option value="">All customers</option>
@@ -61,24 +61,22 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-lg-2 col-md-3 col-6">
+                <div style="flex: 0 1 160px;">
                     <label for="start_date" class="form-label mb-1">SO date from</label>
                     <input type="date" class="form-control" id="start_date" name="start_date" value="{{ $filters['start_date'] }}">
                 </div>
-                <div class="col-lg-2 col-md-3 col-6">
+                <div style="flex: 0 1 160px;">
                     <label for="end_date" class="form-label mb-1">To</label>
                     <input type="date" class="form-control" id="end_date" name="end_date" value="{{ $filters['end_date'] }}">
                 </div>
-                <div class="col-lg-4 col-md-12">
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="submit" class="btn btn-primary text-nowrap">Apply Filter</button>
-                        <a href="{{ route('admin.reports.undelivered-items') }}" class="btn btn-outline-secondary text-nowrap" title="Clear all filters">
-                            <i class="bx bx-refresh"></i> Clear
-                        </a>
-                        <a href="{{ route('admin.reports.undelivered-items.export', request()->query()) }}" class="btn btn-outline-secondary text-nowrap" title="Download as Excel">
-                            <i class="bx bx-download"></i> Excel
-                        </a>
-                    </div>
+                <div class="d-flex gap-2 flex-nowrap">
+                    <button type="submit" class="btn btn-primary text-nowrap">Apply Filter</button>
+                    <a href="{{ route('admin.reports.undelivered-items') }}" class="btn btn-outline-secondary text-nowrap" title="Clear all filters">
+                        <i class="bx bx-refresh"></i> Clear
+                    </a>
+                    <a href="{{ route('admin.reports.undelivered-items.export', request()->query()) }}" class="btn btn-outline-secondary text-nowrap" title="Download all as Excel">
+                        <i class="bx bx-download"></i> Excel
+                    </a>
                 </div>
             </form>
         </div>
@@ -110,21 +108,24 @@
         </div></div>
     @else
         <!-- One compact card per customer, side by side; a click opens the details in the modal below -->
-        <div class="row g-3 align-items-start undelivered-grid">
+        <div class="row g-3 undelivered-grid">
             @foreach($customers as $customer)
                 <div class="col-xl-4 col-md-6">
-                    <div class="card undelivered-card" role="button"
+                    <div class="card undelivered-card h-100" role="button"
                          data-bs-toggle="modal" data-bs-target="#undeliveredModal"
                          data-customer="{{ $customer['customer_name'] }}" data-customer-id="{{ $customer['customer_id'] }}" data-details="details-{{ $customer['customer_id'] }}">
-                        <div class="card-header d-flex justify-content-between align-items-center gap-2">
-                            <div class="text-truncate">
-                                <div class="fw-semibold text-truncate" title="{{ $customer['customer_name'] }}">{{ $customer['customer_name'] }}</div>
+                        <div class="card-body py-3">
+                            <div class="fw-semibold customer-name mb-2">{{ $customer['customer_name'] }}</div>
+                            <div class="d-flex justify-content-between align-items-end">
                                 <small class="text-muted">
                                     {{ $customer['so_count'] }} SO{{ $customer['so_count'] === 1 ? '' : 's' }} &middot;
                                     {{ $customer['item_count'] }} item{{ $customer['item_count'] === 1 ? '' : 's' }}
                                 </small>
+                                <div class="text-end">
+                                    <div class="text-muted" style="font-size: .7rem;">Undelivered</div>
+                                    <span class="badge bg-warning fs-6" title="Total undelivered quantity">{{ number_format($customer['total_balance']) }}</span>
+                                </div>
                             </div>
-                            <span class="badge bg-warning fs-6 flex-shrink-0" title="Total undelivered quantity">{{ number_format($customer['total_balance']) }}</span>
                         </div>
 
                         <template id="details-{{ $customer['customer_id'] }}">
