@@ -5,20 +5,36 @@
 @section('content')
 
 <style>
-    /* Compact customer cards; the details open in a modal (and are printed inside the card). */
-    .undelivered-card .card-header { padding: .75rem 1rem; }
+    /* Compact customer cards; the details open in a modal that shows the printable sheet. */
     .undelivered-card { cursor: pointer; }
+    .undelivered-card .card-header { padding: .75rem 1rem; }
     .undelivered-card:hover { box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .08); }
-    .undelivered-details { display: none; }
-    .item-row + .item-row { border-top: 1px solid rgba(0, 0, 0, .06); }
-    .so-line { font-size: .8125rem; }
+
+    /* The sheet takes the same shared print styles as the other documents' prints. */
+    @include('partials.print.base-print')
+
+    .undelivered-sheet { font-size: 0.7rem; }
+    .undelivered-sheet .print-company-detail { font-size: 0.62rem; }
+    .undelivered-sheet .print-doc-title { font-size: 1.3rem; }
+    .undelivered-sheet .print-doc-page,
+    .undelivered-sheet .print-doc-no-row,
+    .undelivered-sheet .print-to-row { font-size: 0.66rem; }
+    .undelivered-sheet .print-to-header { font-size: 0.7rem; }
+    .undelivered-sheet .print-items-table th,
+    .undelivered-sheet .print-items-table td { font-size: 0.66rem; padding: 0.2rem 0.35rem; }
+    .undelivered-sheet .print-sig-label { font-size: 0.7rem; }
+    .undelivered-sheet .print-sig-value { font-size: 0.66rem; }
+    .undelivered-sheet .print-items-table tfoot td { background-color: #f5f5f5; }
+
+    /* Print: only the sheet of the customer whose modal is open (copied into #undeliveredPrintHost). */
+    #undeliveredPrintHost { display: none; }
 
     @media print {
-        .no-print, .layout-menu, .layout-navbar, footer.content-footer { display: none !important; }
-        .layout-page { padding-left: 0 !important; }
-        .undelivered-details { display: block !important; padding: 0 1rem .75rem; }
-        .undelivered-card { break-inside: avoid; cursor: auto; }
-        .undelivered-grid > div { flex: 0 0 50% !important; max-width: 50% !important; }
+        @page { size: A4 landscape; margin: 10mm; }
+
+        body.printing-undelivered > *:not(#undeliveredPrintHost) { display: none !important; }
+        body.printing-undelivered #undeliveredPrintHost { display: block !important; }
+        .print-items-table tfoot td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
 </style>
 
@@ -28,7 +44,7 @@
         <p class="text-muted mb-0 small">
             What is still owed on each customer's Sales Orders (ordered minus delivered), added up across all of
             their Sales Orders. Quantities only. Draft, cancelled and archived Sales Orders are not included.
-            Click a customer to see the details. On hand is the Warehouse stock.
+            Click a customer to open its sheet, which you can print. On hand is the Warehouse stock.
         </p>
     </div>
 
@@ -62,9 +78,6 @@
                         <a href="{{ route('admin.reports.undelivered-items.export', request()->query()) }}" class="btn btn-outline-secondary text-nowrap" title="Download as Excel">
                             <i class="bx bx-download"></i> Excel
                         </a>
-                        <button type="button" class="btn btn-outline-secondary text-nowrap" onclick="window.print()" title="Print">
-                            <i class="bx bx-printer"></i> Print
-                        </button>
                     </div>
                 </div>
             </form>
@@ -102,7 +115,7 @@
                 <div class="col-xl-4 col-md-6">
                     <div class="card undelivered-card" role="button"
                          data-bs-toggle="modal" data-bs-target="#undeliveredModal"
-                         data-customer="{{ $customer['customer_name'] }}" data-details="details-{{ $customer['customer_id'] }}">
+                         data-customer="{{ $customer['customer_name'] }}" data-customer-id="{{ $customer['customer_id'] }}" data-details="details-{{ $customer['customer_id'] }}">
                         <div class="card-header d-flex justify-content-between align-items-center gap-2">
                             <div class="text-truncate">
                                 <div class="fw-semibold text-truncate" title="{{ $customer['customer_name'] }}">{{ $customer['customer_name'] }}</div>
@@ -114,48 +127,30 @@
                             <span class="badge bg-warning fs-6 flex-shrink-0" title="Total undelivered quantity">{{ number_format($customer['total_balance']) }}</span>
                         </div>
 
-                        {{-- Hidden on screen (the modal copies it); shown here when printing. --}}
-                        <div class="undelivered-details" id="details-{{ $customer['customer_id'] }}">
-                            @foreach($customer['items'] as $item)
-                                <div class="item-row py-2">
-                                    <div class="d-flex justify-content-between align-items-start gap-2">
-                                        <div>
-                                            <div class="fw-semibold">{{ $item['generic_label'] }}</div>
-                                            <small class="text-muted">{{ number_format($item['ordered']) }} ordered &middot; {{ number_format($item['delivered']) }} delivered &middot; {{ number_format($item['on_hand']) }} on hand</small>
-                                        </div>
-                                        <span class="badge bg-label-warning flex-shrink-0">{{ number_format($item['balance']) }} left</span>
-                                    </div>
-                                    @foreach($item['orders'] as $order)
-                                        <div class="so-line text-muted mt-1">
-                                            <a href="{{ route('sales-orders.show', $order['so_id']) }}">{{ $order['so_no'] }}</a>
-                                            {{ \Illuminate\Support\Carbon::parse($order['order_date'])->format('M d, Y') }}
-                                            @if($order['product']) &middot; {{ $order['product'] }} @endif
-                                            @if($order['price'] !== null) &middot; ₱{{ number_format($order['price'], 2) }} @endif
-                                            &mdash; {{ number_format($order['delivered']) }}/{{ number_format($order['ordered']) }} delivered,
-                                            <strong class="text-body">{{ number_format($order['balance']) }} left</strong>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @endforeach
-                        </div>
+                        <template id="details-{{ $customer['customer_id'] }}">
+                            @include('admin.reports.partials.undelivered-sheet', ['customer' => $customer, 'period' => $period])
+                        </template>
                     </div>
                 </div>
             @endforeach
         </div>
 
-        <!-- Details of the clicked customer -->
-        <div class="modal fade no-print" id="undeliveredModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <!-- The clicked customer's sheet: what you see here is what gets printed -->
+        <div class="modal fade" id="undeliveredModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
                 <div class="modal-content">
-                    <div class="modal-header">
-                        <div>
-                            <h5 class="modal-title mb-0" id="undeliveredModalTitle"></h5>
-                            <small class="text-muted">Undelivered items, added up across all Sales Orders</small>
-                        </div>
+                    <div class="modal-header py-2">
+                        <h5 class="modal-title mb-0" id="undeliveredModalTitle">Undelivered Items</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body" id="undeliveredModalBody"></div>
-                    <div class="modal-footer">
+                    <div class="modal-footer py-2">
+                        <a href="#" class="btn btn-outline-secondary text-nowrap" id="undeliveredExcelLink" title="Download this customer as Excel">
+                            <i class="bx bx-download"></i> Excel
+                        </a>
+                        <button type="button" class="btn btn-primary text-nowrap" id="undeliveredPrintBtn">
+                            <i class="bx bx-printer"></i> Print
+                        </button>
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
@@ -167,12 +162,33 @@
 
 @section('scripts')
 <script>
-    // Fill the modal with the clicked customer's details (kept hidden inside its card, where print uses them).
     const undeliveredModal = document.getElementById('undeliveredModal');
+    const exportBase = @json(route('admin.reports.undelivered-items.export'));
+    const filterQuery = @json(request()->only(['start_date', 'end_date']));
+
+    // Show the clicked customer's sheet (kept inert in a <template> inside its card).
     undeliveredModal?.addEventListener('show.bs.modal', (event) => {
         const card = event.relatedTarget;
         document.getElementById('undeliveredModalTitle').textContent = card.getAttribute('data-customer');
-        document.getElementById('undeliveredModalBody').innerHTML = document.getElementById(card.getAttribute('data-details')).innerHTML;
+        const template = document.getElementById(card.getAttribute('data-details'));
+        document.getElementById('undeliveredModalBody').replaceChildren(template.content.cloneNode(true));
+
+        const params = new URLSearchParams({ ...filterQuery, customer_id: card.getAttribute('data-customer-id') });
+        document.getElementById('undeliveredExcelLink').href = exportBase + '?' + params.toString();
     });
+
+    // Print only this customer's sheet: copy it to a body-level host, hide everything else, print.
+    document.getElementById('undeliveredPrintBtn')?.addEventListener('click', () => {
+        let host = document.getElementById('undeliveredPrintHost');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'undeliveredPrintHost';
+            document.body.appendChild(host);
+        }
+        host.innerHTML = document.getElementById('undeliveredModalBody').innerHTML;
+        document.body.classList.add('printing-undelivered');
+        window.print();
+    });
+    window.addEventListener('afterprint', () => document.body.classList.remove('printing-undelivered'));
 </script>
 @endsection
