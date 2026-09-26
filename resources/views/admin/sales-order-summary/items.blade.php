@@ -28,8 +28,10 @@
     .so-detail { font-size: .8125rem; }
     .so-detail th, .so-detail td { padding: .5rem .55rem; vertical-align: top; }
     .so-detail th { font-size: .7rem; }
-    .so-detail .col-customer { width: 12%; }
-    .so-detail .col-desc { width: 20%; }
+    .so-detail .col-customer { width: 17%; }
+    .so-detail .col-desc { width: 17%; }
+    /* The customer is already in the page title, so it stays light: normal weight, smaller, wraps in 2-3 lines. */
+    .so-detail .customer-cell { font-weight: 400; font-size: .75rem; line-height: 1.3; }
     .so-detail .nowrap { white-space: nowrap; }
 
     #soSummaryPrintHost { display: none; }
@@ -103,7 +105,7 @@
                         @foreach($data['items'] as $item)
                             @foreach($item['orders'] as $order)
                                 <tr>
-                                    <td class="fw-semibold">{{ $data['customer_name'] }}</td>
+                                    <td class="customer-cell">{{ $data['customer_name'] }}</td>
                                     <td class="nowrap"><a href="{{ route('sales-orders.show', $order['so_id']) }}">{{ $order['po_no'] ?: $order['so_no'] }}</a></td>
                                     <td class="nowrap">{{ \Illuminate\Support\Carbon::parse($order['order_date'])->format('M d, Y') }}</td>
                                     <td>
