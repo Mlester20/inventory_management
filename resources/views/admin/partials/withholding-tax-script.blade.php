@@ -9,7 +9,7 @@
     plus, only for a customer that has a Withholding VAT % (Government):
         VATable line       amount / (1 + VAT rate) x Withholding VAT %
 
-    A Walk-In customer (personal use) is not covered by withholding tax at all: always 0.
+    A Walk-In customer, or an invoice ticked "Personal use", is not covered by withholding tax at all: always 0.
 
     The result is only ever a pre-filled, still-editable value.
 --}}
@@ -25,10 +25,20 @@
          * @param lines    [{amount, classification: 'vatable'|'vatex'|'zero', type: 'goods'|'services'}]
          * @param customer {withholding_vat: number|null} or null when no customer is chosen
          * @param vatRate  the active VAT rate in percent (e.g. 12)
+         * @param personalUse the invoice is ticked "Personal use" (not covered by withholding tax)
          * @return {total, text} or null when there is nothing to suggest
          */
-        compute(lines, customer, vatRate) {
-            if (!customer || lines.length === 0) {
+        compute(lines, customer, vatRate, personalUse) {
+            if (lines.length === 0) {
+                return null;
+            }
+
+            // Ticked by the encoder on any invoice, whoever the customer is (even none).
+            if (personalUse) {
+                return { total: 0, text: 'Personal use: not covered by withholding tax.' };
+            }
+
+            if (!customer) {
                 return null;
             }
 

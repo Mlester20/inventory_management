@@ -226,6 +226,10 @@
                             <label for="dr_less_wt" class="form-label small mb-1">Withholding Tax (₱)</label>
                             <input type="number" name="less_wt" id="dr_less_wt" class="form-control form-control-sm"
                                 step="0.01" min="0" value="{{ old('less_wt') }}" placeholder="Optional">
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" name="personal_use" id="dr_personal_use" value="1">
+                                <label class="form-check-label small" for="dr_personal_use">Personal use (not covered by withholding tax)</label>
+                            </div>
                             <div class="form-text" id="drWtHint"></div>
                             <button type="button" class="btn btn-link btn-sm p-0 d-none" id="drApplyWtBtn">Use suggested amount</button>
                         </div>
@@ -417,7 +421,7 @@
             lines.push({ amount: qty * parseFloat(cb.dataset.price), classification: cb.dataset.class, type: cb.dataset.type });
         });
 
-        const result = WithholdingTax.compute(lines, DR_HAS_CUSTOMER ? DR_CUSTOMER : null, DR_VAT_RATE);
+        const result = WithholdingTax.compute(lines, DR_HAS_CUSTOMER ? DR_CUSTOMER : null, DR_VAT_RATE, document.getElementById('dr_personal_use').checked);
         if (!result) {
             return;
         }
@@ -437,6 +441,11 @@
     if (wtInput) {
         wtInput.addEventListener('input', () => {
             wtDirty = true;
+            refreshWithholdingSuggestion();
+        });
+        // Ticking or unticking Personal use is an explicit choice, so it takes over the field.
+        document.getElementById('dr_personal_use').addEventListener('change', () => {
+            wtDirty = false;
             refreshWithholdingSuggestion();
         });
         document.getElementById('drApplyWtBtn').addEventListener('click', () => {

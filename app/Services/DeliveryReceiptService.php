@@ -242,9 +242,9 @@ class DeliveryReceiptService
      * same resolution Sales Order already uses — a Delivery Receipt line
      * carries no price of its own.
      */
-    public function createInvoiceFromLines(DeliveryReceipt $deliveryReceipt, array $deliveryReceiptItemIds, ?int $userId = null, array $qtyOverrides = [], ?string $poNo = null, float $lessWt = 0): Invoice
+    public function createInvoiceFromLines(DeliveryReceipt $deliveryReceipt, array $deliveryReceiptItemIds, ?int $userId = null, array $qtyOverrides = [], ?string $poNo = null, float $lessWt = 0, bool $personalUse = false): Invoice
     {
-        return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId, $qtyOverrides, $poNo, $lessWt) {
+        return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId, $qtyOverrides, $poNo, $lessWt, $personalUse) {
             $customer = $deliveryReceipt->customer;
             $activeVatRate = Taxes::activeRate();
 
@@ -347,6 +347,13 @@ class DeliveryReceiptService
                 ]);
             }
 
+            // Personal-use medicine is not covered by withholding tax (Sir).
+            if ($personalUse && $lessWt > 0) {
+                throw ValidationException::withMessages([
+                    'less_wt' => 'A personal-use invoice has no withholding tax. Set it to 0, or untick Personal use.',
+                ]);
+            }
+
             $invoice = Invoice::create([
                 'customer_name' => $customer->customer_name,
                 'customer_id' => $customer->id,
@@ -362,6 +369,7 @@ class DeliveryReceiptService
                 'amount_net' => round($totalSales, 2),
                 'less_sc' => 0,
                 'less_wt' => round($lessWt, 2),
+                'is_personal_use' => $personalUse,
                 'amount_due' => round($totalSales - $lessWt, 2),
                 'add_vat' => 0,
             ]);

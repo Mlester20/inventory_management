@@ -19,7 +19,7 @@ class InvoiceDraftService
      * Save (or re-save) a draft. Lines without a picked item are skipped —
      * a product is the only thing that gives a line any meaning.
      *
-     * @param array $data ['customer_name', 'customer_id', 'po_no', 'osca_no', 'less_wt', 'prepared_by',
+     * @param array $data ['customer_name', 'customer_id', 'po_no', 'osca_no', 'less_wt', 'personal_use', 'prepared_by',
      *                     'approved_by', 'items' => [['item_id','desc','unit','batch_no','exp','qty','price','dis','tax_override'], ...]]
      */
     public function saveDraft(array $data, ?int $userId = null, ?Invoice $existing = null): Invoice
@@ -49,6 +49,7 @@ class InvoiceDraftService
                 'po_no' => $data['po_no'] ?? null,
                 'osca_no' => $data['osca_no'] ?? null,
                 'less_wt' => $data['less_wt'] ?? 0,
+                'is_personal_use' => (bool) ($data['personal_use'] ?? false),
                 'prepared_by' => $data['prepared_by'] ?? $userId,
                 'approved_by' => $data['approved_by'] ?? null,
                 'is_draft' => true,

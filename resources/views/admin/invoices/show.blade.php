@@ -8,6 +8,9 @@
             <i class="bx bx-arrow-back"></i> Back to Invoices
         </a>
         <div class="d-flex gap-2">
+            @if($invoice->is_personal_use)
+                <span class="badge bg-label-info align-self-center">Personal use: no withholding tax</span>
+            @endif
             <button type="button" class="btn btn-primary" onclick="window.print()">
                 <i class="bx bx-printer"></i> Print
             </button>

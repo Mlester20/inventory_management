@@ -30,6 +30,7 @@ class Invoice extends Model
         'amount_net',
         'less_sc',
         'less_wt',
+        'is_personal_use',
         'amount_due',
         'amount_paid',
         'add_vat',
@@ -39,6 +40,7 @@ class Invoice extends Model
 
     protected $casts = [
         'is_draft' => 'boolean',
+        'is_personal_use' => 'boolean',
         'vat_sales' => 'decimal:2',
         'vatex_sales' => 'decimal:2',
         'zero_sales' => 'decimal:2',

@@ -186,6 +186,7 @@ class InvoiceController extends Controller
             'prepared_by' => 'nullable|exists:users,id',
             'approved_by' => 'nullable|string|max:255',
             'less_wt' => 'nullable|numeric|min:0',
+            'personal_use' => 'nullable|boolean',
             'items' => 'nullable|array',
             'items.*.item_id' => 'nullable|exists:products,id',
             'items.*.qty' => 'nullable|integer|min:1',
@@ -213,6 +214,7 @@ class InvoiceController extends Controller
             'prepared_by' => 'nullable|exists:users,id',
             'approved_by' => 'nullable|string|max:255',
             'less_wt' => 'nullable|numeric|min:0',
+            'personal_use' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|exists:products,id',
             'items.*.qty' => 'required|integer|min:1',
@@ -333,6 +335,15 @@ class InvoiceController extends Controller
                 }
 
                 $lessWt = (float) ($validated['less_wt'] ?? 0);
+                $isPersonalUse = (bool) ($validated['personal_use'] ?? false);
+
+                // Personal-use medicine is not covered by withholding tax (Sir).
+                if ($isPersonalUse && $lessWt > 0) {
+                    throw ValidationException::withMessages([
+                        'less_wt' => 'A personal-use invoice has no withholding tax. Set it to 0, or untick Personal use.',
+                    ]);
+                }
+
                 $amountDue = $amountNet - $lessSc - $lessWt;
 
                 // A draft already holds its number from when it was first saved.
@@ -356,6 +367,7 @@ class InvoiceController extends Controller
                     'amount_net' => round($amountNet, 2),
                     'less_sc' => round($lessSc, 2),
                     'less_wt' => round($lessWt, 2),
+                    'is_personal_use' => $isPersonalUse,
                     'amount_due' => round($amountDue, 2),
                     'add_vat' => 0,
                 ];

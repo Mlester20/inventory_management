@@ -104,6 +104,11 @@
                         @error('less_wt')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="personal_use" id="personal_use" value="1"
+                                {{ old('personal_use', $editingInvoice?->is_personal_use) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="personal_use">Personal use (not covered by withholding tax)</label>
+                        </div>
                         <div class="form-text" id="wtHint"></div>
                         <button type="button" class="btn btn-link btn-sm p-0 d-none" id="applyWtBtn">Use suggested amount</button>
                     </div>
@@ -522,7 +527,7 @@
         applyBtn.classList.add('d-none');
 
         // Nothing to suggest without a chosen customer or without any item lines.
-        const result = WithholdingTax.compute(wtLines, currentCustomer(), ACTIVE_VAT_RATE);
+        const result = WithholdingTax.compute(wtLines, currentCustomer(), ACTIVE_VAT_RATE, document.getElementById('personal_use').checked);
         if (!result) {
             return;
         }
@@ -604,6 +609,12 @@
     document.getElementById('osca_no').addEventListener('input', computeTotals);
     document.getElementById('less_wt').addEventListener('input', () => {
         wtDirty = true;
+        computeTotals();
+    });
+    // Ticking or unticking Personal use is an explicit choice, so it takes over the field: the
+    // suggestion (0 when ticked, the normal one when not) is filled in again.
+    document.getElementById('personal_use').addEventListener('change', () => {
+        wtDirty = false;
         computeTotals();
     });
     document.getElementById('applyWtBtn').addEventListener('click', () => {
