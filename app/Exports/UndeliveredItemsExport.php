@@ -41,7 +41,7 @@ class UndeliveredItemsExport implements FromArray, WithColumnFormatting, WithCol
     /** Wide enough to read on opening, so nothing shows cut off (customer names, dates, descriptions). */
     public function columnWidths(): array
     {
-        return ['A' => 38, 'B' => 18, 'C' => 13, 'D' => 34, 'E' => 46, 'F' => 14, 'G' => 14, 'H' => 15, 'I' => 12, 'J' => 14];
+        return ['A' => 44, 'B' => 18, 'C' => 13, 'D' => 34, 'E' => 46, 'F' => 14, 'G' => 14, 'H' => 15, 'I' => 12, 'J' => 14];
     }
 
     public function columnFormats(): array

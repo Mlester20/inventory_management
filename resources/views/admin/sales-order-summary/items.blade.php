@@ -24,6 +24,14 @@
     .undelivered-sheet .print-sig-value { font-size: 0.66rem; }
     .undelivered-sheet .print-items-table tfoot td { background-color: #f5f5f5; }
 
+    /* The detail table is ten columns wide next to the sidebar: keep it tight so nothing needs side-scrolling. */
+    .so-detail { font-size: .8125rem; }
+    .so-detail th, .so-detail td { padding: .5rem .55rem; vertical-align: top; }
+    .so-detail th { font-size: .7rem; }
+    .so-detail .col-customer { width: 12%; }
+    .so-detail .col-desc { width: 20%; }
+    .so-detail .nowrap { white-space: nowrap; }
+
     #soSummaryPrintHost { display: none; }
 
     @media print {
@@ -75,14 +83,14 @@
 
     <div class="card">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0 so-detail">
                 <thead>
                     <tr>
-                        <th>Customer</th>
+                        <th class="col-customer">Customer</th>
                         <th>PO Ref #</th>
                         <th>PO Date</th>
                         <th>Generic Item</th>
-                        <th>Item Description</th>
+                        <th class="col-desc">Item Description</th>
                         <th class="text-end">Price</th>
                         <th class="text-end">Ordered</th>
                         <th class="text-end">Delivered</th>
@@ -96,23 +104,23 @@
                             @foreach($item['orders'] as $order)
                                 <tr>
                                     <td class="fw-semibold">{{ $data['customer_name'] }}</td>
-                                    <td><a href="{{ route('sales-orders.show', $order['so_id']) }}">{{ $order['po_no'] ?: $order['so_no'] }}</a></td>
-                                    <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($order['order_date'])->format('M d, Y') }}</td>
+                                    <td class="nowrap"><a href="{{ route('sales-orders.show', $order['so_id']) }}">{{ $order['po_no'] ?: $order['so_no'] }}</a></td>
+                                    <td class="nowrap">{{ \Illuminate\Support\Carbon::parse($order['order_date'])->format('M d, Y') }}</td>
                                     <td>
                                         <a href="{{ route('so-summary.deliveries', ['customer_id' => $customer->id, 'generic_name_id' => $item['generic_name_id']]) }}" title="All Delivery Receipts of this item">{{ $item['generic_label'] }}</a>
                                     </td>
                                     <td>{{ $order['product'] }}</td>
-                                    <td class="text-end">{{ $order['price'] !== null ? number_format($order['price'], 2) : '' }}</td>
-                                    <td class="text-end">{{ number_format($order['ordered']) }}</td>
-                                    <td class="text-end">
+                                    <td class="text-end nowrap">{{ $order['price'] !== null ? number_format($order['price'], 2) : '' }}</td>
+                                    <td class="text-end nowrap">{{ number_format($order['ordered']) }}</td>
+                                    <td class="text-end nowrap">
                                         @if($order['delivered'] > 0)
                                             <a href="{{ route('so-summary.deliveries', ['sales_order_id' => $order['so_id'], 'generic_name_id' => $item['generic_name_id']]) }}" title="Delivery Receipts of this P.O.">{{ number_format($order['delivered']) }}</a>
                                         @else
                                             0
                                         @endif
                                     </td>
-                                    <td class="text-end fw-bold">{{ number_format($order['balance']) }}</td>
-                                    <td class="text-end">{{ number_format($order['on_hand']) }}</td>
+                                    <td class="text-end fw-bold nowrap">{{ number_format($order['balance']) }}</td>
+                                    <td class="text-end nowrap">{{ number_format($order['on_hand']) }}</td>
                                 </tr>
                             @endforeach
                         @endforeach
@@ -156,8 +164,18 @@
             document.body.appendChild(host);
         }
         host.replaceChildren(document.getElementById('soSummarySheet').content.cloneNode(true));
-        document.body.classList.add('printing-so-summary');
-        window.print();
+
+        // The sheet comes out of a <template>, so its letterhead logo has not loaded yet: wait for it,
+        // otherwise the print preview opens without the logo.
+        const pending = [...host.querySelectorAll('img')]
+            .filter(img => ! img.complete)
+            .map(img => new Promise(resolve => { img.onload = img.onerror = resolve; }));
+
+        // ...but never wait long: a logo that will not load must not block printing.
+        Promise.race([Promise.all(pending), new Promise(resolve => setTimeout(resolve, 1500))]).then(() => {
+            document.body.classList.add('printing-so-summary');
+            window.print();
+        });
     });
     window.addEventListener('afterprint', () => document.body.classList.remove('printing-so-summary'));
 </script>
