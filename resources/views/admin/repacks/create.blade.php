@@ -18,7 +18,9 @@
 
             <p class="text-muted small">
                 Converts stock of one product into stock of another at the same location (e.g. breaking a BX
-                into loose PC). The destination lot carries the source lot's own Batch No/Expiry by default —
+                into loose PC). Search the Generic Item once per line — it fills in the FROM (what's being
+                broken down) and TO (what it becomes) sides below, since a repack always stays within the
+                same medicine. The destination lot carries the source lot's own Batch No/Expiry by default —
                 override them only if this repack should land in a different lot. Once a destination item is
                 picked, its Price/Cost is suggested as the source's divided evenly across the pieces produced
                 (e.g. ₱100/BX into 100 tabs = ₱1/tab) — editable before posting, and only applied to the item
@@ -123,86 +125,84 @@
                 </button>
             </div>
 
-            <div class="border rounded p-2 mb-2 bg-light-subtle">
-                <div class="fw-semibold small text-muted mb-2">FROM (Source — deducted)</div>
-                <div class="row g-2">
-                    <div class="col-md-12">
-                        <label class="form-label small mb-1">Generic Description</label>
-                        <input type="text" class="form-control form-control-sm source-generic-input" list="source-generic-list-${index}"
-                            placeholder="Search generic name..." autocomplete="off" required>
-                        <datalist id="source-generic-list-${index}">${genericDatalistOptions()}</datalist>
-                    </div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col-md-12">
-                        <label class="form-label small mb-1">Lot / Batch</label>
-                        <div class="source-item-select-cell"><span class="text-muted small">Select a generic first</span></div>
-                    </div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col-6 col-md-4">
-                        <label class="form-label small mb-1">Available</label>
-                        <div class="source-available-cell"></div>
-                    </div>
-                    <div class="col-6 col-md-4">
-                        <label class="form-label small mb-1">Qty to Take</label>
-                        <div class="source-qty-cell"></div>
-                    </div>
-                </div>
+            <div class="mb-2">
+                <label class="form-label small mb-1">Generic Description</label>
+                <input type="text" class="form-control form-control-sm generic-input" list="generic-list-${index}"
+                    placeholder="Search generic name..." autocomplete="off" required>
+                <datalist id="generic-list-${index}">${genericDatalistOptions()}</datalist>
+                <div class="form-text">Picked once — fills in both sides below, since a repack is always within the same medicine.</div>
             </div>
 
-            <div class="border rounded p-2 bg-light-subtle">
-                <div class="fw-semibold small text-muted mb-2">TO (Destination — produced)</div>
-                <div class="row g-2">
-                    <div class="col-md-12">
-                        <label class="form-label small mb-1">Generic Description</label>
-                        <input type="text" class="form-control form-control-sm destination-generic-input" list="destination-generic-list-${index}"
-                            placeholder="Search generic name..." autocomplete="off" required>
-                        <datalist id="destination-generic-list-${index}">${genericDatalistOptions()}</datalist>
-                    </div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col-md-6">
-                        <label class="form-label small mb-1">Item</label>
-                        <div class="destination-item-select-cell"><span class="text-muted small">Select a generic first</span></div>
-                        <input type="hidden" name="lines[${index}][destination_product_id]" class="destination-product-id-input">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small mb-1">Qty Produced</label>
-                        <input type="number" class="form-control form-control-sm destination-qty-input" name="lines[${index}][destination_qty]" min="1" value="1" required>
-                    </div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col-md-6">
-                        <label class="form-label small mb-1">Destination Batch No <span class="text-muted">(optional — defaults to the source lot's own)</span></label>
-                        <input type="text" class="form-control form-control-sm" name="lines[${index}][destination_batch_no]">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small mb-1">Destination Expiry <span class="text-muted">(optional — defaults to the source lot's own)</span></label>
-                        <input type="date" class="form-control form-control-sm" name="lines[${index}][destination_expiration_date]">
-                    </div>
-                </div>
-                <div class="border rounded p-2 mt-2 bg-white price-suggestion-box" style="display:none;">
-                    <div class="small text-muted mb-2">
-                        Suggested Price/Cost — the source's, divided evenly across the pieces this line produces
-                        (e.g. ₱100/BX into 100 tabs = ₱1/tab), per Sir.
-                    </div>
+            <div class="row g-2">
+                <div class="col-md-6">
+                <div class="border rounded p-2 bg-light-subtle h-100">
+                    <div class="fw-semibold small text-muted mb-2">FROM (Source — deducted)</div>
                     <div class="row g-2">
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small mb-1">New Price</label>
-                            <input type="number" step="0.01" min="0" class="form-control form-control-sm destination-price-input" name="lines[${index}][destination_price]">
+                        <div class="col-md-12">
+                            <label class="form-label small mb-1">Lot / Batch</label>
+                            <div class="source-item-select-cell"><span class="text-muted small">Search a generic first</span></div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small mb-1">New Cost</label>
-                            <input type="number" step="0.01" min="0" class="form-control form-control-sm destination-cost-input" name="lines[${index}][destination_cost]">
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-6 col-md-6">
+                            <label class="form-label small mb-1">Available</label>
+                            <div class="source-available-cell"></div>
                         </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input apply-price-input" name="lines[${index}][apply_price]" value="1" checked>
-                                <label class="form-check-label small">Update this item's Price/Cost when this Repack is posted <span class="text-muted current-price-display"></span></label>
+                        <div class="col-6 col-md-6">
+                            <label class="form-label small mb-1">Qty to Take</label>
+                            <div class="source-qty-cell"></div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <div class="col-md-6">
+                <div class="border rounded p-2 bg-light-subtle h-100">
+                    <div class="fw-semibold small text-muted mb-2">TO (Destination — produced)</div>
+                    <div class="row g-2">
+                        <div class="col-md-8">
+                            <label class="form-label small mb-1">Item</label>
+                            <div class="destination-item-select-cell"><span class="text-muted small">Search a generic first</span></div>
+                            <input type="hidden" name="lines[${index}][destination_product_id]" class="destination-product-id-input">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">Qty Produced</label>
+                            <input type="number" class="form-control form-control-sm destination-qty-input" name="lines[${index}][destination_qty]" min="1" value="1" required>
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Batch No <span class="text-muted">(optional — defaults to the source lot's own)</span></label>
+                            <input type="text" class="form-control form-control-sm" name="lines[${index}][destination_batch_no]">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Expiry <span class="text-muted">(optional — defaults to the source lot's own)</span></label>
+                            <input type="date" class="form-control form-control-sm" name="lines[${index}][destination_expiration_date]">
+                        </div>
+                    </div>
+                    <div class="border rounded p-2 mt-2 bg-white price-suggestion-box" style="display:none;">
+                        <div class="small text-muted mb-2">
+                            Suggested Price/Cost — the source's, divided evenly across the pieces this line produces
+                            (e.g. ₱100/BX into 100 tabs = ₱1/tab), per Sir.
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6 col-md-6">
+                                <label class="form-label small mb-1">New Price</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm destination-price-input" name="lines[${index}][destination_price]">
+                            </div>
+                            <div class="col-6 col-md-6">
+                                <label class="form-label small mb-1">New Cost</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm destination-cost-input" name="lines[${index}][destination_cost]">
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input apply-price-input" name="lines[${index}][apply_price]" value="1" checked>
+                                    <label class="form-check-label small">Update this item's Price/Cost when this Repack is posted <span class="text-muted current-price-display"></span></label>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         `;
@@ -214,8 +214,7 @@
             renumberRows();
         });
 
-        bindSourcePicker(row, index);
-        bindDestinationPicker(row, index);
+        bindGenericPicker(row, index);
 
         row.querySelector('.destination-qty-input').addEventListener('input', () => recomputeSuggestion(row));
         row.querySelector('.destination-price-input').addEventListener('input', function () { this.dataset.priceDirty = '1'; });
@@ -253,11 +252,46 @@
             ? `(current Price: ₱${parseFloat(currentPrice).toFixed(2)})` : '';
     }
 
-    function bindSourcePicker(row, index) {
-        const genericInput = row.querySelector('.source-generic-input');
-        const itemCell = row.querySelector('.source-item-select-cell');
+    // One generic search fills in BOTH sides — a repack is always within the same medicine, just a
+    // different packaging (a BX and its PC are products under the same Generic Item). FROM only
+    // lists lots that actually have stock at the chosen Location; TO lists every product under the
+    // generic (repacking creates NEW stock there, so no stock check), minus whichever lot is
+    // currently picked as the source, since the destination must be a different product.
+    function bindGenericPicker(row, index) {
+        const genericInput = row.querySelector('.generic-input');
+        const sourceItemCell = row.querySelector('.source-item-select-cell');
         const availableCell = row.querySelector('.source-available-cell');
         const qtyCell = row.querySelector('.source-qty-cell');
+        const destItemCell = row.querySelector('.destination-item-select-cell');
+        const productIdInput = row.querySelector('.destination-product-id-input');
+
+        function renderDestinationOptions(generic, excludeProductId) {
+            productIdInput.value = '';
+            row.querySelector('.price-suggestion-box').style.display = 'none';
+            const products = (generic.products || []).filter(p => String(p.id) !== String(excludeProductId || ''));
+            if (products.length === 0) {
+                destItemCell.innerHTML = '<span class="text-muted small">No other item under this generic yet</span>';
+                return;
+            }
+            let optionsHtml = '<option value="">-- Select Item --</option>';
+            products.forEach(p => {
+                optionsHtml += `<option value="${p.id}" data-price="${p.unit_price}" data-cost="${p.unit_cost}">${p.label}</option>`;
+            });
+            destItemCell.innerHTML = `<select class="form-select form-select-sm destination-item-select">${optionsHtml}</select>`;
+            destItemCell.querySelector('.destination-item-select').addEventListener('change', function () {
+                productIdInput.value = this.value;
+                const selected = this.options[this.selectedIndex];
+                row.dataset.destUnitPrice = selected?.getAttribute('data-price') ?? '';
+                row.dataset.destUnitCost = selected?.getAttribute('data-cost') ?? '';
+                // A newly picked item gets a fresh suggestion rather than one left over from
+                // whatever was typed for the previous item.
+                const priceInput = row.querySelector('.destination-price-input');
+                const costInput = row.querySelector('.destination-cost-input');
+                delete priceInput.dataset.priceDirty;
+                delete costInput.dataset.priceDirty;
+                recomputeSuggestion(row);
+            });
+        }
 
         genericInput.addEventListener('input', async function () {
             this.title = this.value;
@@ -265,24 +299,29 @@
             availableCell.innerHTML = '';
             qtyCell.innerHTML = '';
             if (!generic) {
-                itemCell.innerHTML = '<span class="text-muted small">Select a generic first</span>';
+                sourceItemCell.innerHTML = '<span class="text-muted small">Search and pick a generic above</span>';
+                destItemCell.innerHTML = '<span class="text-muted small">Search and pick a generic above</span>';
+                productIdInput.value = '';
                 return;
             }
-            itemCell.innerHTML = '<span class="text-muted small">Checking availability…</span>';
+
+            renderDestinationOptions(generic, null);
+
+            sourceItemCell.innerHTML = '<span class="text-muted small">Checking availability…</span>';
             const items = await fetchAvailableItems(generic.id);
             if (items.length === 0) {
-                itemCell.innerHTML = '<div class="alert alert-warning py-1 px-2 mb-0 small"><i class="bx bx-error"></i> No stock available at this location.</div>';
+                sourceItemCell.innerHTML = '<div class="alert alert-warning py-1 px-2 mb-0 small"><i class="bx bx-error"></i> No stock available at this location.</div>';
                 return;
             }
             let optionsHtml = '<option value="">-- Select Lot --</option>';
             items.forEach(item => {
-                optionsHtml += `<option value="${item.id}" data-max="${item.quantity}" data-price="${item.unit_price}" data-cost="${item.unit_cost}">${item.brand_name || item.item_name} — Batch ${item.batch_no || 'N/A'} (Available: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})</option>`;
+                optionsHtml += `<option value="${item.id}" data-max="${item.quantity}" data-price="${item.unit_price}" data-cost="${item.unit_cost}" data-product-id="${item.product_id}">${item.brand_name || item.item_name} — Batch ${item.batch_no || 'N/A'} (Available: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})</option>`;
             });
-            itemCell.innerHTML = `<select class="form-select form-select-sm source-item-select" name="lines[${index}][source_batch_id]" required>${optionsHtml}</select>`;
+            sourceItemCell.innerHTML = `<select class="form-select form-select-sm source-item-select" name="lines[${index}][source_batch_id]" required>${optionsHtml}</select>`;
             availableCell.innerHTML = '<span class="source-available-display">—</span>';
             qtyCell.innerHTML = `<input type="number" class="form-control form-control-sm source-qty-input" name="lines[${index}][source_qty]" min="1" value="1" required>`;
 
-            const itemSelect = itemCell.querySelector('.source-item-select');
+            const itemSelect = sourceItemCell.querySelector('.source-item-select');
             const qtyInput = qtyCell.querySelector('.source-qty-input');
             const availableDisplay = availableCell.querySelector('.source-available-display');
 
@@ -296,43 +335,12 @@
                 }
                 row.dataset.sourceUnitPrice = selected?.getAttribute('data-price') ?? '';
                 row.dataset.sourceUnitCost = selected?.getAttribute('data-cost') ?? '';
+                // The picked lot's own product can't also be the destination — re-render TO
+                // without it, so the destination select never even offers the same item.
+                renderDestinationOptions(generic, selected?.getAttribute('data-product-id'));
                 recomputeSuggestion(row);
             });
             qtyInput.addEventListener('input', () => recomputeSuggestion(row));
-        });
-    }
-
-    function bindDestinationPicker(row, index) {
-        const genericInput = row.querySelector('.destination-generic-input');
-        const itemCell = row.querySelector('.destination-item-select-cell');
-        const productIdInput = row.querySelector('.destination-product-id-input');
-
-        genericInput.addEventListener('input', function () {
-            this.title = this.value;
-            const generic = findGenericByLabel(this.value);
-            productIdInput.value = '';
-            if (!generic || !generic.products || generic.products.length === 0) {
-                itemCell.innerHTML = '<span class="text-muted small">No item under this generic yet</span>';
-                return;
-            }
-            let optionsHtml = '<option value="">-- Select Item --</option>';
-            generic.products.forEach(p => {
-                optionsHtml += `<option value="${p.id}" data-price="${p.unit_price}" data-cost="${p.unit_cost}">${p.label}</option>`;
-            });
-            itemCell.innerHTML = `<select class="form-select form-select-sm destination-item-select">${optionsHtml}</select>`;
-            itemCell.querySelector('.destination-item-select').addEventListener('change', function () {
-                productIdInput.value = this.value;
-                const selected = this.options[this.selectedIndex];
-                row.dataset.destUnitPrice = selected?.getAttribute('data-price') ?? '';
-                row.dataset.destUnitCost = selected?.getAttribute('data-cost') ?? '';
-                // A newly picked item gets a fresh suggestion rather than one left over from
-                // whatever was typed for the previous item.
-                const priceInput = row.querySelector('.destination-price-input');
-                const costInput = row.querySelector('.destination-cost-input');
-                delete priceInput.dataset.priceDirty;
-                delete costInput.dataset.priceDirty;
-                recomputeSuggestion(row);
-            });
         });
     }
 
@@ -342,7 +350,7 @@
     // every already-picked source row, since a batch available at Warehouse
     // may not exist at all at POS.
     document.getElementById('location_id').addEventListener('change', function () {
-        document.querySelectorAll('#lineItemsBody .source-generic-input').forEach(input => {
+        document.querySelectorAll('#lineItemsBody .generic-input').forEach(input => {
             if (input.value) {
                 input.dispatchEvent(new Event('input'));
             }
