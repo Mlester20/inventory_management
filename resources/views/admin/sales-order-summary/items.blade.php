@@ -54,7 +54,7 @@
                 {{ $isUndelivered
                     ? 'What this customer\'s open Sales Orders still owe, item by item.'
                     : 'Everything this customer ordered on Sales Orders that are not cancelled or archived, item by item.' }}
-                Click an item to trace all of its Delivery Receipts; click a Delivered number to see the Delivery Receipts of that P.O. On hand is the Warehouse stock.
+                Click an item to trace all of its Delivery Receipts; click a Delivered number to see the Delivery Receipts of that P.O. On hand is split Warehouse / POS.
             </p>
         </div>
         <div class="d-flex flex-wrap gap-2">
@@ -97,7 +97,8 @@
                         <th class="text-end">Ordered</th>
                         <th class="text-end">Delivered</th>
                         <th class="text-end">Balance</th>
-                        <th class="text-end">On Hand</th>
+                        <th class="text-end">On Hand (Warehouse)</th>
+                        <th class="text-end">On Hand (POS)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -122,12 +123,13 @@
                                         @endif
                                     </td>
                                     <td class="text-end fw-bold nowrap">{{ number_format($order['balance']) }}</td>
-                                    <td class="text-end nowrap">{{ number_format($order['on_hand']) }}</td>
+                                    <td class="text-end nowrap">{{ number_format($order['on_hand']['warehouse']) }}</td>
+                                    <td class="text-end nowrap">{{ number_format($order['on_hand']['pos']) }}</td>
                                 </tr>
                             @endforeach
                         @endforeach
                     @else
-                        <tr><td colspan="10" class="text-center text-muted py-4">
+                        <tr><td colspan="11" class="text-center text-muted py-4">
                             {{ $isUndelivered ? 'Nothing is waiting to be delivered' : 'No ordered items' }}{{ $search !== '' ? ' for this search' : '' }}.
                         </td></tr>
                     @endif
@@ -139,6 +141,7 @@
                             <td class="text-end">{{ number_format($data['total_ordered']) }}</td>
                             <td class="text-end">{{ number_format($data['total_delivered']) }}</td>
                             <td class="text-end">{{ number_format($data['total_balance']) }}</td>
+                            <td></td>
                             <td></td>
                         </tr>
                     </tfoot>

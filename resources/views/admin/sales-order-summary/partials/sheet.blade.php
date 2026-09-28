@@ -1,9 +1,9 @@
 {{--
     One customer's Sales Order Summary sheet: the same rows and columns as the Excel download
     (PO REF #, PO DATE, GENERIC ITEM, ITEM DESCRIPTION, PRICE, QTY ORDERED, QTY DELIVERED, BALANCE,
-    QTY ON-HAND — the customer sits in the letterhead instead of repeating on every row), laid out
-    like the other documents' prints (shared letterhead, bordered items table, signature box).
-    It is what the modal shows and what the Print button prints.
+    QTY ON-HAND WAREHOUSE, QTY ON-HAND POS — the customer sits in the letterhead instead of repeating
+    on every row), laid out like the other documents' prints (shared letterhead, bordered items table,
+    signature box). It is what the modal shows and what the Print button prints.
 
     Params: $customer (one entry of UndeliveredItemsReportService::build), $period (string)
 --}}
@@ -30,7 +30,8 @@
                     <th class="text-end">QTY ORDERED</th>
                     <th class="text-end">QTY DELIVERED</th>
                     <th class="text-end">BALANCE</th>
-                    <th class="text-end">QTY ON-HAND</th>
+                    <th class="text-end">QTY ON-HAND<br>(WAREHOUSE)</th>
+                    <th class="text-end">QTY ON-HAND<br>(POS)</th>
                 </tr>
             </thead>
             <tbody>
@@ -48,7 +49,8 @@
                             <td class="text-end">{{ number_format($order['ordered']) }}</td>
                             <td class="text-end">{{ number_format($order['delivered']) }}</td>
                             <td class="text-end fw-bold">{{ number_format($order['balance']) }}</td>
-                            <td class="text-end">{{ number_format($order['on_hand']) }}</td>
+                            <td class="text-end">{{ number_format($order['on_hand']['warehouse']) }}</td>
+                            <td class="text-end">{{ number_format($order['on_hand']['pos']) }}</td>
                         </tr>
                     @endforeach
                 @endforeach
@@ -63,6 +65,7 @@
                     <td class="text-end">{{ number_format($orderedTotal) }}</td>
                     <td class="text-end">{{ number_format($deliveredTotal) }}</td>
                     <td class="text-end">{{ number_format($customer['total_balance']) }}</td>
+                    <td></td>
                     <td></td>
                 </tr>
             </tfoot>

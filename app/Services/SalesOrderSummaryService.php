@@ -116,7 +116,7 @@ class SalesOrderSummaryService
      * The item lines behind the Undelivered / Qty Ordered links, as customer -> items -> Sales Order lines.
      * Undelivered: lines of Open Sales Orders that still have a balance. Ordered: every line of the
      * Sales Orders that are neither cancelled nor archived. Each line carries the SO price and the
-     * Warehouse stock (where deliveries come from), as on Sir's sheet.
+     * on-hand stock split by location — Warehouse (where deliveries come from) and POS — per Sir.
      *
      * @return Collection<int,array>
      */
@@ -170,10 +170,11 @@ class SalesOrderSummaryService
                 'sales_order_items.delivered_qty',
             ]);
 
-        [$onHandByProduct, $onHandByGeneric] = $this->warehouseOnHand();
+        [$onHandByProduct, $onHandByGeneric] = $this->onHand();
+        $noStock = ['warehouse' => 0, 'pos' => 0];
 
-        return $lines->groupBy('customer_id')->map(function (Collection $customerLines) use ($onHandByProduct, $onHandByGeneric) {
-            $items = $customerLines->groupBy('generic_name_id')->map(function (Collection $itemLines) use ($onHandByProduct, $onHandByGeneric) {
+        return $lines->groupBy('customer_id')->map(function (Collection $customerLines) use ($onHandByProduct, $onHandByGeneric, $noStock) {
+            $items = $customerLines->groupBy('generic_name_id')->map(function (Collection $itemLines) use ($onHandByProduct, $onHandByGeneric, $noStock) {
                 $first = $itemLines->first();
                 $ordered = (int) $itemLines->sum('qty');
                 $delivered = (int) $itemLines->sum('delivered_qty');
@@ -184,7 +185,7 @@ class SalesOrderSummaryService
                     'ordered' => $ordered,
                     'delivered' => $delivered,
                     'balance' => $ordered - $delivered,
-                    'on_hand' => (int) ($onHandByGeneric[$first->generic_name_id] ?? 0),
+                    'on_hand' => $onHandByGeneric[$first->generic_name_id] ?? $noStock,
                     'orders' => $itemLines->map(fn ($line) => [
                         'so_id' => $line->so_id,
                         'so_no' => $line->so_no,
@@ -195,9 +196,10 @@ class SalesOrderSummaryService
                         'price' => $line->price !== null ? (float) $line->price : null,
                         // A line that names a product is checked against that product's stock;
                         // one that only names the generic item, against all of its products.
-                        'on_hand' => (int) ($line->product_id
-                            ? ($onHandByProduct[$line->product_id] ?? 0)
-                            : ($onHandByGeneric[$line->generic_name_id] ?? 0)),
+                        // Warehouse + POS, per Sir, so it's clear how much is sellable versus in bulk.
+                        'on_hand' => $line->product_id
+                            ? ($onHandByProduct[$line->product_id] ?? $noStock)
+                            : ($onHandByGeneric[$line->generic_name_id] ?? $noStock),
                         'ordered' => (int) $line->qty,
                         'delivered' => (int) $line->delivered_qty,
                         'balance' => (int) $line->qty - (int) $line->delivered_qty,
@@ -223,24 +225,27 @@ class SalesOrderSummaryService
 
     /**
      * Delivery Receipt lines for tracing: what was delivered against a Sales Order line, a Sales
-     * Order, or — across all of a customer's POs — one item. Drafts and cancelled Delivery Receipts
-     * did not deliver anything, so they are left out.
+     * Order, or — across all of a customer's POs — one item. Per Sir, this also picks up Delivery
+     * Receipts that never had a Sales Order behind them (Advance Order / Walk-In DRs) — those have
+     * no `sales_order_item_id`, so the Sales Order side is left-joined and the customer and generic
+     * item come from the DR/product side instead. Drafts and cancelled Delivery Receipts did not
+     * deliver anything, so they are left out.
      */
     public function deliveries(?int $customerId = null, ?int $salesOrderId = null, ?int $genericNameId = null, ?string $search = null): Collection
     {
         return DeliveryReceiptItem::query()
             ->join('delivery_receipts', 'delivery_receipts.id', '=', 'delivery_receipt_items.delivery_receipt_id')
-            ->join('sales_order_items', 'sales_order_items.id', '=', 'delivery_receipt_items.sales_order_item_id')
-            ->join('sales_orders', 'sales_orders.id', '=', 'sales_order_items.sales_order_id')
-            ->join('customers', 'customers.id', '=', 'sales_orders.customer_id')
-            ->leftJoin('generic_names', 'generic_names.id', '=', 'sales_order_items.generic_name_id')
+            ->join('customers', 'customers.id', '=', 'delivery_receipts.customer_id')
+            ->leftJoin('sales_order_items', 'sales_order_items.id', '=', 'delivery_receipt_items.sales_order_item_id')
+            ->leftJoin('sales_orders', 'sales_orders.id', '=', 'sales_order_items.sales_order_id')
             ->leftJoin('product_batches', 'product_batches.id', '=', 'delivery_receipt_items.product_batch_id')
             ->leftJoin('products', 'products.id', '=', 'product_batches.product_id')
+            ->leftJoin('generic_names', 'generic_names.id', '=', 'products.generic_name_id')
             ->where('delivery_receipts.is_draft', false)
             ->where('delivery_receipts.status', '!=', 'cancelled')
-            ->when($customerId, fn ($q) => $q->where('sales_orders.customer_id', $customerId))
+            ->when($customerId, fn ($q) => $q->where('delivery_receipts.customer_id', $customerId))
             ->when($salesOrderId, fn ($q) => $q->where('sales_orders.id', $salesOrderId))
-            ->when($genericNameId, fn ($q) => $q->where('sales_order_items.generic_name_id', $genericNameId))
+            ->when($genericNameId, fn ($q) => $q->where('products.generic_name_id', $genericNameId))
             ->when($search, fn ($q) => $q->where(fn ($w) => $w
                 ->where('delivery_receipts.dr_no', 'like', "%{$search}%")
                 ->orWhere('customers.customer_name', 'like', "%{$search}%")
@@ -253,6 +258,7 @@ class SalesOrderSummaryService
                 'delivery_receipts.id as dr_id',
                 'delivery_receipts.dr_no',
                 'delivery_receipts.receipt_date',
+                'delivery_receipts.transaction_type',
                 'sales_orders.id as so_id',
                 'sales_orders.so_no',
                 'sales_orders.po_no',
@@ -267,22 +273,40 @@ class SalesOrderSummaryService
     }
 
     /**
-     * Warehouse stock, summed per product and per generic item.
+     * On-hand stock, summed per product and per generic item, split Warehouse vs POS — per Sir,
+     * two separate columns instead of one Warehouse-only figure.
      *
-     * @return array{0: array<int,int>, 1: array<int,int>}
+     * @return array{0: array<int,array{warehouse:int,pos:int}>, 1: array<int,array{warehouse:int,pos:int}>}
      */
-    protected function warehouseOnHand(): array
+    protected function onHand(): array
     {
+        $warehouseId = Location::warehouse()->id;
+        $posId = Location::pos()->id;
+
         $rows = LocationStock::query()
             ->join('product_batches', 'product_batches.id', '=', 'location_stocks.product_batch_id')
             ->join('products', 'products.id', '=', 'product_batches.product_id')
-            ->where('location_stocks.location_id', Location::warehouse()->id)
-            ->groupBy('products.id', 'products.generic_name_id')
-            ->get(['products.id as product_id', 'products.generic_name_id', DB::raw('SUM(location_stocks.qty) as qty')]);
+            ->whereIn('location_stocks.location_id', [$warehouseId, $posId])
+            ->groupBy('products.id', 'products.generic_name_id', 'location_stocks.location_id')
+            ->get([
+                'products.id as product_id',
+                'products.generic_name_id',
+                'location_stocks.location_id',
+                DB::raw('SUM(location_stocks.qty) as qty'),
+            ]);
 
-        return [
-            $rows->pluck('qty', 'product_id')->map(fn ($qty) => (int) $qty)->all(),
-            $rows->groupBy('generic_name_id')->map(fn (Collection $group) => (int) $group->sum('qty'))->all(),
-        ];
+        $split = function (Collection $rows, string $key) use ($warehouseId, $posId) {
+            $out = [];
+            foreach ($rows->groupBy($key) as $id => $group) {
+                $out[$id] = [
+                    'warehouse' => (int) $group->where('location_id', $warehouseId)->sum('qty'),
+                    'pos' => (int) $group->where('location_id', $posId)->sum('qty'),
+                ];
+            }
+
+            return $out;
+        };
+
+        return [$split($rows, 'product_id'), $split($rows, 'generic_name_id')];
     }
 }

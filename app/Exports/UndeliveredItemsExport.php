@@ -20,7 +20,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * filtered/pivoted in Excel. Same data as the on-screen page, in the column layout Sir sent
  * (Customer, PO ref, PO date, Generic item, Item description, Price, Qty ordered / delivered,
  * Balance, Qty on-hand). PO REF # is the customer's PO number, or the SO number when the order has
- * none, so a row is never anonymous. Qty on-hand is the Warehouse stock, where deliveries come from.
+ * none, so a row is never anonymous. Qty on-hand is split Warehouse / POS, per Sir.
  */
 class UndeliveredItemsExport implements FromArray, WithColumnFormatting, WithColumnWidths, WithHeadings, WithStrictNullComparison, WithStyles, WithTitle
 {
@@ -35,13 +35,13 @@ class UndeliveredItemsExport implements FromArray, WithColumnFormatting, WithCol
 
     public function headings(): array
     {
-        return ['CUSTOMER NAME', 'PO REF #', 'PO DATE', 'GENERIC ITEM', 'ITEM DESCRIPTION', 'PRICE', 'QTY ORDERED', 'QTY DELIVERED', 'BALANCE', 'QTY ON-HAND'];
+        return ['CUSTOMER NAME', 'PO REF #', 'PO DATE', 'GENERIC ITEM', 'ITEM DESCRIPTION', 'PRICE', 'QTY ORDERED', 'QTY DELIVERED', 'BALANCE', 'QTY ON-HAND (WAREHOUSE)', 'QTY ON-HAND (POS)'];
     }
 
     /** Wide enough to read on opening, so nothing shows cut off (customer names, dates, descriptions). */
     public function columnWidths(): array
     {
-        return ['A' => 44, 'B' => 18, 'C' => 13, 'D' => 34, 'E' => 46, 'F' => 14, 'G' => 14, 'H' => 15, 'I' => 12, 'J' => 14];
+        return ['A' => 44, 'B' => 18, 'C' => 13, 'D' => 34, 'E' => 46, 'F' => 14, 'G' => 14, 'H' => 15, 'I' => 12, 'J' => 16, 'K' => 12];
     }
 
     public function columnFormats(): array
@@ -53,7 +53,7 @@ class UndeliveredItemsExport implements FromArray, WithColumnFormatting, WithCol
     {
         // Long item descriptions wrap inside their cell instead of running off it.
         $sheet->getStyle('D:E')->getAlignment()->setWrapText(true);
-        $sheet->getStyle('A:J')->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
+        $sheet->getStyle('A:K')->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
 
         return [1 => ['font' => ['bold' => true]]];
     }
@@ -75,7 +75,8 @@ class UndeliveredItemsExport implements FromArray, WithColumnFormatting, WithCol
                         $order['ordered'],
                         $order['delivered'],
                         $order['balance'],
-                        $order['on_hand'],
+                        $order['on_hand']['warehouse'],
+                        $order['on_hand']['pos'],
                     ];
                 }
             }

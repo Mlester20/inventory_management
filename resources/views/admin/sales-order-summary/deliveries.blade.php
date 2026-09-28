@@ -21,7 +21,8 @@
                         default => 'across all customers',
                     };
                 @endphp
-                What was actually delivered {!! $what ? 'of ' . $what . ' ' : '' !!}{!! $where !!}. Draft and cancelled Delivery Receipts are not counted.
+                What was actually delivered {!! $what ? 'of ' . $what . ' ' : '' !!}{!! $where !!}. Draft and cancelled Delivery Receipts are not counted;
+                Advance Order and Walk-In Delivery Receipts show too even though they have no Sales Order behind them.
                 @if($genericName && ($customer || $salesOrder))
                     <a href="{{ route('so-summary.deliveries', ['generic_name_id' => $genericName->id]) }}">Trace this item for all customers</a>
                 @endif
@@ -58,7 +59,13 @@
                             <td>{{ $loop->iteration }}</td>
                             <td class="text-nowrap">{{ \Illuminate\Support\Carbon::parse($row->receipt_date)->format('M d, Y') }}</td>
                             <td><a href="{{ route('delivery-receipts.show', $row->dr_id) }}">{{ $row->dr_no }}</a></td>
-                            <td><a href="{{ route('sales-orders.show', $row->so_id) }}">{{ $row->so_no }}</a></td>
+                            <td>
+                                @if($row->so_id)
+                                    <a href="{{ route('sales-orders.show', $row->so_id) }}">{{ $row->so_no }}</a>
+                                @else
+                                    <span class="text-muted">{{ \App\Models\DeliveryReceipt::TRANSACTION_TYPES[$row->transaction_type] ?? '—' }}</span>
+                                @endif
+                            </td>
                             <td>{{ $row->po_no ?: '—' }}</td>
                             <td class="fw-semibold">{{ $row->customer_name }}</td>
                             <td>{{ $row->generic_name }}{{ $row->unit ? ' (' . $row->unit . ')' : '' }}</td>
