@@ -23,10 +23,12 @@
                                 placeholder="Scan barcode..." autocomplete="off">
                         </div>
                     </div>
-                    <div class="row" id="itemsContainer">
-                        <div class="text-center text-muted py-5">
-                            <i class="bx bx-loader bx-spin fs-1"></i>
-                            <p>Loading items...</p>
+                    <div class="items-grid-scroll">
+                        <div class="row" id="itemsContainer">
+                            <div class="text-center text-muted py-5">
+                                <i class="bx bx-loader bx-spin fs-1"></i>
+                                <p>Loading items...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -599,6 +601,13 @@
 </script>
 
 <style>
+    /* The item grid scrolls on its own, below the barcode input which stays put — so
+       scanning/browsing items never has to fight the page's own scrollbar. */
+    .items-grid-scroll {
+        max-height: 500px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
     .items-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         cursor: pointer;
