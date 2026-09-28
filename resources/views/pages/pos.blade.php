@@ -180,7 +180,7 @@
                 '<div class="mt-auto pt-2">' +
                 '<div class="d-flex justify-content-between align-items-center">' +
                 '<strong>₱' + parseFloat(item.unit_price).toFixed(2) + '</strong>' +
-                '<span class="badge ' + (isAvailable ? 'bg-success' : 'bg-danger') + '">' +
+                '<span class="badge availability-badge ' + (isAvailable ? 'bg-success' : 'bg-danger') + '">' +
                 (isAvailable ? 'Available' : 'Out of Stock') +
                 '</span>' +
                 '</div>' +
@@ -602,6 +602,9 @@
     .items-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         cursor: pointer;
+    }
+    .items-card .availability-badge {
+        font-size: 0.65rem;
     }
     .items-card:hover {
         transform: translateY(-4px);
