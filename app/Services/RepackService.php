@@ -16,8 +16,13 @@ use Illuminate\Validation\ValidationException;
  * StockService, exactly like Stock Transfer does between locations, so both
  * movements land in the same Product History ledger with no second logging
  * path. v1 posts immediately (no draft status) — see the plan doc's open
- * questions before extending this (void support, wastage, destination
- * auto-creation).
+ * questions before extending this (wastage, destination auto-creation).
+ *
+ * Per Sir, each line can also set the destination product's Price/Cost —
+ * the source's, divided evenly by how many destination units the line
+ * produces (₱100/BX into 100 tabs = ₱1/tab) — pre-filled on the form but
+ * editable, and only actually written to the product when the encoder
+ * leaves "apply" checked.
  */
 class RepackService
 {
@@ -26,7 +31,8 @@ class RepackService
     /**
      * @param array $data ['date', 'location_id', 'prepared_by', 'remarks',
      *   'lines' => [['source_batch_id', 'source_qty', 'destination_product_id',
-     *                'destination_qty', 'destination_batch_no'?, 'destination_expiration_date'?], ...]]
+     *                'destination_qty', 'destination_batch_no'?, 'destination_expiration_date'?,
+     *                'destination_price'?, 'destination_cost'?, 'apply_price'?], ...]]
      */
     public function createRepack(array $data, ?int $userId = null): Repack
     {
@@ -170,12 +176,34 @@ class RepackService
         $this->stockService->deduct($sourceBatch, $sourceQty, $location, "Repack {$repack->reference}", $userId, $repack);
         $this->stockService->restock($destinationBatch, $destinationQty, $location, "Repack {$repack->reference}", $userId, $repack);
 
+        // Per Sir: the destination's Price/Cost is the source's, divided evenly across
+        // however many destination units this line produces (₱100/BX into 100 tabs = ₱1/tab).
+        // The encoder can override the suggested figures before posting, or uncheck
+        // "apply" to leave the destination product's own Price/Cost untouched. Either way
+        // the line keeps what was suggested/entered, as a record independent of the
+        // product's Price/Cost, which can change later.
+        $destinationPrice = isset($line['destination_price']) && $line['destination_price'] !== ''
+            ? round((float) $line['destination_price'], 2) : null;
+        $destinationCost = isset($line['destination_cost']) && $line['destination_cost'] !== ''
+            ? round((float) $line['destination_cost'], 2) : null;
+        $applyPrice = ! empty($line['apply_price']) && ($destinationPrice !== null || $destinationCost !== null);
+
+        if ($applyPrice) {
+            $destinationProduct->update(array_filter([
+                'unit_price' => $destinationPrice,
+                'unit_cost' => $destinationCost,
+            ], fn ($value) => $value !== null));
+        }
+
         $repack->lines()->create([
             'source_batch_id' => $sourceBatch->id,
             'source_qty' => $sourceQty,
             'destination_product_id' => $destinationProduct->id,
             'destination_batch_id' => $destinationBatch->id,
             'destination_qty' => $destinationQty,
+            'destination_price' => $destinationPrice,
+            'destination_cost' => $destinationCost,
+            'price_applied' => $applyPrice,
         ]);
     }
 

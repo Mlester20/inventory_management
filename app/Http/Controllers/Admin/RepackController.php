@@ -60,6 +60,10 @@ class RepackController extends Controller
             'products' => $g->products->map(fn ($p) => [
                 'id' => $p->id,
                 'label' => $p->description ?: ($p->brand_name ?: $p->item_name),
+                // For the suggested-price box: what this item currently sells/costs, per Sir's
+                // "divide the box's Price/Cost evenly across the pieces" rule.
+                'unit_price' => (float) $p->unit_price,
+                'unit_cost' => (float) $p->unit_cost,
             ])->values(),
         ])->values();
 
@@ -80,6 +84,9 @@ class RepackController extends Controller
             'lines.*.destination_qty' => 'required|integer|min:1',
             'lines.*.destination_batch_no' => 'nullable|string|max:100',
             'lines.*.destination_expiration_date' => 'nullable|date',
+            'lines.*.destination_price' => 'nullable|numeric|min:0',
+            'lines.*.destination_cost' => 'nullable|numeric|min:0',
+            'lines.*.apply_price' => 'nullable|boolean',
         ]);
 
         try {

@@ -14,11 +14,17 @@ class RepackLine extends Model
         'destination_product_id',
         'destination_batch_id',
         'destination_qty',
+        'destination_price',
+        'destination_cost',
+        'price_applied',
     ];
 
     protected $casts = [
         'source_qty' => 'integer',
         'destination_qty' => 'integer',
+        'destination_price' => 'decimal:2',
+        'destination_cost' => 'decimal:2',
+        'price_applied' => 'boolean',
     ];
 
     public function repack(): BelongsTo

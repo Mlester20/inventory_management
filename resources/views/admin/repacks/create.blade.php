@@ -19,7 +19,10 @@
             <p class="text-muted small">
                 Converts stock of one product into stock of another at the same location (e.g. breaking a BX
                 into loose PC). The destination lot carries the source lot's own Batch No/Expiry by default —
-                override them only if this repack should land in a different lot.
+                override them only if this repack should land in a different lot. Once a destination item is
+                picked, its Price/Cost is suggested as the source's divided evenly across the pieces produced
+                (e.g. ₱100/BX into 100 tabs = ₱1/tab) — editable before posting, and only applied to the item
+                if left checked.
                 If a repack was a mistake, it can be voided from its page while every piece it produced is still
                 there; once some are sold or moved, correct the quantity with an Inventory Adjustment instead.
             </p>
@@ -166,7 +169,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small mb-1">Qty Produced</label>
-                        <input type="number" class="form-control form-control-sm" name="lines[${index}][destination_qty]" min="1" value="1" required>
+                        <input type="number" class="form-control form-control-sm destination-qty-input" name="lines[${index}][destination_qty]" min="1" value="1" required>
                     </div>
                 </div>
                 <div class="row g-2 mt-1">
@@ -177,6 +180,28 @@
                     <div class="col-md-6">
                         <label class="form-label small mb-1">Destination Expiry <span class="text-muted">(optional — defaults to the source lot's own)</span></label>
                         <input type="date" class="form-control form-control-sm" name="lines[${index}][destination_expiration_date]">
+                    </div>
+                </div>
+                <div class="border rounded p-2 mt-2 bg-white price-suggestion-box" style="display:none;">
+                    <div class="small text-muted mb-2">
+                        Suggested Price/Cost — the source's, divided evenly across the pieces this line produces
+                        (e.g. ₱100/BX into 100 tabs = ₱1/tab), per Sir.
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small mb-1">New Price</label>
+                            <input type="number" step="0.01" min="0" class="form-control form-control-sm destination-price-input" name="lines[${index}][destination_price]">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small mb-1">New Cost</label>
+                            <input type="number" step="0.01" min="0" class="form-control form-control-sm destination-cost-input" name="lines[${index}][destination_cost]">
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input apply-price-input" name="lines[${index}][apply_price]" value="1" checked>
+                                <label class="form-check-label small">Update this item's Price/Cost when this Repack is posted <span class="text-muted current-price-display"></span></label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -191,6 +216,41 @@
 
         bindSourcePicker(row, index);
         bindDestinationPicker(row, index);
+
+        row.querySelector('.destination-qty-input').addEventListener('input', () => recomputeSuggestion(row));
+        row.querySelector('.destination-price-input').addEventListener('input', function () { this.dataset.priceDirty = '1'; });
+        row.querySelector('.destination-cost-input').addEventListener('input', function () { this.dataset.priceDirty = '1'; });
+    }
+
+    // Per Sir: suggested destination Price/Cost = source's Price/Cost, divided evenly across
+    // however many destination units this line produces. Only overwrites the New Price/New Cost
+    // inputs while the encoder hasn't typed into them directly (priceDirty), same rule as the
+    // Withholding Tax suggestion elsewhere in the app.
+    function recomputeSuggestion(row) {
+        const box = row.querySelector('.price-suggestion-box');
+        const sourceQty = parseFloat(row.querySelector('.source-qty-input')?.value || '0');
+        const destQty = parseFloat(row.querySelector('.destination-qty-input')?.value || '0');
+        const sourcePrice = parseFloat(row.dataset.sourceUnitPrice || '');
+        const sourceCost = parseFloat(row.dataset.sourceUnitCost || '');
+        const destProductId = row.querySelector('.destination-product-id-input')?.value;
+
+        if (!destProductId || !sourceQty || !destQty || isNaN(sourcePrice)) {
+            box.style.display = 'none';
+            return;
+        }
+
+        box.style.display = '';
+        const suggestedPrice = Math.round((sourcePrice * sourceQty / destQty) * 100) / 100;
+        const suggestedCost = isNaN(sourceCost) ? null : Math.round((sourceCost * sourceQty / destQty) * 100) / 100;
+
+        const priceInput = box.querySelector('.destination-price-input');
+        const costInput = box.querySelector('.destination-cost-input');
+        if (priceInput.dataset.priceDirty !== '1') priceInput.value = suggestedPrice;
+        if (costInput.dataset.priceDirty !== '1' && suggestedCost !== null) costInput.value = suggestedCost;
+
+        const currentPrice = row.dataset.destUnitPrice;
+        box.querySelector('.current-price-display').textContent = currentPrice !== undefined
+            ? `(current Price: ₱${parseFloat(currentPrice).toFixed(2)})` : '';
     }
 
     function bindSourcePicker(row, index) {
@@ -216,7 +276,7 @@
             }
             let optionsHtml = '<option value="">-- Select Lot --</option>';
             items.forEach(item => {
-                optionsHtml += `<option value="${item.id}" data-max="${item.quantity}">${item.brand_name || item.item_name} — Batch ${item.batch_no || 'N/A'} (Available: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})</option>`;
+                optionsHtml += `<option value="${item.id}" data-max="${item.quantity}" data-price="${item.unit_price}" data-cost="${item.unit_cost}">${item.brand_name || item.item_name} — Batch ${item.batch_no || 'N/A'} (Available: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})</option>`;
             });
             itemCell.innerHTML = `<select class="form-select form-select-sm source-item-select" name="lines[${index}][source_batch_id]" required>${optionsHtml}</select>`;
             availableCell.innerHTML = '<span class="source-available-display">—</span>';
@@ -234,7 +294,11 @@
                 if (parseInt(qtyInput.value, 10) > maxStock) {
                     qtyInput.value = maxStock || 1;
                 }
+                row.dataset.sourceUnitPrice = selected?.getAttribute('data-price') ?? '';
+                row.dataset.sourceUnitCost = selected?.getAttribute('data-cost') ?? '';
+                recomputeSuggestion(row);
             });
+            qtyInput.addEventListener('input', () => recomputeSuggestion(row));
         });
     }
 
@@ -253,11 +317,21 @@
             }
             let optionsHtml = '<option value="">-- Select Item --</option>';
             generic.products.forEach(p => {
-                optionsHtml += `<option value="${p.id}">${p.label}</option>`;
+                optionsHtml += `<option value="${p.id}" data-price="${p.unit_price}" data-cost="${p.unit_cost}">${p.label}</option>`;
             });
             itemCell.innerHTML = `<select class="form-select form-select-sm destination-item-select">${optionsHtml}</select>`;
             itemCell.querySelector('.destination-item-select').addEventListener('change', function () {
                 productIdInput.value = this.value;
+                const selected = this.options[this.selectedIndex];
+                row.dataset.destUnitPrice = selected?.getAttribute('data-price') ?? '';
+                row.dataset.destUnitCost = selected?.getAttribute('data-cost') ?? '';
+                // A newly picked item gets a fresh suggestion rather than one left over from
+                // whatever was typed for the previous item.
+                const priceInput = row.querySelector('.destination-price-input');
+                const costInput = row.querySelector('.destination-cost-input');
+                delete priceInput.dataset.priceDirty;
+                delete costInput.dataset.priceDirty;
+                recomputeSuggestion(row);
             });
         });
     }

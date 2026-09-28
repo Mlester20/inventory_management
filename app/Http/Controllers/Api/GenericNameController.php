@@ -33,6 +33,9 @@ class GenericNameController extends Controller
                     'quantity' => $batch->locationStocks->sum('qty'),
                     'batch_no' => $batch->batch_no,
                     'expiration_date' => $batch->expiration_date?->format('Y-m-d'),
+                    // For Repack's suggested destination Price/Cost (source's, divided evenly).
+                    'unit_price' => (float) $batch->product->unit_price,
+                    'unit_cost' => (float) $batch->product->unit_cost,
                     'supplier' => $batch->product->supplier ? [
                         'id' => $batch->product->supplier->id,
                         'supplier_name' => $batch->product->supplier->supplier_name,

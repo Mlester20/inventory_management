@@ -89,6 +89,7 @@
                         <th>To (Destination)</th>
                         <th>Batch No.</th>
                         <th class="text-end">Qty Produced</th>
+                        <th class="text-end">Price/Cost Set</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,6 +101,16 @@
                             <td>{{ $line->destinationProduct->item_name }}</td>
                             <td>{{ $line->destinationBatch->batch_no ?? '—' }}</td>
                             <td class="text-end">{{ $line->destination_qty }}</td>
+                            <td class="text-end">
+                                @if($line->destination_price !== null || $line->destination_cost !== null)
+                                    <div>₱{{ number_format($line->destination_price ?? 0, 2) }} / ₱{{ number_format($line->destination_cost ?? 0, 2) }}</div>
+                                    <span class="badge bg-{{ $line->price_applied ? 'success' : 'secondary' }}">
+                                        {{ $line->price_applied ? 'Applied to item' : 'Not applied' }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
