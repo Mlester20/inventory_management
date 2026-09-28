@@ -163,10 +163,12 @@
 
         container.innerHTML = itemsToRender.map(item => {
             const isAvailable = item.quantity > 0;
-            // Title/category can wrap to a different number of lines per card, so the
-            // price/stock/Available row is pinned to the bottom (flex-column + mt-auto)
-            // instead of just flowing after the text — otherwise it lands at a different
-            // height on every card and the grid looks uneven.
+            // Title/category wrap to a different number of lines per card, so the price/
+            // stock/Available block is pinned to the bottom (flex-column + mt-auto). Price and
+            // the badge are kept on their OWN line together — both are always short and never
+            // wrap — with "Stock: X unit" on a separate line below; that text's length varies a
+            // lot (e.g. "1084 TABLET" vs "1 PC"), and sharing a line with the badge was exactly
+            // what pushed the badge to a different height depending on whether it wrapped.
             return '<div class="col-md-6 col-lg-4 mb-3">' +
                 '<div class="card h-100 items-card' + (item.quantity === 0 ? ' opacity-50' : '') + '"' +
                 (isAvailable ? ' onclick="addItemToCartDirect(' + item.id + ')"' : '') + '>' +
@@ -175,14 +177,14 @@
                 '<h6 class="card-title">' + item.item_name + (item.unit ? ' <span class="badge bg-secondary align-middle">' + item.unit + '</span>' : '') + '</h6>' +
                 '<p class="text-muted small mb-2">' + item.category.category_name + '</p>' +
                 '</div>' +
-                '<div class="d-flex justify-content-between align-items-center mt-auto pt-2">' +
-                '<div>' +
-                '<p class="mb-0"><strong>₱' + parseFloat(item.unit_price).toFixed(2) + '</strong></p>' +
-                '<small class="text-muted">Stock: ' + item.quantity + (item.unit ? ' ' + item.unit : '') + '</small>' +
-                '</div>' +
+                '<div class="mt-auto pt-2">' +
+                '<div class="d-flex justify-content-between align-items-center">' +
+                '<strong>₱' + parseFloat(item.unit_price).toFixed(2) + '</strong>' +
                 '<span class="badge ' + (isAvailable ? 'bg-success' : 'bg-danger') + '">' +
                 (isAvailable ? 'Available' : 'Out of Stock') +
                 '</span>' +
+                '</div>' +
+                '<small class="text-muted d-block mt-1">Stock: ' + item.quantity + (item.unit ? ' ' + item.unit : '') + '</small>' +
                 '</div>' +
                 '</div>' +
                 '</div>' +
