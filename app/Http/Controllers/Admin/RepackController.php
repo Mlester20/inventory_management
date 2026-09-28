@@ -60,6 +60,11 @@ class RepackController extends Controller
             'products' => $g->products->map(fn ($p) => [
                 'id' => $p->id,
                 'label' => $p->description ?: ($p->brand_name ?: $p->item_name),
+                // Own generic's unit — the destination picker aggregates products across every
+                // generic that shares a generic_name TEXT (a BX and its PC are sometimes two
+                // separate generic_names rows differing only by Unit), so each option needs its
+                // own unit tagged on to stay distinguishable once merged into one list.
+                'unit' => $g->unit,
                 // For the suggested-price box: what this item currently sells/costs, per Sir's
                 // "divide the box's Price/Cost evenly across the pieces" rule.
                 'unit_price' => (float) $p->unit_price,

@@ -98,6 +98,17 @@
         return GENERIC_NAMES.find(g => genericLabel(g) === label);
     }
 
+    // A BX and its PC aren't always the same Generic Item row — the established convention (see
+    // ProductsCatalogSheetImport) is that the same generic_name text can have a separate row per
+    // Unit ("SAMPLE REPACK ITEM" BX and "SAMPLE REPACK ITEM" PC are two different generic_names,
+    // same name, different unit), each with its own product(s). So the destination list is every
+    // product under every generic that shares this generic_name TEXT, not just this one exact row.
+    function productsSharingGenericName(genericNameText) {
+        return GENERIC_NAMES
+            .filter(g => g.generic_name.toLowerCase() === genericNameText.toLowerCase())
+            .flatMap(g => g.products || []);
+    }
+
     function currentLocationId() {
         return document.getElementById('location_id').value;
     }
@@ -253,10 +264,12 @@
     }
 
     // One generic search fills in BOTH sides — a repack is always within the same medicine, just a
-    // different packaging (a BX and its PC are products under the same Generic Item). FROM only
-    // lists lots that actually have stock at the chosen Location; TO lists every product under the
-    // generic (repacking creates NEW stock there, so no stock check), minus whichever lot is
-    // currently picked as the source, since the destination must be a different product.
+    // different packaging. FROM only lists lots that actually have stock, under the exact generic
+    // that was searched, at the chosen Location. TO lists every product under every generic that
+    // shares that same generic_name TEXT (a BX and its PC are sometimes the same generic row,
+    // sometimes two rows that only differ by Unit — see productsSharingGenericName()), minus
+    // whichever lot is currently picked as the source, since the destination must be a different
+    // product. Repacking creates NEW stock at the destination, so no stock check there.
     function bindGenericPicker(row, index) {
         const genericInput = row.querySelector('.generic-input');
         const sourceItemCell = row.querySelector('.source-item-select-cell');
@@ -268,14 +281,15 @@
         function renderDestinationOptions(generic, excludeProductId) {
             productIdInput.value = '';
             row.querySelector('.price-suggestion-box').style.display = 'none';
-            const products = (generic.products || []).filter(p => String(p.id) !== String(excludeProductId || ''));
+            const products = productsSharingGenericName(generic.generic_name)
+                .filter(p => String(p.id) !== String(excludeProductId || ''));
             if (products.length === 0) {
-                destItemCell.innerHTML = '<span class="text-muted small">No other item under this generic yet</span>';
+                destItemCell.innerHTML = '<span class="text-muted small">No other item under this generic yet — add one under Products first</span>';
                 return;
             }
             let optionsHtml = '<option value="">-- Select Item --</option>';
             products.forEach(p => {
-                optionsHtml += `<option value="${p.id}" data-price="${p.unit_price}" data-cost="${p.unit_cost}">${p.label}</option>`;
+                optionsHtml += `<option value="${p.id}" data-price="${p.unit_price}" data-cost="${p.unit_cost}">${p.label}${p.unit ? ' (' + p.unit + ')' : ''}</option>`;
             });
             destItemCell.innerHTML = `<select class="form-select form-select-sm destination-item-select">${optionsHtml}</select>`;
             destItemCell.querySelector('.destination-item-select').addEventListener('change', function () {
