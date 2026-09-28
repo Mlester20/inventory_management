@@ -37,11 +37,11 @@
         <div class="col-md-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title m-0">Shopping Cart</h5>
+                    <h5 class="card-title m-0">Order Summary</h5>
                 </div>
                 <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                     <div id="cartItems">
-                        <p class="text-muted text-center">Cart is empty</p>
+                        <p class="text-muted text-center">No items yet</p>
                     </div>
                 </div>
                 <div class="card-footer bg-light">
@@ -63,7 +63,7 @@
                             <i class="bx bx-check me-2"></i>Process Order/s
                         </button>
                         <button class="btn btn-outline-secondary" id="clearCartBtn">
-                            <i class="bx bx-trash me-2"></i>Clear Cart
+                            <i class="bx bx-trash me-2"></i>Clear Order
                         </button>
                     </div>
                 </div>
@@ -245,7 +245,7 @@
         const cartContainer = document.getElementById('cartItems');
 
         if (cart.length === 0) {
-            cartContainer.innerHTML = '<p class="text-muted text-center">Cart is empty</p>';
+            cartContainer.innerHTML = '<p class="text-muted text-center">No items yet</p>';
             document.getElementById('subtotal').textContent = '₱0.00';
             document.getElementById('totalItems').textContent = '0';
             document.getElementById('totalPrice').textContent = '₱0.00';
@@ -393,7 +393,7 @@
     // Clear cart
     document.getElementById('clearCartBtn').addEventListener('click', () => {
         Swal.fire({
-            title: 'Clear Cart?',
+            title: 'Clear Order?',
             text: 'Are you sure you want to remove all items?',
             icon: 'warning',
             showCancelButton: true,
@@ -414,7 +414,7 @@
 
     document.getElementById('checkoutBtn').addEventListener('click', () => {
         if (cart.length === 0) {
-            Swal.fire('Empty Cart', 'Please add items before checkout', 'warning');
+            Swal.fire('Empty Order', 'Please add items before checkout', 'warning');
             return;
         }
 
