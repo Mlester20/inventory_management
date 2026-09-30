@@ -50,6 +50,9 @@
         <li class="nav-item">
             <a class="nav-link active" href="{{ route('so-summary.all-items') }}">S.O Summary — All Customers</a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('so-summary.by-item') }}">S.O Summary — By Item</a>
+        </li>
     </ul>
 
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
