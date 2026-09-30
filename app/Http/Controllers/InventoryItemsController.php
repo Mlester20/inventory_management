@@ -61,30 +61,42 @@ class InventoryItemsController extends Controller
         $batchTotals = null;
         $historyProduct = null;
         $history = null;
+        $historyProductsForJs = null;
         $nextGenericCode = null;
         $nextProductCode = null;
 
         $showTrashed = $request->boolean('show_trashed');
         $showArchived = $request->boolean('show_archived');
+        // 'hide_zero' | 'only_zero' | null (all) — same filter, offered on both the General Item
+        // and Products views, per Sir.
+        $qtyFilter = $request->query('qty_filter');
 
         if ($tab === 'general') {
+            // Correlated subquery rather than a per-row loop after pagination, so "Hide 0 Qty" /
+            // "Show only 0 Qty" can filter (and paginate) correctly instead of just hiding rows
+            // on whatever page happened to load.
+            $onHandSubquery = LocationStock::query()
+                ->join('product_batches', 'product_batches.id', '=', 'location_stocks.product_batch_id')
+                ->join('products', 'products.id', '=', 'product_batches.product_id')
+                ->whereColumn('products.generic_name_id', 'generic_names.id')
+                ->selectRaw('COALESCE(SUM(location_stocks.qty), 0)');
+
             $generalItems = GenericName::with('category')
                 ->withCount('products')
+                // Not re-selecting generic_names.* here — withCount() already left the implicit
+                // `select *` in place, and doing it again causes "Duplicate column name 'id'" once
+                // paginate() wraps this in a COUNT() subquery.
+                ->selectRaw('(' . $onHandSubquery->toSql() . ') as on_hand_qty')
+                ->mergeBindings($onHandSubquery->getQuery())
                 ->when($showTrashed, fn ($q) => $q->onlyTrashed())
                 ->when(! $showTrashed && $showArchived, fn ($q) => $q->whereNotNull('archived_at'))
                 ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))
                 ->when($search, fn ($q) => $q->where('generic_name', 'like', "%{$search}%"))
+                ->when($qtyFilter === 'hide_zero', fn ($q) => $q->havingRaw('on_hand_qty > 0'))
+                ->when($qtyFilter === 'only_zero', fn ($q) => $q->havingRaw('on_hand_qty = 0'))
                 ->orderBy('generic_name')
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
-
-            foreach ($generalItems as $genericName) {
-                $genericName->on_hand_qty = (int) LocationStock::query()
-                    ->join('product_batches', 'product_batches.id', '=', 'location_stocks.product_batch_id')
-                    ->join('products', 'products.id', '=', 'product_batches.product_id')
-                    ->where('products.generic_name_id', $genericName->id)
-                    ->sum('location_stocks.qty');
-            }
 
             $nextGenericCode = str_pad((string) (GenericName::max('id') + 1), 5, '0', STR_PAD_LEFT);
         }
@@ -102,6 +114,8 @@ class InventoryItemsController extends Controller
                         ->orWhere('brand_name', 'like', "%{$search}%")
                         ->orWhere('code', 'like', "%{$search}%");
                 })
+                ->when($qtyFilter === 'hide_zero', fn ($q) => $q->havingRaw('COALESCE(total_qty, 0) > 0'))
+                ->when($qtyFilter === 'only_zero', fn ($q) => $q->havingRaw('COALESCE(total_qty, 0) = 0'))
                 ->orderBy('item_name')
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
@@ -147,6 +161,15 @@ class InventoryItemsController extends Controller
         }
 
         if ($tab === 'history') {
+            // For the search box's autocomplete — Sir reported it wasn't offering suggestions;
+            // there was no datalist wired up for this tab at all, so nothing could ever suggest.
+            // The option's value is the plain item_name, matching exactly what the LIKE search
+            // below already looks for — the code is shown only as the option's secondary hint
+            // text, never submitted, so picking a suggestion still finds the same product.
+            $historyProductsForJs = Product::whereNull('archived_at')
+                ->orderBy('item_name')
+                ->get(['id', 'item_name', 'code']);
+
             $productId = $request->query('product_id');
 
             if ($productId) {
@@ -179,7 +202,8 @@ class InventoryItemsController extends Controller
         return view('admin.inventory-items.index', compact(
             'tab', 'search', 'categories', 'genericNames', 'genericNamesForJs', 'suppliers', 'taxes',
             'generalItems', 'products', 'batches', 'batchTotals', 'historyProduct', 'history',
-            'nextGenericCode', 'nextProductCode', 'warehouseId', 'posId', 'showZero', 'showTrashed', 'showArchived'
+            'nextGenericCode', 'nextProductCode', 'warehouseId', 'posId', 'showZero', 'showTrashed', 'showArchived', 'qtyFilter',
+            'historyProductsForJs'
         ));
     }
 }
