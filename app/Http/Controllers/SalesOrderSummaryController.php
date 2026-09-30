@@ -71,6 +71,35 @@ class SalesOrderSummaryController extends Controller
         );
     }
 
+    /**
+     * Same item lines as items(), across every customer at once — Sir's "S.O Summary - All
+     * Customers" tab. Same flat shape as the Excel export, just rendered as one on-screen table
+     * instead of drilling into one customer first.
+     */
+    public function allItems(Request $request)
+    {
+        [$scope, $search] = $this->allItemFilters($request);
+        $customers = $this->summary->items($scope, null, $search ?: null);
+
+        return view('admin.sales-order-summary.all-items', [
+            'scope' => $scope,
+            'search' => $search,
+            'customers' => $customers,
+            'covers' => $this->coversLabel($scope),
+        ]);
+    }
+
+    public function exportAllItems(Request $request)
+    {
+        [$scope, $search] = $this->allItemFilters($request);
+        $customers = $this->summary->items($scope, null, $search ?: null);
+
+        return Excel::download(
+            new UndeliveredItemsExport($customers),
+            'sales-order-summary-all-customers-' . $scope . '-' . now()->format('Ymd-His') . '.xlsx'
+        );
+    }
+
     /** The Delivered link (one Sales Order line's PO) and the per-item trace (every PO of a customer). */
     public function deliveries(Request $request)
     {
@@ -108,6 +137,20 @@ class SalesOrderSummaryController extends Controller
 
         return [
             Customer::findOrFail($validated['customer_id']),
+            $validated['scope'] ?? SalesOrderSummaryService::SCOPE_UNDELIVERED,
+            trim((string) ($validated['search'] ?? '')),
+        ];
+    }
+
+    /** @return array{0: string, 1: string} */
+    protected function allItemFilters(Request $request): array
+    {
+        $validated = $request->validate([
+            'scope' => 'nullable|in:' . SalesOrderSummaryService::SCOPE_UNDELIVERED . ',' . SalesOrderSummaryService::SCOPE_ORDERED,
+            'search' => 'nullable|string|max:100',
+        ]);
+
+        return [
             $validated['scope'] ?? SalesOrderSummaryService::SCOPE_UNDELIVERED,
             trim((string) ($validated['search'] ?? '')),
         ];
