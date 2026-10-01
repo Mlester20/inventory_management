@@ -89,9 +89,9 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         Product::query()
             ->join('generic_names as g', 'g.id', '=', 'products.generic_name_id')
             ->join('categories as c', 'c.id', '=', 'g.category_id')
-            ->get(['products.code', 'products.brand_name', 'g.generic_name', 'g.unit', 'c.category_name'])
+            ->get(['products.code', 'products.brand_name', 'products.description', 'g.generic_name', 'g.unit', 'c.category_name'])
             ->each(function ($product) {
-                $key = $this->identityKey($product->category_name, $product->generic_name, $product->brand_name, $product->unit);
+                $key = $this->identityKey($product->category_name, $product->generic_name, $product->brand_name, $product->unit, $product->description);
                 $this->existingProductKeys[$key] ??= $product->code;
             });
 
@@ -150,6 +150,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         $unit = trim((string) ($row['unit'] ?? ''));
         $generic = trim((string) ($row['generic_description'] ?? ''));
         $brand = trim((string) ($row['brand'] ?? '')) ?: null;
+        $description = trim((string) ($row['item_description'] ?? '')) ?: null;
         $legacyCode = trim((string) ($row['code'] ?? '')) ?: null;
 
         // Blank padding row (the used-range of a real spreadsheet often
@@ -177,6 +178,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             'Unit' => $unit,
             'Generic Description' => $generic,
             'Brand' => $brand,
+            'Item Description' => $description,
             'Cost' => $row['cost'] ?? null,
             'Unit Price' => $row['unit_price'] ?? $row['n_r_php'] ?? null,
         ];
@@ -195,13 +197,18 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         // Identity includes Unit: the same manufacturer item can come in more
         // than one packaging (e.g. a BX and a PC of the same Category/Generic
         // Description/Brand) — those are two different products, not duplicates.
-        $productKey = $this->identityKey($category, $generic, $brand, $normalizedUnit);
+        // Item Description is part of it too: a brand can cover several distinct
+        // variants under the same Category/Generic/Brand/Unit (e.g. MEDIPLAST
+        // Adhesive Bandage BX comes in Assorted/Bantam/Kids/Transparent sizes) —
+        // without Description, those legitimately different products looked like
+        // duplicates of each other and only the first one ever got imported.
+        $productKey = $this->identityKey($category, $generic, $brand, $normalizedUnit, $description);
         if (isset($this->seenProductKeys[$productKey])) {
             $this->duplicatesSkipped++;
             $this->pendingSkips[] = [
                 'sheet_row' => $this->currentRow,
                 'reason' => ImportSkippedRow::REASON_DUPLICATE_IN_FILE,
-                'details' => "Same Category, Generic Description, Brand and Unit as row {$this->seenProductKeys[$productKey]} of this file.",
+                'details' => "Same Category, Generic Description, Brand, Unit and Item Description as row {$this->seenProductKeys[$productKey]} of this file.",
                 'row_data' => $rowData,
             ];
 
@@ -214,7 +221,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             $this->pendingSkips[] = [
                 'sheet_row' => $this->currentRow,
                 'reason' => ImportSkippedRow::REASON_ALREADY_IN_SYSTEM,
-                'details' => "Already in the system as product code {$this->existingProductKeys[$productKey]} (same Category, Generic Description, Brand and Unit).",
+                'details' => "Already in the system as product code {$this->existingProductKeys[$productKey]} (same Category, Generic Description, Brand, Unit and Item Description).",
                 'row_data' => $rowData,
             ];
 
@@ -252,7 +259,7 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             'code' => $this->nextProductCode(),
             'generic_name_id' => $genericNameId,
             'brand_name' => $brand,
-            'description' => trim((string) ($row['item_description'] ?? '')) ?: null,
+            'description' => $description,
             'unit_cost' => $this->parseDecimal($row['cost'] ?? null),
             // No source row in the real sheet has pricing today, but a
             // future corrected file (or the template's own Unit Price
@@ -303,10 +310,14 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         return mb_strtolower($genericName . '|' . $unit);
     }
 
-    /** Product identity: Category + Generic Description + Brand + Unit. */
-    protected function identityKey(string $category, string $generic, ?string $brand, string $unit): string
+    /**
+     * Product identity: Category + Generic Description + Brand + Unit + Item Description — the
+     * last one matters because the same brand can cover several distinct variants under an
+     * otherwise identical Category/Generic/Brand/Unit (see importRow()'s MEDIPLAST example).
+     */
+    protected function identityKey(string $category, string $generic, ?string $brand, string $unit, ?string $description = null): string
     {
-        return mb_strtolower($category . '|' . $generic . '|' . ($brand ?? '') . '|' . $unit);
+        return mb_strtolower($category . '|' . $generic . '|' . ($brand ?? '') . '|' . $unit . '|' . ($description ?? ''));
     }
 
     protected function nextGenericCode(): string
