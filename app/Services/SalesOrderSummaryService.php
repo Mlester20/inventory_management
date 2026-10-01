@@ -273,6 +273,160 @@ class SalesOrderSummaryService
     }
 
     /**
+     * Every Generic Item's Sales Order lines, across ALL customers, grouped by Generic Item —
+     * Sir's "S.O Summary by Item" tab. On-Hand is Warehouse only (Sir confirmed — that's where
+     * Delivery Receipt draws from). Reserved has two different scopes, both per Sir's own
+     * clarification on his mockup: at the Generic Item level, ALL draft Delivery Receipt
+     * quantities of that item, even ones with no Sales Order behind them (Advance Order/Walk-In
+     * drafts) — "para ma-maximize ang gamit ng DR Draft" as a general reserve mechanism; at the
+     * line level (one Sales Order item), only the draft DR quantity tied to THAT specific line.
+     * Available = On-Hand − Reserved (the Generic Item-level Reserved).
+     *
+     * @return Collection<int,array>
+     */
+    public function byItem(?int $categoryId = null, bool $hideZeroBalance = false, bool $showZeroOnHand = false, ?string $search = null): Collection
+    {
+        $lines = SalesOrderItem::query()
+            ->join('sales_orders', 'sales_orders.id', '=', 'sales_order_items.sales_order_id')
+            ->join('customers', 'customers.id', '=', 'sales_orders.customer_id')
+            ->leftJoin('generic_names', 'generic_names.id', '=', 'sales_order_items.generic_name_id')
+            ->leftJoin('categories', 'categories.id', '=', 'generic_names.category_id')
+            ->leftJoin('products', 'products.id', '=', 'sales_order_items.product_id')
+            ->where('sales_orders.is_draft', false)
+            ->whereNull('sales_orders.deleted_at')
+            ->whereNull('sales_orders.archived_at')
+            ->where('sales_orders.status', '!=', 'cancelled')
+            ->when($categoryId, fn ($q) => $q->where('generic_names.category_id', $categoryId))
+            ->when($search, fn ($q) => $q->where(fn ($w) => $w
+                ->where('sales_orders.po_no', 'like', "%{$search}%")
+                ->orWhere('sales_orders.so_no', 'like', "%{$search}%")
+                ->orWhere('customers.customer_name', 'like', "%{$search}%")
+                ->orWhere('generic_names.generic_name', 'like', "%{$search}%")
+                ->orWhere('products.item_name', 'like', "%{$search}%")
+                ->orWhere('products.description', 'like', "%{$search}%")
+                ->orWhere('products.brand_name', 'like', "%{$search}%")))
+            ->orderBy('generic_names.generic_name')
+            ->orderBy('generic_names.unit')
+            ->orderBy('sales_orders.order_date')
+            ->orderBy('sales_orders.id')
+            ->get([
+                'sales_order_items.id as so_item_id',
+                'sales_orders.id as so_id',
+                'sales_orders.so_no',
+                'sales_orders.po_no',
+                'sales_orders.order_date',
+                'sales_orders.status as so_status',
+                'customers.customer_name',
+                'sales_order_items.generic_name_id',
+                'generic_names.generic_name',
+                'generic_names.unit',
+                'categories.category_name',
+                'sales_order_items.product_id',
+                'products.item_name as product_name',
+                'products.description as product_description',
+                'products.brand_name as product_brand',
+                'sales_order_items.qty',
+                'sales_order_items.delivered_qty',
+                'sales_order_items.remarks',
+            ]);
+
+        [, $onHandByGeneric] = $this->onHand();
+        $reservedAllByGeneric = $this->reservedByGeneric();
+        $reservedBySoItem = $this->reservedBySoItem();
+
+        $grouped = $lines->groupBy('generic_name_id')->map(function (Collection $genericLines) use ($onHandByGeneric, $reservedAllByGeneric, $reservedBySoItem) {
+            $first = $genericLines->first();
+            $totalOrder = (int) $genericLines->sum('qty');
+            $delivered = (int) $genericLines->sum('delivered_qty');
+            $undelivered = (int) $genericLines
+                ->filter(fn ($l) => in_array($l->so_status, self::OPEN_STATUSES, true) && $l->qty > $l->delivered_qty)
+                ->sum(fn ($l) => $l->qty - $l->delivered_qty);
+            $onHand = $onHandByGeneric[$first->generic_name_id]['warehouse'] ?? 0;
+            $reserved = $reservedAllByGeneric[$first->generic_name_id] ?? 0;
+
+            return [
+                'generic_name_id' => $first->generic_name_id,
+                'generic_label' => trim(($first->generic_name ?? 'Unknown item') . ($first->unit ? " ({$first->unit})" : '')),
+                'category_name' => $first->category_name,
+                'unit' => $first->unit,
+                'total_order' => $totalOrder,
+                'undelivered' => $undelivered,
+                'on_hand' => $onHand,
+                'reserved' => $reserved,
+                'available' => $onHand - $reserved,
+                'balance' => $totalOrder - $delivered,
+                'orders' => $genericLines->map(fn ($line) => [
+                    'so_item_id' => $line->so_item_id,
+                    'so_id' => $line->so_id,
+                    'so_no' => $line->so_no,
+                    'po_no' => $line->po_no,
+                    'order_date' => $line->order_date,
+                    'customer_name' => $line->customer_name,
+                    'product' => $line->product_id ? ($line->product_description ?: ($line->product_brand ?: $line->product_name)) : null,
+                    'ordered' => (int) $line->qty,
+                    'delivered' => (int) $line->delivered_qty,
+                    'balance' => (int) $line->qty - (int) $line->delivered_qty,
+                    'reserved' => $reservedBySoItem[$line->so_item_id] ?? 0,
+                    'remarks' => $line->remarks,
+                ])->values()->all(),
+            ];
+        })->values();
+
+        if ($hideZeroBalance) {
+            $grouped = $grouped->filter(fn ($g) => $g['balance'] > 0)->values();
+        }
+
+        // Per Sir's literal wording — the default hides an item with nothing in the Warehouse at
+        // all (usually not useful on a still-owed work list), and this reveals it.
+        if (! $showZeroOnHand) {
+            $grouped = $grouped->filter(fn ($g) => $g['on_hand'] > 0)->values();
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * ALL draft Delivery Receipt quantities per Generic Item, whether or not tied to a Sales
+     * Order — Sir's broader "Reserved" scope for the Generic Item-level total.
+     *
+     * @return array<int,int>
+     */
+    protected function reservedByGeneric(): array
+    {
+        return DeliveryReceiptItem::query()
+            ->join('delivery_receipts', 'delivery_receipts.id', '=', 'delivery_receipt_items.delivery_receipt_id')
+            ->join('product_batches', 'product_batches.id', '=', 'delivery_receipt_items.product_batch_id')
+            ->join('products', 'products.id', '=', 'product_batches.product_id')
+            ->where('delivery_receipts.is_draft', true)
+            ->where('delivery_receipts.status', '!=', 'cancelled')
+            ->groupBy('products.generic_name_id')
+            ->get(['products.generic_name_id', DB::raw('SUM(delivery_receipt_items.qty) as qty')])
+            ->pluck('qty', 'generic_name_id')
+            ->map(fn ($qty) => (int) $qty)
+            ->all();
+    }
+
+    /**
+     * Draft Delivery Receipt quantities tied to one specific Sales Order item — Sir's narrower
+     * "Reserved" scope for the per-line drill-down.
+     *
+     * @return array<int,int>
+     */
+    protected function reservedBySoItem(): array
+    {
+        return DeliveryReceiptItem::query()
+            ->join('delivery_receipts', 'delivery_receipts.id', '=', 'delivery_receipt_items.delivery_receipt_id')
+            ->where('delivery_receipts.is_draft', true)
+            ->where('delivery_receipts.status', '!=', 'cancelled')
+            ->whereNotNull('delivery_receipt_items.sales_order_item_id')
+            ->groupBy('delivery_receipt_items.sales_order_item_id')
+            ->get(['delivery_receipt_items.sales_order_item_id', DB::raw('SUM(delivery_receipt_items.qty) as qty')])
+            ->pluck('qty', 'sales_order_item_id')
+            ->map(fn ($qty) => (int) $qty)
+            ->all();
+    }
+
+    /**
      * On-hand stock, summed per product and per generic item, split Warehouse vs POS — per Sir,
      * two separate columns instead of one Warehouse-only figure.
      *

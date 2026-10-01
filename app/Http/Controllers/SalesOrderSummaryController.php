@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\UndeliveredItemsExport;
+use App\Models\Category;
 use App\Models\Customer;
 use App\Models\GenericName;
 use App\Models\SalesOrder;
@@ -71,6 +72,65 @@ class SalesOrderSummaryController extends Controller
         );
     }
 
+    /**
+     * Same item lines as items(), across every customer at once — Sir's "S.O Summary - All
+     * Customers" tab. Same flat shape as the Excel export, just rendered as one on-screen table
+     * instead of drilling into one customer first.
+     */
+    public function allItems(Request $request)
+    {
+        [$scope, $search] = $this->allItemFilters($request);
+        $customers = $this->summary->items($scope, null, $search ?: null);
+
+        return view('admin.sales-order-summary.all-items', [
+            'scope' => $scope,
+            'search' => $search,
+            'customers' => $customers,
+            'covers' => $this->coversLabel($scope),
+        ]);
+    }
+
+    public function exportAllItems(Request $request)
+    {
+        [$scope, $search] = $this->allItemFilters($request);
+        $customers = $this->summary->items($scope, null, $search ?: null);
+
+        return Excel::download(
+            new UndeliveredItemsExport($customers),
+            'sales-order-summary-all-customers-' . $scope . '-' . now()->format('Ymd-His') . '.xlsx'
+        );
+    }
+
+    /**
+     * Every Generic Item's Sales Order lines across all customers, grouped by Generic Item —
+     * Sir's "S.O Summary by Item" tab, with the Reserved/Available columns sourced from draft
+     * Delivery Receipts.
+     */
+    public function byItem(Request $request)
+    {
+        $validated = $request->validate([
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'search' => 'nullable|string|max:100',
+        ]);
+        $hideZeroBalance = $request->boolean('hide_zero_balance');
+        $showZeroOnHand = $request->boolean('show_zero_on_hand');
+        $search = trim((string) ($validated['search'] ?? ''));
+
+        return view('admin.sales-order-summary.by-item', [
+            'categories' => Category::orderBy('category_name')->get(),
+            'categoryId' => $validated['category_id'] ?? null,
+            'hideZeroBalance' => $hideZeroBalance,
+            'showZeroOnHand' => $showZeroOnHand,
+            'search' => $search,
+            'items' => $this->summary->byItem(
+                $validated['category_id'] ?? null,
+                $hideZeroBalance,
+                $showZeroOnHand,
+                $search ?: null
+            ),
+        ]);
+    }
+
     /** The Delivered link (one Sales Order line's PO) and the per-item trace (every PO of a customer). */
     public function deliveries(Request $request)
     {
@@ -108,6 +168,20 @@ class SalesOrderSummaryController extends Controller
 
         return [
             Customer::findOrFail($validated['customer_id']),
+            $validated['scope'] ?? SalesOrderSummaryService::SCOPE_UNDELIVERED,
+            trim((string) ($validated['search'] ?? '')),
+        ];
+    }
+
+    /** @return array{0: string, 1: string} */
+    protected function allItemFilters(Request $request): array
+    {
+        $validated = $request->validate([
+            'scope' => 'nullable|in:' . SalesOrderSummaryService::SCOPE_UNDELIVERED . ',' . SalesOrderSummaryService::SCOPE_ORDERED,
+            'search' => 'nullable|string|max:100',
+        ]);
+
+        return [
             $validated['scope'] ?? SalesOrderSummaryService::SCOPE_UNDELIVERED,
             trim((string) ($validated['search'] ?? '')),
         ];

@@ -3,6 +3,33 @@
 @section('title', 'Sales Order Summary')
 
 @section('content')
+<style>
+    @include('partials.print.base-print')
+
+    .so-customer-sheet { font-size: 0.7rem; }
+    .so-customer-sheet .print-company-detail { font-size: 0.62rem; }
+    .so-customer-sheet .print-doc-title { font-size: 1.3rem; }
+    .so-customer-sheet .print-doc-page,
+    .so-customer-sheet .print-doc-no-row,
+    .so-customer-sheet .print-to-row { font-size: 0.66rem; }
+    .so-customer-sheet .print-to-header { font-size: 0.7rem; }
+    .so-customer-sheet .print-items-table th,
+    .so-customer-sheet .print-items-table td { font-size: 0.66rem; padding: 0.2rem 0.35rem; }
+    .so-customer-sheet .print-sig-label { font-size: 0.7rem; }
+    .so-customer-sheet .print-sig-value { font-size: 0.66rem; }
+    .so-customer-sheet .print-items-table tfoot td { background-color: #f5f5f5; }
+
+    #soSummaryPrintHost { display: none; }
+
+    @media print {
+        @page { size: portrait; margin: 12mm; }
+
+        body.printing-so-summary > *:not(#soSummaryPrintHost) { display: none !important; }
+        body.printing-so-summary #soSummaryPrintHost { display: block !important; }
+        .print-items-table tfoot td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+</style>
+
 <div class="container-xxl flex-grow-1 container-p-y">
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
         <div>
@@ -12,14 +39,31 @@
                 cancelled and archived ones, and Undelivered is what open Sales Orders still owe. Click a number to see what is behind it.
             </p>
         </div>
-        <form method="GET" action="{{ route('so-summary.index') }}" class="d-flex gap-2">
-            <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search by customer" style="min-width: 220px;">
-            <button type="submit" class="btn btn-outline-secondary text-nowrap">Search</button>
-            @if($search !== '')
-                <a href="{{ route('so-summary.index') }}" class="btn btn-outline-secondary text-nowrap">Clear</a>
+        <div class="d-flex flex-wrap gap-2">
+            <form method="GET" action="{{ route('so-summary.index') }}" class="d-flex gap-2">
+                <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search by customer" style="min-width: 220px;">
+                <button type="submit" class="btn btn-outline-secondary text-nowrap">Search</button>
+                @if($search !== '')
+                    <a href="{{ route('so-summary.index') }}" class="btn btn-outline-secondary text-nowrap">Clear</a>
+                @endif
+            </form>
+            @if($customers->isNotEmpty())
+                <button type="button" class="btn btn-primary text-nowrap" id="soSummaryPrintBtn"><i class="bx bx-printer"></i> Print</button>
             @endif
-        </form>
+        </div>
     </div>
+
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+            <a class="nav-link active" href="{{ route('so-summary.index') }}">S.O Summary</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('so-summary.all-items') }}">S.O Summary — All Customers</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('so-summary.by-item') }}">S.O Summary — By Item</a>
+        </li>
+    </ul>
 
     <div class="card">
         <h5 class="card-header">Sales Orders</h5>
@@ -84,5 +128,35 @@
             </table>
         </div>
     </div>
+
+    @if($customers->isNotEmpty())
+        <template id="soSummarySheet">
+            @include('admin.sales-order-summary.partials.customer-summary-sheet', ['customers' => $customers])
+        </template>
+    @endif
 </div>
+@endsection
+
+@section('scripts')
+<script>
+    document.getElementById('soSummaryPrintBtn')?.addEventListener('click', () => {
+        let host = document.getElementById('soSummaryPrintHost');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'soSummaryPrintHost';
+            document.body.appendChild(host);
+        }
+        host.replaceChildren(document.getElementById('soSummarySheet').content.cloneNode(true));
+
+        const pending = [...host.querySelectorAll('img')]
+            .filter(img => ! img.complete)
+            .map(img => new Promise(resolve => { img.onload = img.onerror = resolve; }));
+
+        Promise.race([Promise.all(pending), new Promise(resolve => setTimeout(resolve, 1500))]).then(() => {
+            document.body.classList.add('printing-so-summary');
+            window.print();
+        });
+    });
+    window.addEventListener('afterprint', () => document.body.classList.remove('printing-so-summary'));
+</script>
 @endsection

@@ -131,6 +131,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('admin/sales-order-summary/orders', [SalesOrderSummaryController::class, 'orders'])->name('so-summary.orders');
     Route::get('admin/sales-order-summary/items', [SalesOrderSummaryController::class, 'items'])->name('so-summary.items');
     Route::get('admin/sales-order-summary/items/export', [SalesOrderSummaryController::class, 'exportItems'])->name('so-summary.items.export');
+    Route::get('admin/sales-order-summary/all-items', [SalesOrderSummaryController::class, 'allItems'])->name('so-summary.all-items');
+    Route::get('admin/sales-order-summary/all-items/export', [SalesOrderSummaryController::class, 'exportAllItems'])->name('so-summary.all-items.export');
+    Route::get('admin/sales-order-summary/by-item', [SalesOrderSummaryController::class, 'byItem'])->name('so-summary.by-item');
     Route::get('admin/sales-order-summary/deliveries', [SalesOrderSummaryController::class, 'deliveries'])->name('so-summary.deliveries');
     Route::resource('admin/sales-orders', SalesOrderController::class)->except(['destroy']);
     Route::patch('admin/sales-orders/{sales_order}/notes', [SalesOrderController::class, 'updateNotes'])->name('sales-orders.update-notes');

@@ -198,6 +198,7 @@
                     <tr class="table-header-bg">
                         <th>D.R. No.</th>
                         <th>Receipt Date</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -207,6 +208,20 @@
                             <td>{{ $deliveryReceipt->dr_no }}</td>
                             <td>{{ $deliveryReceipt->receipt_date->format('M d, Y') }}</td>
                             <td>
+                                @if($deliveryReceipt->isDraft())
+                                    <span class="badge bg-secondary">DRAFT</span>
+                                @elseif($deliveryReceipt->isCancelled())
+                                    <span class="badge bg-danger">CANCELLED</span>
+                                @else
+                                    <span class="badge bg-{{ $deliveryReceipt->status === 'delivered' ? 'success' : 'warning text-dark' }}">
+                                        {{ \App\Models\DeliveryReceipt::STATUSES[$deliveryReceipt->status] ?? $deliveryReceipt->status }}
+                                    </span>
+                                @endif
+                                @if($deliveryReceipt->isArchived())
+                                    <span class="badge bg-dark">ARCHIVED</span>
+                                @endif
+                            </td>
+                            <td>
                                 <a href="{{ route('delivery-receipts.show', $deliveryReceipt) }}" class="btn btn-sm btn-info">
                                     View
                                 </a>
@@ -214,7 +229,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="text-center text-muted">No Delivery Receipts yet.</td>
+                            <td colspan="4" class="text-center text-muted">No Delivery Receipts yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
