@@ -29,9 +29,17 @@
             </li>
         </ul>
 
-        <form method="GET" action="{{ route('inventory-items.index') }}" class="d-flex mb-3" style="max-width: 400px;">
+        <form method="GET" action="{{ route('inventory-items.index') }}" class="d-flex mb-3" style="max-width: {{ $tab === 'history' ? '650px' : '400px' }};">
             <input type="hidden" name="tab" value="{{ $tab }}">
-            <input type="search" name="search" class="form-control me-2" placeholder="Search..." value="{{ $search }}">
+            <input type="search" name="search" class="form-control me-2" placeholder="Search..." value="{{ $search }}"
+                @if($tab === 'history') list="historyProductDatalist" autocomplete="off" @endif>
+            @if($tab === 'history')
+                <datalist id="historyProductDatalist">
+                    @foreach($historyProductsForJs as $p)
+                        <option value="{{ $p->item_name }}">{{ $p->code }}</option>
+                    @endforeach
+                </datalist>
+            @endif
             <button type="submit" class="btn btn-outline-secondary">Search</button>
             @if($search)
                 <a href="{{ route('inventory-items.index', ['tab' => $tab]) }}" class="btn btn-outline-secondary ms-2">Clear</a>
@@ -45,6 +53,7 @@
                     New Generic Item
                 </button>
                 <div class="d-flex gap-2">
+                    @include('admin.inventory-items.partials.qty-filter-dropdown', ['tab' => 'general'])
                     <a href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'general', 'show_archived' => $showArchived ? 0 : 1, 'show_trashed' => 0])) }}" class="btn btn-outline-secondary btn-sm">
                         @if($showArchived)
                             <i class="bx bx-undo"></i> Hide archived
@@ -337,24 +346,27 @@
                         </div>
                     @endif
                 </div>
-                <div class="dropdown">
-                    <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bx {{ $showTrashed ? 'bx-trash' : ($showArchived ? 'bx-archive' : 'bx-list-ul') }} me-1"></i>
-                        Showing: {{ $showTrashed ? 'Trashed' : ($showArchived ? 'Archived' : 'Active') }}
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end">
-                        <a class="dropdown-item {{ ! $showArchived && ! $showTrashed ? 'active' : '' }}"
-                           href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_archived' => 0, 'show_trashed' => 0])) }}">
-                            <i class="bx bx-list-ul me-1"></i> Active products
-                        </a>
-                        <a class="dropdown-item {{ $showArchived ? 'active' : '' }}"
-                           href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_archived' => 1, 'show_trashed' => 0])) }}">
-                            <i class="bx bx-archive me-1"></i> Archived
-                        </a>
-                        <a class="dropdown-item {{ $showTrashed ? 'active' : '' }}"
-                           href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_trashed' => 1, 'show_archived' => 0])) }}">
-                            <i class="bx bx-trash me-1"></i> Trashed
-                        </a>
+                <div class="d-flex gap-2">
+                    @include('admin.inventory-items.partials.qty-filter-dropdown', ['tab' => 'products'])
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bx {{ $showTrashed ? 'bx-trash' : ($showArchived ? 'bx-archive' : 'bx-list-ul') }} me-1"></i>
+                            Showing: {{ $showTrashed ? 'Trashed' : ($showArchived ? 'Archived' : 'Active') }}
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end">
+                            <a class="dropdown-item {{ ! $showArchived && ! $showTrashed ? 'active' : '' }}"
+                               href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_archived' => 0, 'show_trashed' => 0])) }}">
+                                <i class="bx bx-list-ul me-1"></i> Active products
+                            </a>
+                            <a class="dropdown-item {{ $showArchived ? 'active' : '' }}"
+                               href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_archived' => 1, 'show_trashed' => 0])) }}">
+                                <i class="bx bx-archive me-1"></i> Archived
+                            </a>
+                            <a class="dropdown-item {{ $showTrashed ? 'active' : '' }}"
+                               href="{{ route('inventory-items.index', array_merge(request()->query(), ['tab' => 'products', 'show_trashed' => 1, 'show_archived' => 0])) }}">
+                                <i class="bx bx-trash me-1"></i> Trashed
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
