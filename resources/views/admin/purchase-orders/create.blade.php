@@ -3,6 +3,32 @@
 @section('title', $editingPurchaseOrder ? 'Edit Draft — ' . $editingPurchaseOrder->po_no : 'New Purchase Order')
 
 @section('content')
+    <style>
+        /* The suggestion dropdown overlaps whatever sits below the Generic
+           Description field (it's position:absolute, so it doesn't push
+           that content down) — it must paint fully opaque or the row
+           underneath bleeds through. Not relying on Bootstrap's
+           .list-group defaults here since this template's own theme CSS
+           doesn't reliably set them. */
+        .item-suggestions {
+            background-color: #fff;
+            border: 1px solid rgba(0, 0, 0, .15);
+            border-radius: .375rem;
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+        }
+        .item-suggestions button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background-color: #fff;
+            border: 0;
+            border-bottom: 1px solid #f1f1f1;
+            padding: .375rem .75rem;
+            cursor: pointer;
+        }
+        .item-suggestions button:last-child { border-bottom: 0; }
+        .item-suggestions button:hover { background-color: #f8f9fa; }
+    </style>
     <div class="card mt-3">
         <h5 class="card-header">{{ $editingPurchaseOrder ? 'Edit Draft — ' . $editingPurchaseOrder->po_no : 'New Purchase Order' }}</h5>
         <div class="card-body">
@@ -184,7 +210,7 @@
         }
 
         box.innerHTML = matches.map(i =>
-            `<button type="button" class="list-group-item list-group-item-action text-start small py-1" data-item-id="${i.id}">${escapeHtml(itemLabel(i))}</button>`
+            `<button type="button" class="small" data-item-id="${i.id}">${escapeHtml(itemLabel(i))}</button>`
         ).join('');
         box.style.display = 'block';
     }
@@ -233,7 +259,7 @@
                     <input type="text" class="form-control item-search-input"
                         placeholder="Search generic name..." autocomplete="off" required>
                     <input type="hidden" name="items[${index}][generic_name_id]" class="item-id-input">
-                    <div class="list-group item-suggestions position-absolute w-100 shadow-sm"
+                    <div class="item-suggestions position-absolute w-100"
                         style="z-index: 1050; max-height: 280px; overflow-y: auto; display: none;"></div>
                 </div>
             </div>
