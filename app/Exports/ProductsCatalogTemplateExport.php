@@ -21,13 +21,17 @@ class ProductsCatalogTemplateExport implements FromArray, WithHeadings, WithTitl
 
     public function headings(): array
     {
-        return ['Category', 'Unit', 'Generic Description', 'Brand', 'Item Description', 'Cost', 'Unit Price', 'Product Type'];
+        return [
+            'Category', 'Unit', 'Generic Description', 'Brand', 'Item Description', 'Cost', 'Unit Price', 'Product Type',
+            'Barcode', 'FDA Reg No', 'FDA Exp', 'Custom Field 1', 'Custom Field 2', 'Custom Field 3', 'Custom Field 4', 'Location',
+        ];
     }
 
     public function array(): array
     {
         return [
-            ['Pain Relief', 'Tablet', 'Paracetamol 500mg', 'Biogesic', 'Pain reliever and fever reducer', 2.50, 5.00, 'Goods'],
+            ['Pain Relief', 'Tablet', 'Paracetamol 500mg', 'Biogesic', 'Pain reliever and fever reducer', 2.50, 5.00, 'Goods',
+                null, null, null, null, null, null, null, null],
         ];
     }
 }

@@ -7,12 +7,14 @@ use App\Models\GenericName;
 use App\Models\ImportSkippedRow;
 use App\Models\Product;
 use App\Models\Taxes;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 /**
  * Does the actual row-by-row work for one "PRODUCTS"-shaped sheet
@@ -151,7 +153,6 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         $generic = trim((string) ($row['generic_description'] ?? ''));
         $brand = trim((string) ($row['brand'] ?? '')) ?: null;
         $description = trim((string) ($row['item_description'] ?? '')) ?: null;
-        $legacyCode = trim((string) ($row['code'] ?? '')) ?: null;
 
         // Blank padding row (the used-range of a real spreadsheet often
         // extends past the last real row of data) — nothing to import.
@@ -173,6 +174,17 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             default => null,
         };
 
+        // Per Sir: Barcode/FDA Reg No/FDA Exp/Custom Field 1-4/Location are all
+        // optional — blank just leaves the new product's own field unset.
+        $barcode = trim((string) ($row['barcode'] ?? '')) ?: null;
+        $fdaRegNo = trim((string) ($row['fda_reg_no'] ?? '')) ?: null;
+        $fdaExp = $this->parseExpiry($row['fda_exp'] ?? null);
+        $customField1 = trim((string) ($row['custom_field_1'] ?? '')) ?: null;
+        $customField2 = trim((string) ($row['custom_field_2'] ?? '')) ?: null;
+        $customField3 = trim((string) ($row['custom_field_3'] ?? '')) ?: null;
+        $customField4 = trim((string) ($row['custom_field_4'] ?? '')) ?: null;
+        $location = trim((string) ($row['location'] ?? '')) ?: null;
+
         $rowData = [
             'Category' => $category,
             'Unit' => $unit,
@@ -181,6 +193,14 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             'Item Description' => $description,
             'Cost' => $row['cost'] ?? null,
             'Unit Price' => $row['unit_price'] ?? $row['n_r_php'] ?? null,
+            'Barcode' => $barcode,
+            'FDA Reg No' => $fdaRegNo,
+            'FDA Exp' => $fdaExp,
+            'Custom Field 1' => $customField1,
+            'Custom Field 2' => $customField2,
+            'Custom Field 3' => $customField3,
+            'Custom Field 4' => $customField4,
+            'Location' => $location,
         ];
 
         if ($productType === null) {
@@ -267,7 +287,14 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
             'unit_price' => $this->parseDecimal($row['unit_price'] ?? $row['n_r_php'] ?? null) ?? 0,
             'low_stock_threshold' => 0,
             'tax_id' => $this->defaultTaxId,
-            'custom_field_1' => $legacyCode,
+            'barcode' => $barcode,
+            'fda_reg_no' => $fdaRegNo,
+            'fda_reg_exp' => $fdaExp,
+            'custom_field_1' => $customField1,
+            'custom_field_2' => $customField2,
+            'custom_field_3' => $customField3,
+            'custom_field_4' => $customField4,
+            'location' => $location,
         ]);
 
         $this->productsImported++;
@@ -341,6 +368,19 @@ class ProductsCatalogSheetImport implements ToCollection, WithHeadingRow, WithCh
         }
 
         return is_numeric($value) ? (float) $value : null;
+    }
+
+    protected function parseExpiry(mixed $raw): ?string
+    {
+        if ($raw === null || trim((string) $raw) === '') {
+            return null;
+        }
+
+        if (is_numeric($raw)) {
+            return ExcelDate::excelToDateTimeObject((float) $raw)->format('Y-m-d');
+        }
+
+        return Carbon::parse(trim((string) $raw))->format('Y-m-d');
     }
 
     /**

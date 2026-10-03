@@ -38,6 +38,9 @@ class ProductsForPricesExport implements FromArray, WithHeadings, WithTitle
                 'products.unit_cost', 'products.unit_price', 'products.unit_price_percent',
                 'products.wholesale_percent', 'products.price_1_percent', 'products.price_2_percent', 'products.price_3_percent',
                 't.name as tax_name', 'g.product_type',
+                'products.barcode', 'products.fda_reg_no', 'products.fda_reg_exp',
+                'products.custom_field_1', 'products.custom_field_2', 'products.custom_field_3', 'products.custom_field_4',
+                'products.location',
             ])
             ->map(fn ($p) => [
                 $p->code, $p->category_name, $p->generic_name, $p->brand_name, $p->unit,
@@ -56,6 +59,9 @@ class ProductsForPricesExport implements FromArray, WithHeadings, WithTitle
                     default => 'VAT Inc',
                 },
                 \App\Models\GenericName::PRODUCT_TYPES[$p->product_type] ?? 'Goods',
+                $p->barcode, $p->fda_reg_no, $p->fda_reg_exp?->format('Y-m-d'),
+                $p->custom_field_1, $p->custom_field_2, $p->custom_field_3, $p->custom_field_4,
+                $p->location,
             ])
             ->all();
     }

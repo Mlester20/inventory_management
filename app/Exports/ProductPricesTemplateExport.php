@@ -17,8 +17,10 @@ use Maatwebsite\Excel\Concerns\WithTitle;
  * computed) OR a typed Retail Price with the % blank. Wholesale/P1-P3 are the %
  * off Retail and their peso amounts are computed by the system. Product Type
  * (Goods or Services) belongs to the Generic Item, so every product row of the
- * same Generic Description and Unit must agree. A blank cell keeps the current
- * value.
+ * same Generic Description and Unit must agree. Barcode/FDA Reg No/FDA Exp/
+ * Custom Field 1-4/Location are plain optional text (FDA Exp a date) and,
+ * unlike Item Description/New Brand, don't need the Code. A blank cell keeps
+ * the current value.
  */
 class ProductPricesTemplateExport implements FromArray, WithHeadings, WithTitle
 {
@@ -29,13 +31,17 @@ class ProductPricesTemplateExport implements FromArray, WithHeadings, WithTitle
 
     public function headings(): array
     {
-        return ['Code', 'Category', 'Generic Description', 'Brand', 'Unit', 'Item Description', 'New Brand', 'Cost', 'Retail Markup %', 'Retail Price', 'Wholesale %', 'P1 %', 'P2 %', 'P3 %', 'Tax', 'Product Type'];
+        return [
+            'Code', 'Category', 'Generic Description', 'Brand', 'Unit', 'Item Description', 'New Brand', 'Cost', 'Retail Markup %', 'Retail Price', 'Wholesale %', 'P1 %', 'P2 %', 'P3 %', 'Tax', 'Product Type',
+            'Barcode', 'FDA Reg No', 'FDA Exp', 'Custom Field 1', 'Custom Field 2', 'Custom Field 3', 'Custom Field 4', 'Location',
+        ];
     }
 
     public function array(): array
     {
         return [
-            ['00001', 'Pain Relief', 'Paracetamol 500mg', 'Biogesic', 'BX', 'Pain reliever and fever reducer', null, 10, 100, null, 10, 8, 6, 4, 'VAT Inc', 'Goods'],
+            ['00001', 'Pain Relief', 'Paracetamol 500mg', 'Biogesic', 'BX', 'Pain reliever and fever reducer', null, 10, 100, null, 10, 8, 6, 4, 'VAT Inc', 'Goods',
+                null, null, null, null, null, null, null, null],
         ];
     }
 }

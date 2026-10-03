@@ -5,11 +5,13 @@ namespace App\Imports;
 use App\Models\ImportSkippedRow;
 use App\Models\Product;
 use App\Models\Taxes;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 /**
  * Updates Cost, Retail price (PHP), the Wholesale/P1-P3 price-level percents
@@ -49,6 +51,9 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
         'price_2_percent' => ['price_2', ['p2', 'p2_percent', 'price_level_2', 'p_level_2', 'n_p2']],
         'price_3_percent' => ['price_3', ['p3', 'p3_percent', 'price_level_3', 'p_level_3', 'n_p3']],
     ];
+
+    /** Plain-text product fields: compared as strings in differs(), not coerced to float. */
+    protected const TEXT_FIELDS = ['barcode', 'fda_reg_no', 'fda_reg_exp', 'custom_field_1', 'custom_field_2', 'custom_field_3', 'custom_field_4', 'location'];
 
     public string $batchId;
     public bool $headingsMissing = false;
@@ -111,6 +116,7 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             $fields[] = $percentField;
             $fields[] = $priceField;
         }
+        $fields = array_merge($fields, self::TEXT_FIELDS);
 
         Product::query()
             ->join('generic_names as g', 'g.id', '=', 'products.generic_name_id')
@@ -189,7 +195,26 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
         $newBrandRaw = $this->firstPresent($row, ['new_brand']);
         $productTypeRaw = $this->firstPresent($row, ['product_type']);
 
-        $requested = array_merge($amounts, $percents, ['tax' => $taxRaw, 'retail_markup' => $retailMarkupRaw, 'description' => $descriptionRaw, 'new_brand' => $newBrandRaw, 'product_type' => $productTypeRaw]);
+        // Per Sir: Barcode/FDA Reg No/FDA Exp/Custom Field 1-4/Location — plain
+        // optional text fields, unrelated to how a row is matched to a product
+        // (unlike Item Description/New Brand above), so no Code requirement.
+        $barcodeRaw = $this->firstPresent($row, ['barcode']);
+        $fdaRegNoRaw = $this->firstPresent($row, ['fda_reg_no']);
+        $fdaExpRaw = $this->firstPresent($row, ['fda_exp']);
+        $customField1Raw = $this->firstPresent($row, ['custom_field_1']);
+        $customField2Raw = $this->firstPresent($row, ['custom_field_2']);
+        $customField3Raw = $this->firstPresent($row, ['custom_field_3']);
+        $customField4Raw = $this->firstPresent($row, ['custom_field_4']);
+        $locationRaw = $this->firstPresent($row, ['location']);
+
+        $requested = array_merge($amounts, $percents, [
+            'tax' => $taxRaw, 'retail_markup' => $retailMarkupRaw, 'description' => $descriptionRaw,
+            'new_brand' => $newBrandRaw, 'product_type' => $productTypeRaw,
+            'barcode' => $barcodeRaw, 'fda_reg_no' => $fdaRegNoRaw, 'fda_exp' => $fdaExpRaw,
+            'custom_field_1' => $customField1Raw, 'custom_field_2' => $customField2Raw,
+            'custom_field_3' => $customField3Raw, 'custom_field_4' => $customField4Raw,
+            'location' => $locationRaw,
+        ]);
         $noChangeRequested = collect($requested)->every(fn ($v) => $v === null);
 
         if ($code === null && $category === '' && $generic === '' && $noChangeRequested) {
@@ -213,6 +238,14 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
             'P3 %' => $percents['price_3_percent'],
             'Tax' => $taxRaw,
             'Product Type' => $productTypeRaw,
+            'Barcode' => $barcodeRaw,
+            'FDA Reg No' => $fdaRegNoRaw,
+            'FDA Exp' => $fdaExpRaw,
+            'Custom Field 1' => $customField1Raw,
+            'Custom Field 2' => $customField2Raw,
+            'Custom Field 3' => $customField3Raw,
+            'Custom Field 4' => $customField4Raw,
+            'Location' => $locationRaw,
         ];
 
         if ($code === null && ($category === '' || $generic === '')) {
@@ -283,6 +316,30 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
                 return;
             }
             $percentsGiven[$field] = $number;
+        }
+
+        foreach ([
+            'barcode' => $barcodeRaw,
+            'fda_reg_no' => $fdaRegNoRaw,
+            'custom_field_1' => $customField1Raw,
+            'custom_field_2' => $customField2Raw,
+            'custom_field_3' => $customField3Raw,
+            'custom_field_4' => $customField4Raw,
+            'location' => $locationRaw,
+        ] as $field => $raw) {
+            if ($raw !== null) {
+                $update[$field] = $raw;
+            }
+        }
+
+        if ($fdaExpRaw !== null) {
+            $fdaExp = $this->parseExpiry($fdaExpRaw);
+            if ($fdaExp === null) {
+                $this->skip($rowData, ImportSkippedRow::REASON_INVALID_DATA, "The value \"{$fdaExpRaw}\" is not a valid FDA Exp date.");
+
+                return;
+            }
+            $update['fda_reg_exp'] = $fdaExp;
         }
 
         $current = $this->current[$productId];
@@ -474,6 +531,14 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
+            if (in_array($field, self::TEXT_FIELDS, true)) {
+                if ((string) ($old ?? '') !== (string) ($value ?? '')) {
+                    return true;
+                }
+
+                continue;
+            }
+
             if ($value === null) {
                 if ($old !== null) {
                     return true;
@@ -529,6 +594,19 @@ class ProductPricesImport implements ToCollection, WithHeadingRow
         $clean = str_replace(['₱', ',', ' '], '', $raw);
 
         return is_numeric($clean) && (float) $clean >= 0 && (float) $clean <= $max ? round((float) $clean, 2) : null;
+    }
+
+    protected function parseExpiry(string $raw): ?string
+    {
+        try {
+            if (is_numeric($raw)) {
+                return ExcelDate::excelToDateTimeObject((float) $raw)->format('Y-m-d');
+            }
+
+            return Carbon::parse($raw)->format('Y-m-d');
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /** @return int|null|false|'missing' tax id, null for VAT-exempt, false if unrecognised */

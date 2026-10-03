@@ -12,7 +12,8 @@
                         <strong>1.</strong> <a href="{{ route('products.export-prices') }}">Download all products</a>
                         (each with its Code), or <a href="{{ route('products.import-prices.template') }}">a blank template</a>.<br>
                         <strong>2.</strong> Fill in Cost, Retail, Wholesale % / P1 % / P2 % / P3 %, Tax and Product Type, and/or change the
-                        <strong>Item Description</strong> and <strong>New Brand</strong>, then upload it here.
+                        <strong>Item Description</strong> and <strong>New Brand</strong>, and/or set <strong>Barcode</strong>, <strong>FDA Reg No</strong>,
+                        <strong>FDA Exp</strong>, <strong>Custom Field 1–4</strong> and <strong>Location</strong>, then upload it here.
                         Retail: either a <strong>Retail Markup %</strong> (price = Cost &times; (1 + %), needs a Cost)
                         or a typed <strong>Retail Price</strong> with the % left blank.
                         If the file has multiple sheets, only the one named "PRICES" is read.

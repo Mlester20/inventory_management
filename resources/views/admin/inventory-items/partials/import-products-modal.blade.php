@@ -11,7 +11,8 @@
                     <p class="text-muted small">
                         Upload an Excel (.xlsx/.xls) or CSV file with columns: Category, Unit, Generic
                         Description, Brand (optional), Item Description (optional), Cost (optional), Unit
-                        Price (optional), Product Type (optional: Goods or Services, Goods when blank). If the file
+                        Price (optional), Product Type (optional: Goods or Services, Goods when blank), and
+                        Barcode / FDA Reg No / FDA Exp / Custom Field 1–4 / Location (all optional). If the file
                         has multiple sheets, only the one named "PRODUCTS" is read — every other sheet is
                         ignored, so the full source workbook can be uploaded as-is.
                         <a href="{{ route('products.import.template') }}">Download the template</a>.
