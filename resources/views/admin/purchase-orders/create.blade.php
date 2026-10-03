@@ -202,13 +202,15 @@
             </div>
 
             <div class="row g-2">
-                <div class="col-md-6">
+                <div class="col-12">
                     <label class="form-label small mb-1">Generic Description</label>
                     <input type="text" class="form-control item-search-input" list="item-list-${index}"
                         placeholder="Search generic name..." autocomplete="off" required>
                     <datalist id="item-list-${index}">${itemDatalistOptions()}</datalist>
                     <input type="hidden" name="items[${index}][generic_name_id]" class="item-id-input">
                 </div>
+            </div>
+            <div class="row g-2 mt-1">
                 <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Qty</label>
                     <input type="number" name="items[${index}][qty]" class="form-control qty-input" min="1" value="1" required>

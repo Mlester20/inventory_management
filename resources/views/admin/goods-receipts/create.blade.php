@@ -253,27 +253,29 @@
                 </button>
             </div>
             <div class="row g-2">
-                <div class="col-md-4">
+                <div class="col-12">
                     <label class="form-label small mb-1">Item</label>
                     <input type="text" class="form-control item-search-input" list="direct-item-list-${index}"
                         placeholder="Search item..." autocomplete="off" required>
                     <datalist id="direct-item-list-${index}">${itemDatalistOptions()}</datalist>
                     <input type="hidden" name="items[${index}][product_id]" class="item-id-input">
                 </div>
-                <div class="col-6 col-md-2">
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Qty</label>
                     <input type="number" name="items[${index}][qty]" class="form-control qty-input" min="1" value="1" required>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Unit Cost</label>
                     <input type="number" name="items[${index}][unit_cost]" class="form-control cost-input" step="0.01" min="0" value="0" required>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Batch No.</label>
                     <input type="text" class="form-control batch-input" list="direct-batch-list-${index}" name="items[${index}][batch_no]">
                     <datalist id="direct-batch-list-${index}" class="batch-datalist"></datalist>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Expiry</label>
                     <input type="date" name="items[${index}][expiration_date]" class="form-control expiry-input">
                 </div>
