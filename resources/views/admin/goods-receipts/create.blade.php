@@ -183,10 +183,14 @@
         hidden.dispatchEvent(new Event('change'));
     });
 
-    // Item is a searchable text field (native <datalist>, matching the same
-    // technique already used for Generic Description pickers) instead of a
-    // long <select> — the label the user types/picks is matched back to the
-    // real product_id.
+    // Item is a searchable text field with its own JS-built suggestion
+    // dropdown (see renderItemSuggestions below) rather than a long <select>
+    // or a native <datalist> — the label the user types/picks is matched
+    // back to the real product_id. A native <datalist> was tried first, but
+    // Chrome's own suggestion popup clips long item names (lab reagent
+    // descriptions especially) to its own internal width no matter how wide
+    // the <input> is, so the dropdown had to be built by hand to actually
+    // show the full name.
     function itemLabel(item) {
         return item.name;
     }
@@ -202,12 +206,38 @@
         return ITEMS;
     }
 
-    function itemDatalistOptions() {
-        return itemsForSupplier(currentDirectSupplierId()).map(i => `<option value="${itemLabel(i)}"></option>`).join('');
-    }
-
     function findItemByLabel(label) {
         return itemsForSupplier(currentDirectSupplierId()).find(i => itemLabel(i) === label);
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Renders up to 30 matches as clickable rows under an Item input. Capped
+    // so a one-character query against a large catalog doesn't paint
+    // hundreds of rows.
+    function renderItemSuggestions(box, items, query) {
+        const q = query.trim().toLowerCase();
+        if (!q) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        const matches = items.filter(i => itemLabel(i).toLowerCase().includes(q)).slice(0, 30);
+        if (matches.length === 0) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        box.innerHTML = matches.map(i =>
+            `<button type="button" class="list-group-item list-group-item-action text-start small py-1" data-item-id="${i.id}">${escapeHtml(itemLabel(i))}</button>`
+        ).join('');
+        box.style.display = 'block';
     }
 
     // Only batches with no expiry or a still-valid expiry are offered as
@@ -220,8 +250,9 @@
     }
 
     // "Sort/arrange" toggle — re-sorts the shared ITEMS array (also used by
-    // the Against-PO tab's Brand suggestions) and rebuilds every
-    // already-rendered Direct Receipt row's datalist.
+    // the Against-PO tab's Brand suggestions); the next time any row's
+    // suggestion dropdown opens, it reads straight from this same array, so
+    // there's nothing else to rebuild here.
     function sortItems(mode) {
         const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
         if (mode === 'name_desc') {
@@ -231,10 +262,6 @@
         } else {
             ITEMS.sort((a, b) => collator.compare(a.name, b.name));
         }
-
-        document.querySelectorAll('#directLineItemsBody datalist').forEach(dl => {
-            dl.innerHTML = itemDatalistOptions();
-        });
     }
 
     document.getElementById('itemSortSelect').addEventListener('change', function () {
@@ -253,12 +280,13 @@
                 </button>
             </div>
             <div class="row g-2">
-                <div class="col-12">
+                <div class="col-12 position-relative">
                     <label class="form-label small mb-1">Item</label>
-                    <input type="text" class="form-control item-search-input" list="direct-item-list-${index}"
+                    <input type="text" class="form-control item-search-input"
                         placeholder="Search item..." autocomplete="off" required>
-                    <datalist id="direct-item-list-${index}">${itemDatalistOptions()}</datalist>
                     <input type="hidden" name="items[${index}][product_id]" class="item-id-input">
+                    <div class="list-group item-suggestions position-absolute w-100 shadow-sm"
+                        style="z-index: 1050; max-height: 280px; overflow-y: auto; display: none;"></div>
                 </div>
             </div>
             <div class="row g-2 mt-1">
@@ -294,6 +322,7 @@
         document.getElementById('directLineItemsBody').appendChild(card);
 
         const itemSearchInput = card.querySelector('.item-search-input');
+        const suggestionsBox = card.querySelector('.item-suggestions');
         const itemIdInput = card.querySelector('.item-id-input');
         const costInput = card.querySelector('.cost-input');
         const unitInput = card.querySelector('.unit-input');
@@ -301,8 +330,7 @@
         const batchDatalist = card.querySelector('.batch-datalist');
         const expiryInput = card.querySelector('.expiry-input');
 
-        itemSearchInput.addEventListener('input', function () {
-            const item = findItemByLabel(this.value);
+        function applyDirectItem(item) {
             itemIdInput.value = item ? item.id : '';
             batchDatalist.innerHTML = '';
             // Unit is a fixed attribute of the item (read-only field — see
@@ -317,6 +345,46 @@
                     batchDatalist.appendChild(opt);
                 });
             }
+        }
+
+        itemSearchInput.addEventListener('input', function () {
+            // A resumed draft's prefill dispatches this same 'input' event
+            // programmatically (see below) without focusing the field first —
+            // only paint the dropdown for an actual, focused keystroke.
+            if (document.activeElement === this) {
+                renderItemSuggestions(suggestionsBox, itemsForSupplier(currentDirectSupplierId()), this.value);
+            }
+            applyDirectItem(findItemByLabel(this.value));
+        });
+
+        itemSearchInput.addEventListener('focus', function () {
+            if (this.value.trim()) {
+                renderItemSuggestions(suggestionsBox, itemsForSupplier(currentDirectSupplierId()), this.value);
+            }
+        });
+
+        // A short delay so a click on a suggestion (below) registers before
+        // the dropdown is hidden out from under it.
+        itemSearchInput.addEventListener('blur', function () {
+            setTimeout(() => { suggestionsBox.style.display = 'none'; }, 150);
+        });
+
+        // mousedown (not click) fires before the input's blur, so the pick
+        // lands reliably without racing the blur handler above.
+        suggestionsBox.addEventListener('mousedown', function (e) {
+            const row = e.target.closest('[data-item-id]');
+            if (!row) {
+                return;
+            }
+            e.preventDefault();
+            const item = ITEMS.find(i => String(i.id) === row.dataset.itemId);
+            if (!item) {
+                return;
+            }
+            itemSearchInput.value = itemLabel(item);
+            applyDirectItem(item);
+            suggestionsBox.style.display = 'none';
+            suggestionsBox.innerHTML = '';
         });
 
         batchInput.addEventListener('input', function () {
@@ -397,15 +465,12 @@
 
     // The item list itself no longer depends on which supplier is chosen
     // (see itemsForSupplier() above), so this is now just a safety net in
-    // case that ever changes again — it re-syncs each row's datalist and
-    // drops a selection that no longer resolves, without otherwise
-    // affecting normal use.
+    // case that ever changes again — it drops a selection that no longer
+    // resolves, without otherwise affecting normal use.
     document.getElementById('direct_supplier_id').addEventListener('change', function () {
         document.querySelectorAll('#directLineItemsBody .line-item-card').forEach(card => {
             const itemSearchInput = card.querySelector('.item-search-input');
             const itemIdInput = card.querySelector('.item-id-input');
-            const datalist = card.querySelector('datalist');
-            datalist.innerHTML = itemDatalistOptions();
 
             if (itemIdInput.value && !findItemByLabel(itemSearchInput.value)) {
                 itemSearchInput.value = '';

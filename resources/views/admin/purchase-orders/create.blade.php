@@ -142,26 +142,56 @@
 
     let rowIndex = 0;
 
-    // Generic Description is a searchable text field (native <datalist>,
-    // matching the same technique already used for Sales Order/Sales Quote/
-    // Delivery Receipt's Generic Description pickers) instead of a long
-    // <select> — the label the user types/picks is matched back to the real
-    // generic_name_id. A PO orders a Generic Item; the specific brand isn't
-    // chosen until Goods Receipt time (same as the existing Brand field).
+    // Generic Description is a searchable text field with its own JS-built
+    // suggestion dropdown (see renderItemSuggestions below) rather than a
+    // long <select> or a native <datalist> — the label the user types/picks
+    // is matched back to the real generic_name_id. A PO orders a Generic
+    // Item; the specific brand isn't chosen until Goods Receipt time (same
+    // as the existing Brand field). A native <datalist> was tried first,
+    // but Chrome's own suggestion popup clips long generic names to its own
+    // internal width no matter how wide the <input> is, so the dropdown had
+    // to be built by hand to actually show the full name.
     function itemLabel(g) {
         return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
-    }
-
-    function itemDatalistOptions() {
-        return GENERIC_NAMES.map(g => `<option value="${itemLabel(g)}"></option>`).join('');
     }
 
     function findItemByLabel(label) {
         return GENERIC_NAMES.find(g => itemLabel(g) === label);
     }
 
-    // "Sort/arrange" toggle — re-sorts the shared GENERIC_NAMES array and
-    // rebuilds every already-rendered row's datalist.
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Renders up to 30 matches as clickable rows under the Generic
+    // Description input. Capped so a one-character query against a large
+    // catalog doesn't paint hundreds of rows.
+    function renderItemSuggestions(box, items, query) {
+        const q = query.trim().toLowerCase();
+        if (!q) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        const matches = items.filter(i => itemLabel(i).toLowerCase().includes(q)).slice(0, 30);
+        if (matches.length === 0) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        box.innerHTML = matches.map(i =>
+            `<button type="button" class="list-group-item list-group-item-action text-start small py-1" data-item-id="${i.id}">${escapeHtml(itemLabel(i))}</button>`
+        ).join('');
+        box.style.display = 'block';
+    }
+
+    // "Sort/arrange" toggle — re-sorts the shared GENERIC_NAMES array; the
+    // next time any row's suggestion dropdown opens, it reads straight from
+    // this same array, so there's nothing else to rebuild here.
     function sortItems(mode) {
         const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
         if (mode === 'name_desc') {
@@ -171,10 +201,6 @@
         } else {
             GENERIC_NAMES.sort((a, b) => collator.compare(a.generic_name, b.generic_name));
         }
-
-        document.querySelectorAll('#lineItemsBody datalist').forEach(dl => {
-            dl.innerHTML = itemDatalistOptions();
-        });
     }
 
     document.getElementById('itemSortSelect').addEventListener('change', function () {
@@ -202,12 +228,13 @@
             </div>
 
             <div class="row g-2">
-                <div class="col-12">
+                <div class="col-12 position-relative">
                     <label class="form-label small mb-1">Generic Description</label>
-                    <input type="text" class="form-control item-search-input" list="item-list-${index}"
+                    <input type="text" class="form-control item-search-input"
                         placeholder="Search generic name..." autocomplete="off" required>
-                    <datalist id="item-list-${index}">${itemDatalistOptions()}</datalist>
                     <input type="hidden" name="items[${index}][generic_name_id]" class="item-id-input">
+                    <div class="list-group item-suggestions position-absolute w-100 shadow-sm"
+                        style="z-index: 1050; max-height: 280px; overflow-y: auto; display: none;"></div>
                 </div>
             </div>
             <div class="row g-2 mt-1">
@@ -261,12 +288,12 @@
 
     function bindRowEvents(card) {
         const itemSearchInput = card.querySelector('.item-search-input');
+        const suggestionsBox = card.querySelector('.item-suggestions');
         const itemIdInput = card.querySelector('.item-id-input');
         const costInput = card.querySelector('.cost-input');
         const unitInput = card.querySelector('.unit-input');
 
-        itemSearchInput.addEventListener('input', function () {
-            const item = findItemByLabel(this.value);
+        function applyItem(item) {
             itemIdInput.value = item ? item.id : '';
             // No unit_cost auto-fill — a Generic Item has no single cost of
             // its own (different brands under it can cost differently), so
@@ -276,6 +303,46 @@
             // after picking a different item).
             unitInput.value = item ? (item.unit || '') : '';
             computeTotals();
+        }
+
+        itemSearchInput.addEventListener('input', function () {
+            // A resumed draft's prefill dispatches this same 'input' event
+            // programmatically (see addRow above) without focusing the field
+            // first — only paint the dropdown for an actual, focused keystroke.
+            if (document.activeElement === this) {
+                renderItemSuggestions(suggestionsBox, GENERIC_NAMES, this.value);
+            }
+            applyItem(findItemByLabel(this.value));
+        });
+
+        itemSearchInput.addEventListener('focus', function () {
+            if (this.value.trim()) {
+                renderItemSuggestions(suggestionsBox, GENERIC_NAMES, this.value);
+            }
+        });
+
+        // A short delay so a click on a suggestion (below) registers before
+        // the dropdown is hidden out from under it.
+        itemSearchInput.addEventListener('blur', function () {
+            setTimeout(() => { suggestionsBox.style.display = 'none'; }, 150);
+        });
+
+        // mousedown (not click) fires before the input's blur, so the pick
+        // lands reliably without racing the blur handler above.
+        suggestionsBox.addEventListener('mousedown', function (e) {
+            const row = e.target.closest('[data-item-id]');
+            if (!row) {
+                return;
+            }
+            e.preventDefault();
+            const item = GENERIC_NAMES.find(g => String(g.id) === row.dataset.itemId);
+            if (!item) {
+                return;
+            }
+            itemSearchInput.value = itemLabel(item);
+            applyItem(item);
+            suggestionsBox.style.display = 'none';
+            suggestionsBox.innerHTML = '';
         });
 
         card.querySelectorAll('.qty-input, .cost-input').forEach(el => {
@@ -348,8 +415,6 @@
         document.querySelectorAll('#lineItemsBody .line-item-card').forEach(card => {
             const itemSearchInput = card.querySelector('.item-search-input');
             const itemIdInput = card.querySelector('.item-id-input');
-            const datalist = card.querySelector('datalist');
-            datalist.innerHTML = itemDatalistOptions();
 
             if (itemIdInput.value && !findItemByLabel(itemSearchInput.value)) {
                 itemSearchInput.value = '';

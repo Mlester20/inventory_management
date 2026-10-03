@@ -263,16 +263,73 @@
 
     let rowIndex = 0;
 
-    // Item is a searchable text field (native <datalist>, matching the same
-    // technique already used for Generic Description pickers) instead of a
-    // long <select> — the label the user types/picks is matched back to the
-    // real product_id.
+    // Item is a searchable text field with its own JS-built suggestion
+    // dropdown (see renderSuggestions/bindRowEvents below) rather than a
+    // long <select> or a native <datalist> — the label the user types/picks
+    // is matched back to the real product_id. A native <datalist> was tried
+    // first, but Chrome's own suggestion popup clips long item names (lab
+    // reagent descriptions especially) to its own internal width no matter
+    // how wide the <input> is, so the dropdown had to be built by hand to
+    // actually show the full name.
     function itemLabel(item) {
         return `${item.name} (POS: ${item.quantity}, Warehouse: ${item.warehouse_quantity})`;
     }
 
-    function itemDatalistOptions() {
-        return ITEMS.map(i => `<option value="${itemLabel(i)}"></option>`).join('');
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Renders up to 30 matches as clickable rows under the Item input. Capped
+    // so a one-character query against a large catalog doesn't paint hundreds
+    // of rows.
+    function renderSuggestions(card, query) {
+        const box = card.querySelector('.item-suggestions');
+        const q = query.trim().toLowerCase();
+        if (!q) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        const matches = ITEMS.filter(i => itemLabel(i).toLowerCase().includes(q)).slice(0, 30);
+        if (matches.length === 0) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        box.innerHTML = matches.map(i =>
+            `<button type="button" class="list-group-item list-group-item-action text-start small py-1" data-item-id="${i.id}">${escapeHtml(itemLabel(i))}</button>`
+        ).join('');
+        box.style.display = 'block';
+    }
+
+    // Shared by the exact-text-match path (typing the full label) and the
+    // click-a-suggestion path, so picking an item behaves identically either
+    // way.
+    function applyItemToCard(card, item) {
+        const itemIdInput = card.querySelector('.item-id-input');
+        const descInput = card.querySelector('.desc-input');
+        const unitInput = card.querySelector('.unit-input');
+        const priceInput = card.querySelector('.price-input');
+
+        itemIdInput.value = item ? item.id : '';
+        if (item) {
+            priceInput.value = item.price.toFixed(2);
+            if (!descInput.value || descInput.dataset.auto === '1') {
+                descInput.value = item.name;
+                descInput.dataset.auto = '1';
+            }
+            if (!unitInput.value || unitInput.dataset.auto === '1') {
+                unitInput.value = item.unit;
+                unitInput.dataset.auto = '1';
+            }
+        }
+        updateDefaultTaxLabel(card, item);
+        updateStockHint(card);
+        computeTotals();
     }
 
     const TAX_LABELS = { vatable: 'VATable', vatex: 'VAT-Exempt', zero: 'Zero-Rated' };
@@ -316,8 +373,9 @@
         return ITEMS.find(i => itemLabel(i) === label);
     }
 
-    // "Sort/arrange" toggle — re-sorts the in-memory ITEMS array and rebuilds
-    // every already-rendered row's datalist.
+    // "Sort/arrange" toggle — re-sorts the in-memory ITEMS array; the next
+    // time any row's suggestion dropdown opens, it reads straight from this
+    // same array, so there's nothing else to rebuild here.
     function sortItems(mode) {
         const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
         if (mode === 'name_desc') {
@@ -327,10 +385,6 @@
         } else {
             ITEMS.sort((a, b) => collator.compare(a.name, b.name));
         }
-
-        document.querySelectorAll('#lineItemsBody datalist').forEach(dl => {
-            dl.innerHTML = itemDatalistOptions();
-        });
     }
 
     document.getElementById('itemSortSelect').addEventListener('change', function () {
@@ -357,12 +411,13 @@
             </div>
 
             <div class="row g-2">
-                <div class="col-12">
+                <div class="col-12 position-relative">
                     <label class="form-label small mb-1">Item</label>
-                    <input type="text" class="form-control item-search-input" list="item-list-${index}"
+                    <input type="text" class="form-control item-search-input"
                         placeholder="Search item..." autocomplete="off" required>
-                    <datalist id="item-list-${index}">${itemDatalistOptions()}</datalist>
                     <input type="hidden" name="items[${index}][item_id]" class="item-id-input">
+                    <div class="list-group item-suggestions position-absolute w-100 shadow-sm"
+                        style="z-index: 1050; max-height: 280px; overflow-y: auto; display: none;"></div>
                     <div class="form-text stock-hint"></div>
                 </div>
             </div>
@@ -452,10 +507,9 @@
 
     function bindRowEvents(card) {
         const itemSearchInput = card.querySelector('.item-search-input');
-        const itemIdInput = card.querySelector('.item-id-input');
+        const suggestionsBox = card.querySelector('.item-suggestions');
         const descInput = card.querySelector('.desc-input');
         const unitInput = card.querySelector('.unit-input');
-        const priceInput = card.querySelector('.price-input');
 
         // Description and Unit are pre-filled from the item. Remember that, so
         // picking a different item on the same line refreshes them, while text the
@@ -464,22 +518,38 @@
         unitInput.addEventListener('input', () => { unitInput.dataset.auto = '0'; });
 
         itemSearchInput.addEventListener('input', function () {
-            const item = findItemByLabel(this.value);
-            itemIdInput.value = item ? item.id : '';
-            if (item) {
-                priceInput.value = item.price.toFixed(2);
-                if (!descInput.value || descInput.dataset.auto === '1') {
-                    descInput.value = item.name;
-                    descInput.dataset.auto = '1';
-                }
-                if (!unitInput.value || unitInput.dataset.auto === '1') {
-                    unitInput.value = item.unit;
-                    unitInput.dataset.auto = '1';
-                }
+            renderSuggestions(card, this.value);
+            applyItemToCard(card, findItemByLabel(this.value));
+        });
+
+        itemSearchInput.addEventListener('focus', function () {
+            if (this.value.trim()) {
+                renderSuggestions(card, this.value);
             }
-            updateDefaultTaxLabel(card, item);
-            updateStockHint(card);
-            computeTotals();
+        });
+
+        // A short delay so a click on a suggestion (below) registers before
+        // the dropdown is hidden out from under it.
+        itemSearchInput.addEventListener('blur', function () {
+            setTimeout(() => { suggestionsBox.style.display = 'none'; }, 150);
+        });
+
+        // mousedown (not click) fires before the input's blur, so the pick
+        // lands reliably without racing the blur handler above.
+        suggestionsBox.addEventListener('mousedown', function (e) {
+            const row = e.target.closest('[data-item-id]');
+            if (!row) {
+                return;
+            }
+            e.preventDefault();
+            const item = ITEMS.find(i => String(i.id) === row.dataset.itemId);
+            if (!item) {
+                return;
+            }
+            itemSearchInput.value = itemLabel(item);
+            applyItemToCard(card, item);
+            suggestionsBox.style.display = 'none';
+            suggestionsBox.innerHTML = '';
         });
 
         card.querySelectorAll('.qty-input, .price-input, .dis-input, .tax-select').forEach(el => {
