@@ -357,7 +357,7 @@
             </div>
 
             <div class="row g-2">
-                <div class="col-md-5">
+                <div class="col-12">
                     <label class="form-label small mb-1">Item</label>
                     <input type="text" class="form-control item-search-input" list="item-list-${index}"
                         placeholder="Search item..." autocomplete="off" required>
@@ -365,15 +365,18 @@
                     <input type="hidden" name="items[${index}][item_id]" class="item-id-input">
                     <div class="form-text stock-hint"></div>
                 </div>
-                <div class="col-md-4">
+            </div>
+
+            <div class="row g-2 mt-1">
+                <div class="col-md-7">
                     <label class="form-label small mb-1">Description</label>
                     <input type="text" name="items[${index}][desc]" class="form-control desc-input">
                 </div>
-                <div class="col-6 col-md-1">
+                <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Qty</label>
                     <input type="number" name="items[${index}][qty]" class="form-control qty-input" min="1" value="1" required>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Unit</label>
                     <input type="text" name="items[${index}][unit]" class="form-control unit-input" value="pc">
                 </div>
