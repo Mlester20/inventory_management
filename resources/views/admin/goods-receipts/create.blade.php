@@ -246,13 +246,10 @@
     // hundreds of rows.
     function renderItemSuggestions(box, items, query) {
         const q = query.trim().toLowerCase();
-        if (!q) {
-            box.style.display = 'none';
-            box.innerHTML = '';
-            return;
-        }
-
-        const matches = items.filter(i => itemLabel(i).toLowerCase().includes(q)).slice(0, 30);
+        // An empty query (clicking into a blank field) browses the first 30
+        // items instead of showing nothing — matches how the native
+        // <datalist> this replaced used to list everything on focus.
+        const matches = (q ? items.filter(i => itemLabel(i).toLowerCase().includes(q)) : items).slice(0, 30);
         if (matches.length === 0) {
             box.style.display = 'none';
             box.innerHTML = '';
@@ -383,9 +380,7 @@
         });
 
         itemSearchInput.addEventListener('focus', function () {
-            if (this.value.trim()) {
-                renderItemSuggestions(suggestionsBox, itemsForSupplier(currentDirectSupplierId()), this.value);
-            }
+            renderItemSuggestions(suggestionsBox, itemsForSupplier(currentDirectSupplierId()), this.value);
         });
 
         // A short delay so a click on a suggestion (below) registers before
