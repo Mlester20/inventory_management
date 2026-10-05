@@ -224,7 +224,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/goods-receipts', GoodsReceiptController::class);
     Route::resource('admin/purchase-invoices', PurchaseInvoiceController::class);
     Route::resource('admin/stock-transfers', StockTransferController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
-    Route::resource('admin/repacks', RepackController::class)->only(['index', 'create', 'store', 'show']);
+    Route::resource('admin/repacks', RepackController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::post('admin/repacks/{repack}/void', [RepackController::class, 'void'])->name('repacks.void');
     Route::resource('admin/stock-disposals', StockDisposalController::class)->only(['index', 'create', 'store', 'show']);
 

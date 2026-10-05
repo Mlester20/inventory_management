@@ -43,7 +43,7 @@ class RepackController extends Controller
         return view('admin.repacks.create', $this->formData());
     }
 
-    protected function formData(): array
+    protected function formData(?Repack $editing = null): array
     {
         $locations = Location::orderBy('name')->get();
         $users = User::orderBy('name')->get();
@@ -72,12 +72,52 @@ class RepackController extends Controller
             ])->values(),
         ])->values();
 
-        return compact('locations', 'users', 'genericNamesForJs');
+        $prefillLines = [];
+        if ($editing) {
+            $editing->load('lines.sourceBatch.product.genericName');
+
+            $prefillLines = $editing->lines->map(fn ($line) => [
+                'generic_label' => $line->sourceBatch->product->genericName
+                    ? "{$line->sourceBatch->product->genericName->generic_name} ({$line->sourceBatch->product->genericName->unit}) — {$line->sourceBatch->product->genericName->category->category_name}"
+                    : null,
+                'source_batch_id' => $line->source_batch_id,
+                'source_qty' => $line->source_qty,
+                'destination_product_id' => $line->destination_product_id,
+                'destination_qty' => $line->destination_qty,
+                'destination_batch_no' => $line->destinationBatch?->batch_no,
+                'destination_expiration_date' => $line->destinationBatch?->expiration_date?->toDateString(),
+                'destination_price' => $line->destination_price !== null ? (float) $line->destination_price : null,
+                'destination_cost' => $line->destination_cost !== null ? (float) $line->destination_cost : null,
+                'apply_price' => $line->price_applied,
+            ])->values();
+        }
+
+        return compact('locations', 'users', 'genericNamesForJs', 'prefillLines') + ['editingRepack' => $editing];
     }
 
-    public function store(Request $request)
+    protected function draftValidationRules(): array
     {
-        $validated = $request->validate([
+        return [
+            'date' => 'nullable|date',
+            'location_id' => 'nullable|exists:locations,id',
+            'prepared_by' => 'nullable|exists:users,id',
+            'remarks' => 'nullable|string',
+            'lines' => 'nullable|array',
+            'lines.*.source_batch_id' => 'nullable|exists:product_batches,id',
+            'lines.*.source_qty' => 'nullable|integer|min:0',
+            'lines.*.destination_product_id' => 'nullable|exists:products,id',
+            'lines.*.destination_qty' => 'nullable|integer|min:0',
+            'lines.*.destination_batch_no' => 'nullable|string|max:100',
+            'lines.*.destination_expiration_date' => 'nullable|date',
+            'lines.*.destination_price' => 'nullable|numeric|min:0',
+            'lines.*.destination_cost' => 'nullable|numeric|min:0',
+            'lines.*.apply_price' => 'nullable|boolean',
+        ];
+    }
+
+    protected function postedValidationRules(): array
+    {
+        return [
             'date' => 'required|date',
             'location_id' => 'required|exists:locations,id',
             'prepared_by' => 'nullable|exists:users,id',
@@ -92,7 +132,27 @@ class RepackController extends Controller
             'lines.*.destination_price' => 'nullable|numeric|min:0',
             'lines.*.destination_cost' => 'nullable|numeric|min:0',
             'lines.*.apply_price' => 'nullable|boolean',
-        ]);
+        ];
+    }
+
+    public function store(Request $request)
+    {
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+            $repack = $this->repackService->saveDraft($validated, auth()->id());
+
+            ActivityLog::record(
+                module: 'Repack',
+                action: 'draft_saved',
+                loggable: $repack,
+                description: "Saved draft Repack {$repack->reference}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the Repacks list before posting.');
+            return redirect()->route('repacks.show', $repack);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
 
         try {
             $repack = $this->repackService->createRepack($validated, auth()->id());
@@ -116,6 +176,62 @@ class RepackController extends Controller
         $repack->load('location', 'preparedBy', 'voidedBy', 'lines.sourceBatch.product', 'lines.destinationProduct', 'lines.destinationBatch');
 
         return view('admin.repacks.show', compact('repack'));
+    }
+
+    /**
+     * Only a draft can be edited — a posted Repack already moved stock and
+     * (maybe) applied a Price/Cost, so editing that isn't supported; void it
+     * instead, same as Invoice/Goods Receipt/Delivery Receipt handle it.
+     */
+    public function edit(Repack $repack)
+    {
+        if (! $repack->isDraft()) {
+            Alert::info('Not supported', 'Editing a posted Repack is not supported.');
+            return redirect()->route('repacks.show', $repack);
+        }
+
+        return view('admin.repacks.create', $this->formData($repack));
+    }
+
+    public function update(Request $request, Repack $repack)
+    {
+        if (! $repack->isDraft()) {
+            Alert::info('Not supported', 'Editing a posted Repack is not supported.');
+            return redirect()->route('repacks.show', $repack);
+        }
+
+        if ($request->input('save_action') === 'draft') {
+            $validated = $request->validate($this->draftValidationRules());
+            $repack = $this->repackService->saveDraft($validated, auth()->id(), $repack);
+
+            ActivityLog::record(
+                module: 'Repack',
+                action: 'draft_updated',
+                loggable: $repack,
+                description: "Updated draft Repack {$repack->reference}",
+            );
+
+            Alert::success('Draft saved', 'Resume it anytime from the Repacks list before posting.');
+            return redirect()->route('repacks.show', $repack);
+        }
+
+        $validated = $request->validate($this->postedValidationRules());
+
+        try {
+            $repack = $this->repackService->createRepack($validated, auth()->id(), $repack);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        ActivityLog::record(
+            module: 'Repack',
+            action: 'created',
+            loggable: $repack,
+            description: "Created Repack {$repack->reference} at {$repack->location->name}",
+        );
+
+        Alert::success('Success', 'Repack created successfully');
+        return redirect()->route('repacks.show', $repack);
     }
 
     /**

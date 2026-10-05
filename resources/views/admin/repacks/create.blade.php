@@ -1,10 +1,35 @@
 @extends('layout.app')
 
-@section('title', 'New Repack')
+@section('title', $editingRepack ? 'Edit Draft — ' . $editingRepack->reference : 'New Repack')
 
 @section('content')
+    <style>
+        /* The suggestion dropdown overlaps whatever sits below the Generic
+           Description field (it's position:absolute, so it doesn't push that
+           content down) — it must paint fully opaque or the row underneath
+           bleeds through. Not relying on Bootstrap's .list-group defaults
+           here since this template's own theme CSS doesn't reliably set them. */
+        .generic-suggestions {
+            background-color: #fff;
+            border: 1px solid rgba(0, 0, 0, .15);
+            border-radius: .375rem;
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+        }
+        .generic-suggestions button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background-color: #fff;
+            border: 0;
+            border-bottom: 1px solid #f1f1f1;
+            padding: .375rem .75rem;
+            cursor: pointer;
+        }
+        .generic-suggestions button:last-child { border-bottom: 0; }
+        .generic-suggestions button:hover { background-color: #f8f9fa; }
+    </style>
     <div class="card mt-3">
-        <h5 class="card-header">New Repack</h5>
+        <h5 class="card-header">{{ $editingRepack ? 'Edit Draft — ' . $editingRepack->reference : 'New Repack' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -29,19 +54,22 @@
                 there; once some are sold or moved, correct the quantity with an Inventory Adjustment instead.
             </p>
 
-            <form action="{{ route('repacks.store') }}" method="POST" id="repackForm">
+            <form action="{{ $editingRepack ? route('repacks.update', $editingRepack) : route('repacks.store') }}" method="POST" id="repackForm">
                 @csrf
+                @if($editingRepack)
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-md-3 mb-3">
                         <label for="date" class="form-label">Date</label>
-                        <input type="date" name="date" id="date" class="form-control" value="{{ old('date', now()->toDateString()) }}" required>
+                        <input type="date" name="date" id="date" class="form-control" value="{{ old('date', $editingRepack?->date?->toDateString() ?? now()->toDateString()) }}" required>
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="location_id" class="form-label">Location</label>
                         <select name="location_id" id="location_id" class="form-select" required>
                             @foreach ($locations as $location)
-                                <option value="{{ $location->id }}" {{ old('location_id', $locations->firstWhere('is_default', true)?->id) == $location->id ? 'selected' : '' }}>
+                                <option value="{{ $location->id }}" {{ old('location_id', $editingRepack?->location_id ?? $locations->firstWhere('is_default', true)?->id) == $location->id ? 'selected' : '' }}>
                                     {{ $location->name }}
                                 </option>
                             @endforeach
@@ -52,7 +80,7 @@
                         <select name="prepared_by" id="prepared_by" class="form-select">
                             <option value="">-- Select User --</option>
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('prepared_by', auth()->id()) == $user->id ? 'selected' : '' }}>
+                                <option value="{{ $user->id }}" {{ old('prepared_by', $editingRepack?->prepared_by ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                                     {{ $user->name }}
                                 </option>
                             @endforeach
@@ -60,20 +88,21 @@
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="remarks" class="form-label">Remarks <span class="text-muted">(optional)</span></label>
-                        <input type="text" name="remarks" id="remarks" class="form-control" value="{{ old('remarks') }}">
+                        <input type="text" name="remarks" id="remarks" class="form-control" value="{{ old('remarks', $editingRepack?->remarks) }}">
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0">Lines</h6>
-                    <button type="button" class="btn btn-sm btn-primary" id="addRowBtn">
-                        <i class="bx bx-plus"></i> Add Line
-                    </button>
-                </div>
+                <h6 class="mb-2">Lines</h6>
                 <div id="lineItemsBody"></div>
 
                 <div class="mt-3">
-                    <button type="submit" class="btn btn-primary">Save Repack</button>
+                    <button type="button" class="btn btn-secondary" id="addRowBtn">
+                        <i class="bx bx-plus"></i> Add Line
+                    </button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Repack</button>
                     <a href="{{ route('repacks.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -84,18 +113,41 @@
 @section('scripts')
 <script>
     const GENERIC_NAMES = @json($genericNamesForJs);
+    const PREFILL_LINES = @json($prefillLines);
     let rowIndex = 0;
 
     function genericLabel(g) {
         return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
     }
 
-    function genericDatalistOptions() {
-        return GENERIC_NAMES.map(g => `<option value="${genericLabel(g)}"></option>`).join('');
-    }
-
     function findGenericByLabel(label) {
         return GENERIC_NAMES.find(g => genericLabel(g) === label);
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Own JS-built suggestion dropdown rather than a native <datalist> — Chrome's
+    // own suggestion popup clips long generic names to its own internal width no
+    // matter how wide the <input> is, so the dropdown had to be built by hand to
+    // actually show the full name. An empty query browses the first 30 entries
+    // instead of showing nothing, matching how <datalist> listed everything on focus.
+    function renderGenericSuggestions(box, query) {
+        const q = query.trim().toLowerCase();
+        const matches = (q ? GENERIC_NAMES.filter(g => genericLabel(g).toLowerCase().includes(q)) : GENERIC_NAMES).slice(0, 30);
+        if (matches.length === 0) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        box.innerHTML = matches.map(g =>
+            `<button type="button" class="small" data-generic-id="${g.id}">${escapeHtml(genericLabel(g))}</button>`
+        ).join('');
+        box.style.display = 'block';
     }
 
     // A BX and its PC aren't always the same Generic Item row — the established convention (see
@@ -124,7 +176,7 @@
         });
     }
 
-    function addRow() {
+    function addRow(prefill = null) {
         const index = rowIndex++;
         const row = document.createElement('div');
         row.className = 'line-item-card border rounded p-3 mb-3';
@@ -136,11 +188,12 @@
                 </button>
             </div>
 
-            <div class="mb-2">
+            <div class="mb-2 position-relative">
                 <label class="form-label small mb-1">Generic Description</label>
-                <input type="text" class="form-control form-control-sm generic-input" list="generic-list-${index}"
+                <input type="text" class="form-control form-control-sm generic-input"
                     placeholder="Search generic name..." autocomplete="off" required>
-                <datalist id="generic-list-${index}">${genericDatalistOptions()}</datalist>
+                <div class="generic-suggestions position-absolute w-100"
+                    style="z-index: 1050; max-height: 280px; overflow-y: auto; display: none;"></div>
                 <div class="form-text">Picked once — fills in both sides below, since a repack is always within the same medicine.</div>
             </div>
 
@@ -225,11 +278,60 @@
             renumberRows();
         });
 
-        bindGenericPicker(row, index);
+        const picker = bindGenericPicker(row, index);
 
         row.querySelector('.destination-qty-input').addEventListener('input', () => recomputeSuggestion(row));
         row.querySelector('.destination-price-input').addEventListener('input', function () { this.dataset.priceDirty = '1'; });
         row.querySelector('.destination-cost-input').addEventListener('input', function () { this.dataset.priceDirty = '1'; });
+
+        // A resumed draft's saved line is re-applied here: the generic search is
+        // set and resolved (same async chain a manual pick goes through, so the
+        // FROM/TO selects populate the same way), then the saved qty/batch/
+        // expiry/price/cost/apply are overlaid once that settles.
+        if (prefill && prefill.generic_label) {
+            const genericInput = row.querySelector('.generic-input');
+            genericInput.value = prefill.generic_label;
+            genericInput.title = prefill.generic_label;
+            const generic = findGenericByLabel(prefill.generic_label);
+
+            if (generic) {
+                picker.applyGeneric(generic).then(() => {
+                    const setValue = (selector, value) => {
+                        if (value !== null && value !== undefined && value !== '') {
+                            row.querySelector(selector).value = value;
+                        }
+                    };
+
+                    const sourceSelect = row.querySelector('.source-item-select');
+                    if (sourceSelect && prefill.source_batch_id) {
+                        sourceSelect.value = prefill.source_batch_id;
+                        sourceSelect.dispatchEvent(new Event('change'));
+                    }
+                    setValue('.source-qty-input', prefill.source_qty);
+
+                    const destSelect = row.querySelector('.destination-item-select');
+                    if (destSelect && prefill.destination_product_id) {
+                        destSelect.value = prefill.destination_product_id;
+                        destSelect.dispatchEvent(new Event('change'));
+                    }
+                    setValue('.destination-qty-input', prefill.destination_qty);
+                    setValue('[name$="[destination_batch_no]"]', prefill.destination_batch_no);
+                    setValue('[name$="[destination_expiration_date]"]', prefill.destination_expiration_date);
+
+                    const priceInput = row.querySelector('.destination-price-input');
+                    const costInput = row.querySelector('.destination-cost-input');
+                    if (prefill.destination_price !== null && prefill.destination_price !== undefined) {
+                        priceInput.value = prefill.destination_price;
+                        priceInput.dataset.priceDirty = '1';
+                    }
+                    if (prefill.destination_cost !== null && prefill.destination_cost !== undefined) {
+                        costInput.value = prefill.destination_cost;
+                        costInput.dataset.priceDirty = '1';
+                    }
+                    row.querySelector('.apply-price-input').checked = !!prefill.apply_price;
+                });
+            }
+        }
     }
 
     // Per Sir: suggested destination Price/Cost = source's Price/Cost, divided evenly across
@@ -272,6 +374,7 @@
     // product. Repacking creates NEW stock at the destination, so no stock check there.
     function bindGenericPicker(row, index) {
         const genericInput = row.querySelector('.generic-input');
+        const suggestionsBox = row.querySelector('.generic-suggestions');
         const sourceItemCell = row.querySelector('.source-item-select-cell');
         const availableCell = row.querySelector('.source-available-cell');
         const qtyCell = row.querySelector('.source-qty-cell');
@@ -307,9 +410,7 @@
             });
         }
 
-        genericInput.addEventListener('input', async function () {
-            this.title = this.value;
-            const generic = findGenericByLabel(this.value);
+        async function applyGeneric(generic) {
             availableCell.innerHTML = '';
             qtyCell.innerHTML = '';
             if (!generic) {
@@ -355,7 +456,50 @@
                 recomputeSuggestion(row);
             });
             qtyInput.addEventListener('input', () => recomputeSuggestion(row));
+        }
+
+        genericInput.addEventListener('input', function () {
+            this.title = this.value;
+            // A resumed draft's prefill dispatches this same 'input' event
+            // programmatically (see addRow's prefill handling) without
+            // focusing the field first — only paint the dropdown for an
+            // actual, focused keystroke.
+            if (document.activeElement === this) {
+                renderGenericSuggestions(suggestionsBox, this.value);
+            }
+            applyGeneric(findGenericByLabel(this.value));
         });
+
+        genericInput.addEventListener('focus', function () {
+            renderGenericSuggestions(suggestionsBox, this.value);
+        });
+
+        // A short delay so a click on a suggestion (below) registers before
+        // the dropdown is hidden out from under it.
+        genericInput.addEventListener('blur', function () {
+            setTimeout(() => { suggestionsBox.style.display = 'none'; }, 150);
+        });
+
+        // mousedown (not click) fires before the input's blur, so the pick
+        // lands reliably without racing the blur handler above.
+        suggestionsBox.addEventListener('mousedown', function (e) {
+            const btn = e.target.closest('[data-generic-id]');
+            if (!btn) {
+                return;
+            }
+            e.preventDefault();
+            const generic = GENERIC_NAMES.find(g => String(g.id) === btn.dataset.genericId);
+            if (!generic) {
+                return;
+            }
+            genericInput.value = genericLabel(generic);
+            genericInput.title = genericInput.value;
+            applyGeneric(generic);
+            suggestionsBox.style.display = 'none';
+            suggestionsBox.innerHTML = '';
+        });
+
+        return { applyGeneric };
     }
 
     document.getElementById('addRowBtn').addEventListener('click', addRow);
@@ -371,6 +515,12 @@
         });
     });
 
-    addRow();
+    // One row per saved line of the draft being resumed, or a single blank
+    // row for a brand new Repack.
+    if (PREFILL_LINES.length > 0) {
+        PREFILL_LINES.forEach(line => addRow(line));
+    } else {
+        addRow();
+    }
 </script>
 @endsection

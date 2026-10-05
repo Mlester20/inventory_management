@@ -26,9 +26,15 @@ class Repack extends Model
     ];
 
     public const STATUSES = [
+        'draft' => 'Draft',
         'posted' => 'Posted',
         'voided' => 'Voided',
     ];
+
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
 
     public function isVoided(): bool
     {

@@ -45,7 +45,7 @@
                             <td>{{ $repack->id }}</td>
                             <td>{{ $repack->reference }}</td>
                             <td>
-                                <span class="badge bg-{{ $repack->isVoided() ? 'danger' : 'success' }}">
+                                <span class="badge bg-{{ $repack->isDraft() ? 'warning' : ($repack->isVoided() ? 'danger' : 'success') }}">
                                     {{ \App\Models\Repack::STATUSES[$repack->status] ?? $repack->status }}
                                 </span>
                             </td>

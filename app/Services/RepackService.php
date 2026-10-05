@@ -15,8 +15,9 @@ use Illuminate\Validation\ValidationException;
  * Deducts the source lot and restocks the destination lot through
  * StockService, exactly like Stock Transfer does between locations, so both
  * movements land in the same Product History ledger with no second logging
- * path. v1 posts immediately (no draft status) — see the plan doc's open
- * questions before extending this (wastage, destination auto-creation).
+ * path. A Repack can be saved as a draft first (see saveDraft()) — no stock
+ * moves and no Price/Cost is ever applied until it's actually posted via
+ * createRepack(), same "draft never touches real numbers" rule as Invoice.
  *
  * Per Sir, each line can also set the destination product's Price/Cost —
  * the source's, divided evenly by how many destination units the line
@@ -33,10 +34,14 @@ class RepackService
      *   'lines' => [['source_batch_id', 'source_qty', 'destination_product_id',
      *                'destination_qty', 'destination_batch_no'?, 'destination_expiration_date'?,
      *                'destination_price'?, 'destination_cost'?, 'apply_price'?], ...]]
+     * @param Repack|null $draft a draft being finalized — its reference is kept and its
+     *   old (stock-less) lines are replaced by freshly-applied ones; everything is
+     *   re-validated against current stock, since time may have passed since the draft
+     *   was saved.
      */
-    public function createRepack(array $data, ?int $userId = null): Repack
+    public function createRepack(array $data, ?int $userId = null, ?Repack $draft = null): Repack
     {
-        return DB::transaction(function () use ($data, $userId) {
+        return DB::transaction(function () use ($data, $userId, $draft) {
             $location = Location::findOrFail($data['location_id']);
 
             if (empty($data['lines'])) {
@@ -45,14 +50,34 @@ class RepackService
                 ]);
             }
 
-            $repack = Repack::create([
-                'reference' => $this->generateReference(),
-                'date' => $data['date'],
-                'location_id' => $location->id,
-                'prepared_by' => $data['prepared_by'] ?? $userId,
-                'status' => 'posted',
-                'remarks' => $data['remarks'] ?? null,
-            ]);
+            if ($draft) {
+                // Re-fetch under a lock rather than trusting the route-bound model, same
+                // reason voidRepack() does — two near-simultaneous posts of the same draft
+                // would otherwise both pass and double-deduct the source stock.
+                $repack = Repack::lockForUpdate()->findOrFail($draft->id);
+                if (! $repack->isDraft()) {
+                    throw ValidationException::withMessages([
+                        'lines' => 'This Repack is no longer a draft.',
+                    ]);
+                }
+                $repack->lines()->delete();
+                $repack->update([
+                    'date' => $data['date'],
+                    'location_id' => $location->id,
+                    'prepared_by' => $data['prepared_by'] ?? $userId,
+                    'status' => 'posted',
+                    'remarks' => $data['remarks'] ?? null,
+                ]);
+            } else {
+                $repack = Repack::create([
+                    'reference' => $this->generateReference(),
+                    'date' => $data['date'],
+                    'location_id' => $location->id,
+                    'prepared_by' => $data['prepared_by'] ?? $userId,
+                    'status' => 'posted',
+                    'remarks' => $data['remarks'] ?? null,
+                ]);
+            }
 
             foreach ($data['lines'] as $line) {
                 $this->applyLine($repack, $location, $line, $userId);
@@ -60,6 +85,92 @@ class RepackService
 
             return $repack;
         });
+    }
+
+    /**
+     * Saves a Repack without moving any stock and without ever applying a
+     * Price/Cost suggestion — an interrupted encoder can leave lines
+     * incomplete, and nothing here can block the save. Resume and finalize it
+     * through createRepack($data, $userId, $draft), which re-validates
+     * everything against current stock before it actually moves anything.
+     *
+     * @param array $data same shape as createRepack(), but every line field
+     *   is optional — only source_batch_id/destination_product_id are used
+     *   (to resolve the destination lot), the rest is kept as typed.
+     */
+    public function saveDraft(array $data, ?int $userId = null, ?Repack $existingDraft = null): Repack
+    {
+        return DB::transaction(function () use ($data, $userId, $existingDraft) {
+            $locationId = $data['location_id'] ?? null;
+
+            if ($existingDraft) {
+                $repack = Repack::lockForUpdate()->findOrFail($existingDraft->id);
+                if (! $repack->isDraft()) {
+                    throw ValidationException::withMessages([
+                        'lines' => 'This Repack is no longer a draft.',
+                    ]);
+                }
+                $repack->lines()->delete();
+                $repack->update([
+                    'date' => $data['date'] ?? $repack->date,
+                    'location_id' => $locationId ?: $repack->location_id,
+                    'prepared_by' => $data['prepared_by'] ?? $userId,
+                    'remarks' => $data['remarks'] ?? null,
+                ]);
+            } else {
+                $repack = Repack::create([
+                    'reference' => $this->generateReference(),
+                    'date' => $data['date'] ?? now()->toDateString(),
+                    'location_id' => $locationId,
+                    'prepared_by' => $data['prepared_by'] ?? $userId,
+                    'status' => 'draft',
+                    'remarks' => $data['remarks'] ?? null,
+                ]);
+            }
+
+            foreach (($data['lines'] ?? []) as $line) {
+                $this->saveDraftLine($repack, $line);
+            }
+
+            return $repack;
+        });
+    }
+
+    protected function saveDraftLine(Repack $repack, array $line): void
+    {
+        if (empty($line['source_batch_id']) || empty($line['destination_product_id'])) {
+            return;
+        }
+
+        $sourceBatch = ProductBatch::findOrFail($line['source_batch_id']);
+        $destinationProduct = Product::findOrFail($line['destination_product_id']);
+
+        // Same find-or-create as applyLine() — creating the lot row itself
+        // moves no stock (that only happens via StockService::restock, which
+        // a draft never calls), so this is safe to do even before posting.
+        $destinationBatchNo = $line['destination_batch_no'] ?? $sourceBatch->batch_no;
+        $destinationExpiration = $line['destination_expiration_date'] ?? $sourceBatch->expiration_date;
+        $destinationBatch = $destinationProduct->batches()->where('batch_no', $destinationBatchNo)->first()
+            ?? $destinationProduct->batches()->create([
+                'batch_no' => $destinationBatchNo,
+                'expiration_date' => $destinationExpiration,
+            ]);
+
+        $destinationPrice = isset($line['destination_price']) && $line['destination_price'] !== ''
+            ? round((float) $line['destination_price'], 2) : null;
+        $destinationCost = isset($line['destination_cost']) && $line['destination_cost'] !== ''
+            ? round((float) $line['destination_cost'], 2) : null;
+
+        $repack->lines()->create([
+            'source_batch_id' => $sourceBatch->id,
+            'source_qty' => (int) ($line['source_qty'] ?? 0),
+            'destination_product_id' => $destinationProduct->id,
+            'destination_batch_id' => $destinationBatch->id,
+            'destination_qty' => (int) ($line['destination_qty'] ?? 0),
+            'destination_price' => $destinationPrice,
+            'destination_cost' => $destinationCost,
+            'price_applied' => ! empty($line['apply_price']),
+        ]);
     }
 
     /**

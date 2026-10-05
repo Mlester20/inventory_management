@@ -7,7 +7,11 @@
         <a href="{{ route('repacks.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Repacks
         </a>
-        @if(! $repack->isVoided() && Auth::user()->role === 'admin')
+        @if($repack->isDraft())
+            <a href="{{ route('repacks.edit', $repack) }}" class="btn btn-primary">
+                <i class="bx bx-edit"></i> Continue Editing
+            </a>
+        @elseif(! $repack->isVoided() && Auth::user()->role === 'admin')
             <form action="{{ route('repacks.void', $repack) }}" method="POST" class="d-flex gap-2"
                 onsubmit="return confirmSubmit(this, 'Void {{ $repack->reference }}? The repacked pieces are taken back out and the source stock is returned. This only works while every piece is still there.');">
                 @csrf
@@ -26,6 +30,12 @@
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
+        </div>
+    @endif
+
+    @if($repack->isDraft())
+        <div class="alert alert-warning">
+            <strong>Draft</strong> — no stock has moved yet. Continue editing it to finish and post it.
         </div>
     @endif
 
@@ -48,7 +58,7 @@
                 <div class="col-md-3">
                     <label class="text-muted small">Status</label>
                     <p class="mb-0">
-                        <span class="badge bg-{{ $repack->isVoided() ? 'danger' : 'success' }}">
+                        <span class="badge bg-{{ $repack->isDraft() ? 'warning' : ($repack->isVoided() ? 'danger' : 'success') }}">
                             {{ \App\Models\Repack::STATUSES[$repack->status] ?? $repack->status }}
                         </span>
                     </p>
