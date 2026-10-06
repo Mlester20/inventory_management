@@ -284,6 +284,14 @@
         return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
     }
 
+    // Per Sir: shown only in the suggestion dropdown (not baked into the
+    // input's own value, which stays the plain genericLabel() above) — so
+    // the encoder sees what's on hand at the Warehouse while still picking,
+    // without it getting stuck in the field.
+    function genericDisplayLabel(g) {
+        return `${genericLabel(g)} — Warehouse: ${g.quantity}`;
+    }
+
     function findGenericByLabel(label) {
         return GENERIC_NAMES.find(g => genericLabel(g) === label);
     }
@@ -495,13 +503,13 @@
         genericSearchInput.addEventListener('input', function () {
             this.title = this.value;
             if (document.activeElement === this) {
-                renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericLabel, g => g.id);
+                renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericDisplayLabel, g => g.id);
             }
             loadAoAvailability(this.value);
         });
 
         genericSearchInput.addEventListener('focus', function () {
-            renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericLabel, g => g.id);
+            renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericDisplayLabel, g => g.id);
         });
 
         genericSearchInput.addEventListener('blur', function () {

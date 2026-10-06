@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\DeliveryReceipt;
 use App\Models\GenericName;
+use App\Models\Location;
 use App\Models\ProductBatch;
 use App\Models\SalesOrder;
 use App\Models\User;
@@ -71,7 +72,10 @@ class DeliveryReceiptController extends Controller
     protected function formData(?string $preselectedSalesOrderId = null, ?DeliveryReceipt $editing = null): array
     {
         $customers = Customer::orderBy('customer_name')->get();
-        $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
+        $warehouseId = Location::warehouse()->id;
+        $genericNames = GenericName::with(['category', 'products' => function ($query) use ($warehouseId) {
+            $query->withSum(['locationStocks as warehouse_qty' => fn ($q) => $q->where('location_id', $warehouseId)], 'qty');
+        }])->orderBy('generic_name')->get();
         $openSalesOrders = SalesOrder::with('customer')
             ->whereIn('status', ['open', 'partially_delivered'])
             ->latest()
@@ -84,6 +88,10 @@ class DeliveryReceiptController extends Controller
             'generic_name' => $g->generic_name,
             'unit' => $g->unit,
             'category_name' => $g->category->category_name,
+            // Per Sir: show what's on hand while the encoder is still picking
+            // — Warehouse only, since that's the one location a Delivery
+            // Receipt (Advance Order/Walk-in) actually draws from.
+            'quantity' => (int) $g->products->sum(fn ($product) => $product->warehouse_qty ?? 0),
         ])->values();
 
         $prefillLines = [];
