@@ -20,11 +20,7 @@
                 @csrf
 
                 <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="return_date" class="form-label">Return Date</label>
-                        <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', now()->toDateString()) }}" required>
-                    </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-12 mb-3">
                         <label for="customer_search" class="form-label">Customer</label>
                         <input type="text" name="customer_search" id="customer_search" class="form-control"
                             list="customer_datalist" placeholder="Search customer, or leave blank for no customer / no credit"
@@ -37,7 +33,14 @@
                         <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id') }}">
                         <div class="form-text" id="customerHint">Once a customer is selected, the Item field only offers what they've actually been invoiced for — so a return can't be recorded against something they never bought.</div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="return_date" class="form-label">Return Date</label>
+                        <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', now()->toDateString()) }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <label for="reason" class="form-label">Reason</label>
                         <select name="reason" id="reason" class="form-select" required>
                             <option value="">-- Select Reason --</option>

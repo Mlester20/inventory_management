@@ -52,7 +52,7 @@
                 @endif
 
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-12 mb-3">
                         <label for="customer_search" class="form-label">Customer</label>
                         <input
                             type="text"
@@ -78,8 +78,10 @@
                             <div class="form-text">Don't see the customer? <a href="{{ route('customers.index') }}" target="_blank">Add one here</a>.</div>
                         @endif
                     </div>
+                </div>
 
-                    <div class="col-md-4 mb-3">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
                         <label for="quote_date" class="form-label">Quote Date</label>
                         <input
                             type="date"
@@ -94,7 +96,7 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <label for="valid_until" class="form-label">Valid Until</label>
                         <input
                             type="date"

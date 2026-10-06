@@ -87,7 +87,7 @@
                 <!-- Direct Receipt Tab -->
                 <div id="direct_tab" class="gr-tab">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-12 mb-3">
                             <label for="direct_supplier_search" class="form-label">Supplier</label>
                             <input type="text" name="supplier_search" id="direct_supplier_search" class="form-control"
                                 list="direct_supplier_datalist" placeholder="Search supplier..." autocomplete="off"

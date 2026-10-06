@@ -25,18 +25,7 @@
     <div class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('admin.reports.inventory-summary') }}" class="row g-3">
-                <div class="col-md-3">
-                    <label for="category_id" class="form-label">Category</label>
-                    <select class="form-select" id="category_id" name="category_id">
-                        <option value="">All Categories</option>
-                        @foreach ($categories as $category)
-                            <option value="{{ $category->id }}" {{ (string) $categoryId === (string) $category->id ? 'selected' : '' }}>
-                                {{ $category->category_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
+                <div class="col-12">
                     <label for="supplier_search" class="form-label">Supplier</label>
                     <input type="text" class="form-control" id="supplier_search" list="supplier_datalist"
                         placeholder="All suppliers" autocomplete="off"
@@ -47,6 +36,17 @@
                         @endforeach
                     </datalist>
                     <input type="hidden" id="supplier_id" name="supplier_id" value="{{ $supplierId }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="category_id" class="form-label">Category</label>
+                    <select class="form-select" id="category_id" name="category_id">
+                        <option value="">All Categories</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" {{ (string) $categoryId === (string) $category->id ? 'selected' : '' }}>
+                                {{ $category->category_name }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
                     <div class="form-check">

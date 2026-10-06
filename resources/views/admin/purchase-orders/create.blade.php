@@ -49,7 +49,7 @@
                 @endif
 
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-12 mb-3">
                         <label for="supplier_search" class="form-label">Supplier</label>
                         <input
                             type="text"
@@ -72,8 +72,10 @@
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
+                </div>
 
-                    <div class="col-md-4 mb-3">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
                         <label for="order_date" class="form-label">Order Date</label>
                         <input
                             type="date"
@@ -88,7 +90,7 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <label for="prepared_by" class="form-label">Prepared By</label>
                         <select
                             name="prepared_by"

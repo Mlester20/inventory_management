@@ -17,26 +17,7 @@
     <div class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('admin.reports.expiration') }}" class="row g-3">
-                <div class="col-md-3">
-                    <label for="days" class="form-label">Expiration Window</label>
-                    <select class="form-select" id="days" name="days">
-                        @foreach ([7 => 'Next 7 days', 30 => 'Next 30 days', 60 => 'Next 60 days', 90 => 'Next 90 days'] as $value => $label)
-                            <option value="{{ $value }}" {{ $days == $value ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="category_id" class="form-label">Category</label>
-                    <select class="form-select" id="category_id" name="category_id">
-                        <option value="">All Categories</option>
-                        @foreach ($categories as $category)
-                            <option value="{{ $category->id }}" {{ (string) $categoryId === (string) $category->id ? 'selected' : '' }}>
-                                {{ $category->category_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
+                <div class="col-12">
                     <label for="supplier_search" class="form-label">Supplier</label>
                     <input type="text" class="form-control" id="supplier_search" list="supplier_datalist"
                         placeholder="All suppliers" autocomplete="off"
@@ -48,7 +29,26 @@
                     </datalist>
                     <input type="hidden" id="supplier_id" name="supplier_id" value="{{ $supplierId }}">
                 </div>
-                <div class="col-md-3 d-flex align-items-end gap-2">
+                <div class="col-md-4">
+                    <label for="days" class="form-label">Expiration Window</label>
+                    <select class="form-select" id="days" name="days">
+                        @foreach ([7 => 'Next 7 days', 30 => 'Next 30 days', 60 => 'Next 60 days', 90 => 'Next 90 days'] as $value => $label)
+                            <option value="{{ $value }}" {{ $days == $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="category_id" class="form-label">Category</label>
+                    <select class="form-select" id="category_id" name="category_id">
+                        <option value="">All Categories</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" {{ (string) $categoryId === (string) $category->id ? 'selected' : '' }}>
+                                {{ $category->category_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary flex-grow-1">Apply Filter</button>
                     <a href="{{ route('admin.reports.expiration') }}" class="btn btn-outline-secondary" title="Clear all filters">
                         <i class="bx bx-refresh"></i>

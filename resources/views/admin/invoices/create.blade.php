@@ -48,7 +48,7 @@
                 @endif
 
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-12 mb-3">
                         <label for="customer_name" class="form-label">Customer Name</label>
                         <input
                             type="text"
@@ -70,8 +70,10 @@
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
+                </div>
 
-                    <div class="col-md-4 mb-3">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
                         <label for="po_no" class="form-label">P.O. No.</label>
                         <input
                             type="text"
@@ -85,7 +87,7 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <label for="sales_no" class="form-label">Sales No.</label>
                         <input
                             type="text"

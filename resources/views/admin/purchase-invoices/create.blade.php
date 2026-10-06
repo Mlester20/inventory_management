@@ -23,7 +23,7 @@
                 @endif
 
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-12 mb-3">
                         <label for="supplier_search" class="form-label">Supplier</label>
                         <input type="text" name="supplier_search" id="supplier_search"
                             class="form-control @error('supplier_id') is-invalid @enderror"
@@ -39,6 +39,9 @@
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
+                </div>
+
+                <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="prepared_by" class="form-label">Prepared By</label>
                         <select name="prepared_by" id="prepared_by" class="form-select">

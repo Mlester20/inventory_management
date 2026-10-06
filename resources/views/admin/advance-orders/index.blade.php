@@ -6,7 +6,7 @@
     <div class="card mt-3">
         <div class="card-body no-print">
             <form action="{{ route('advance-orders.index') }}" method="GET" class="row g-2 align-items-end">
-                <div class="col-md-5">
+                <div class="col-12">
                     <label class="form-label">Customer</label>
                     <input type="text" id="ao_filter_customer_search" class="form-control" list="ao_filter_customer_datalist"
                         placeholder="Search customer, or leave blank for all customers" autocomplete="off"
@@ -18,7 +18,7 @@
                     </datalist>
                     <input type="hidden" name="customer_id" id="ao_filter_customer_id" value="{{ optional($customer)->id }}">
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-10">
                     <label class="form-label">Delivery Address</label>
                     <input type="text" class="form-control" value="{{ $customer?->delivery_address }}" readonly>
                 </div>

@@ -105,7 +105,7 @@
                 <!-- Advance Order / Walk-in Tab -->
                 <div id="advance_order_tab" class="do-tab">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-12 mb-3">
                             <label for="ao_customer_search" class="form-label">Customer</label>
                             <div class="input-group">
                                 <input type="text" name="customer_search" id="ao_customer_search" class="form-control" list="ao_customer_datalist"
@@ -124,7 +124,7 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-12 mb-3">
                             <label class="form-label">Delivery Address</label>
                             <textarea id="ao_delivery_address" class="form-control" rows="1" readonly></textarea>
                         </div>

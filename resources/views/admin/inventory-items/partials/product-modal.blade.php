@@ -75,18 +75,19 @@
                         <textarea name="description" id="{{ $prefix }}description" class="form-control" rows="2" placeholder="e.g., Pain reliever and fever reducer" required></textarea>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">Supplier</label>
+                        <input type="text" class="form-control" id="{{ $prefix }}supplier_search"
+                            list="{{ $prefix }}supplier-datalist" placeholder="Search supplier..." autocomplete="off">
+                        <datalist id="{{ $prefix }}supplier-datalist">
+                            @foreach ($suppliers as $supplier)
+                                <option value="{{ $supplier->supplier_name }}"></option>
+                            @endforeach
+                        </datalist>
+                        <input type="hidden" name="supplier_id" id="{{ $prefix }}supplier_id">
+                    </div>
+
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-control" id="{{ $prefix }}supplier_search"
-                                list="{{ $prefix }}supplier-datalist" placeholder="Search supplier..." autocomplete="off">
-                            <datalist id="{{ $prefix }}supplier-datalist">
-                                @foreach ($suppliers as $supplier)
-                                    <option value="{{ $supplier->supplier_name }}"></option>
-                                @endforeach
-                            </datalist>
-                            <input type="hidden" name="supplier_id" id="{{ $prefix }}supplier_id">
-                        </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Tax / VAT Classification</label>
                             <select name="tax_id" id="{{ $prefix }}tax_id" class="form-select">
