@@ -3,6 +3,31 @@
 @section('title', $editingAdjustment ? 'Edit Draft — ' . $editingAdjustment->adjustment_no : 'New Inventory Adjustment')
 
 @section('content')
+    <style>
+        /* The suggestion dropdown overlaps whatever sits below the search field
+           (it's position:absolute, so it doesn't push that content down) — it
+           must paint fully opaque or the row underneath bleeds through. Not
+           relying on Bootstrap's .list-group defaults here since this
+           template's own theme CSS doesn't reliably set them. */
+        .item-suggestions {
+            background-color: #fff;
+            border: 1px solid rgba(0, 0, 0, .15);
+            border-radius: .375rem;
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+        }
+        .item-suggestions button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background-color: #fff;
+            border: 0;
+            border-bottom: 1px solid #f1f1f1;
+            padding: .375rem .75rem;
+            cursor: pointer;
+        }
+        .item-suggestions button:last-child { border-bottom: 0; }
+        .item-suggestions button:hover { background-color: #f8f9fa; }
+    </style>
     <div class="card mt-3">
         <h5 class="card-header">{{ $editingAdjustment ? 'Edit Draft — ' . $editingAdjustment->adjustment_no : 'New Inventory Adjustment' }}</h5>
         <div class="card-body">
@@ -100,19 +125,43 @@
     const prefillLines = @json($prefillLines);
     let rowIndex = 0;
 
-    // Item Description is a searchable text field (native <datalist>) instead
-    // of a long <select> — the label the user types/picks is matched back to
-    // the real product_id.
+    // Item Description is a searchable text field with its own JS-built
+    // suggestion dropdown (see renderSuggestions below) instead of a long
+    // <select> or a native <datalist> — the label the user types/picks is
+    // matched back to the real product_id. A native <datalist> was tried
+    // first, but Chrome's own suggestion popup clips long item names to its
+    // own internal width no matter how wide the <input> is, so the dropdown
+    // had to be built by hand to actually show the full name.
     function productLabel(p) {
         return p.name;
     }
 
-    function productDatalistOptions() {
-        return PRODUCTS.map(p => `<option value="${productLabel(p)}"></option>`).join('');
-    }
-
     function findProductByLabel(label) {
         return PRODUCTS.find(p => productLabel(p) === label);
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Up to 30 matches as clickable rows, or the first 30 entries when the
+    // query is empty (clicking into a blank field browses, same as
+    // <datalist> used to list everything on focus).
+    function renderSuggestions(box, items, query, labelFn, idFn) {
+        const q = query.trim().toLowerCase();
+        const matches = (q ? items.filter(i => labelFn(i).toLowerCase().includes(q)) : items).slice(0, 30);
+        if (matches.length === 0) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        box.innerHTML = matches.map(i =>
+            `<button type="button" class="small" data-id="${idFn(i)}">${escapeHtml(labelFn(i))}</button>`
+        ).join('');
+        box.style.display = 'block';
     }
 
     // Only batches with no expiry or a still-valid expiry are offered as
@@ -124,9 +173,9 @@
         return product.batches.filter(b => !b.expiration_date || b.expiration_date >= today);
     }
 
-    // "Sort/arrange" toggle — re-sorts the in-memory PRODUCTS array and
-    // rebuilds every already-rendered row's datalist, so existing rows
-    // reflect the new order too, not just rows added afterward.
+    // "Sort/arrange" toggle — re-sorts the in-memory PRODUCTS array; the
+    // next time any row's suggestion dropdown opens, it reads straight from
+    // this same array, so there's nothing else to rebuild here.
     function sortProducts(mode) {
         const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
         if (mode === 'name_desc') {
@@ -136,10 +185,6 @@
         } else {
             PRODUCTS.sort((a, b) => collator.compare(a.name, b.name));
         }
-
-        document.querySelectorAll('#lineItemsBody .product-datalist').forEach(dl => {
-            dl.innerHTML = productDatalistOptions();
-        });
     }
 
     document.getElementById('itemSortSelect').addEventListener('change', function () {
@@ -166,12 +211,13 @@
                 </button>
             </div>
             <div class="row g-2">
-                <div class="col-12">
+                <div class="col-12 position-relative">
                     <label class="form-label small mb-1">Item Description</label>
-                    <input type="text" class="form-control product-search-input" list="product-list-${index}"
+                    <input type="text" class="form-control product-search-input"
                         placeholder="Search item..." autocomplete="off" required>
-                    <datalist id="product-list-${index}" class="product-datalist">${productDatalistOptions()}</datalist>
                     <input type="hidden" name="lines[${index}][product_id]" class="product-id-input">
+                    <div class="item-suggestions product-suggestions position-absolute w-100"
+                        style="z-index: 1050; max-height: 280px; overflow-y: auto; display: none;"></div>
                 </div>
             </div>
             <div class="row g-2 mt-1">
@@ -238,6 +284,7 @@
 
     function bindRowEvents(card) {
         const productSearchInput = card.querySelector('.product-search-input');
+        const productSuggestions = card.querySelector('.product-suggestions');
         const productIdInput = card.querySelector('.product-id-input');
         const unitDisplay = card.querySelector('.unit-display');
         const batchInput = card.querySelector('.batch-input');
@@ -245,8 +292,7 @@
         const expiryInput = card.querySelector('.expiry-input');
         const batchDatalist = card.querySelector('.batch-datalist');
 
-        productSearchInput.addEventListener('input', function () {
-            const product = findProductByLabel(this.value);
+        function applyProduct(product) {
             productIdInput.value = product ? product.id : '';
             unitDisplay.value = product ? product.unit : '';
             batchDatalist.innerHTML = '';
@@ -259,6 +305,37 @@
                     batchDatalist.appendChild(opt);
                 });
             }
+        }
+
+        productSearchInput.addEventListener('input', function () {
+            // A resumed draft's prefill dispatches this same 'input' event
+            // programmatically (see addRow's prefill handling) without
+            // focusing the field first — only paint the dropdown for an
+            // actual, focused keystroke.
+            if (document.activeElement === this) {
+                renderSuggestions(productSuggestions, PRODUCTS, this.value, productLabel, p => p.id);
+            }
+            applyProduct(findProductByLabel(this.value));
+        });
+
+        productSearchInput.addEventListener('focus', function () {
+            renderSuggestions(productSuggestions, PRODUCTS, this.value, productLabel, p => p.id);
+        });
+
+        productSearchInput.addEventListener('blur', function () {
+            setTimeout(() => { productSuggestions.style.display = 'none'; }, 150);
+        });
+
+        productSuggestions.addEventListener('mousedown', function (e) {
+            const btn = e.target.closest('[data-id]');
+            if (!btn) return;
+            e.preventDefault();
+            const product = PRODUCTS.find(p => String(p.id) === btn.dataset.id);
+            if (!product) return;
+            productSearchInput.value = productLabel(product);
+            applyProduct(product);
+            productSuggestions.style.display = 'none';
+            productSuggestions.innerHTML = '';
         });
 
         batchInput.addEventListener('input', function () {

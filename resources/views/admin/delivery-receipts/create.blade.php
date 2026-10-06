@@ -3,6 +3,31 @@
 @section('title', $editingDeliveryReceipt ? 'Edit Draft — ' . $editingDeliveryReceipt->dr_no : 'New Delivery Receipt')
 
 @section('content')
+    <style>
+        /* The suggestion dropdown overlaps whatever sits below the search field
+           (it's position:absolute, so it doesn't push that content down) — it
+           must paint fully opaque or the row underneath bleeds through. Not
+           relying on Bootstrap's .list-group defaults here since this
+           template's own theme CSS doesn't reliably set them. */
+        .item-suggestions {
+            background-color: #fff;
+            border: 1px solid rgba(0, 0, 0, .15);
+            border-radius: .375rem;
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+        }
+        .item-suggestions button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background-color: #fff;
+            border: 0;
+            border-bottom: 1px solid #f1f1f1;
+            padding: .375rem .75rem;
+            cursor: pointer;
+        }
+        .item-suggestions button:last-child { border-bottom: 0; }
+        .item-suggestions button:hover { background-color: #f8f9fa; }
+    </style>
     <div class="card mt-3">
         <h5 class="card-header">{{ $editingDeliveryReceipt ? 'Edit Draft — ' . $editingDeliveryReceipt->dr_no : 'New Delivery Receipt' }}</h5>
         <div class="card-body">
@@ -221,10 +246,9 @@
     let aoRowIndex = 0;
     let poRowIndex = 0;
 
-    // Generic Description is a searchable text field (native <datalist>,
-    // matching the same technique already used for the batch-number picker
-    // in Inventory Adjustment) rather than a long <select> — the label the
-    // user types/picks is matched back to the real generic_name_id.
+    // Generic Description is a searchable text field (own JS-built dropdown
+    // — see renderSuggestions below) rather than a long <select> — the
+    // label the user types/picks is matched back to the real generic_name_id.
     const GENERIC_NAMES = @json($genericNamesForJs);
 
     // Customer gets the same searchable-text treatment for the same reason
@@ -249,20 +273,48 @@
     const AO_PREFILL_LINES = PREFILL_LINES.filter(l => !l.sales_order_item_id);
     const PO_PREFILL_LINES = PREFILL_LINES.filter(l => l.sales_order_item_id);
 
+    // Generic Description is a searchable text field with its own JS-built
+    // suggestion dropdown (see renderSuggestions below) rather than a long
+    // <select> or a native <datalist> — the label the user types/picks is
+    // matched back to the real generic_name_id. A native <datalist> was
+    // tried first, but Chrome's own suggestion popup clips long generic
+    // names to its own internal width no matter how wide the <input> is, so
+    // the dropdown had to be built by hand to actually show the full name.
     function genericLabel(g) {
         return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
-    }
-
-    function genericDatalistOptions() {
-        return GENERIC_NAMES.map(g => `<option value="${genericLabel(g)}"></option>`).join('');
     }
 
     function findGenericByLabel(label) {
         return GENERIC_NAMES.find(g => genericLabel(g) === label);
     }
 
-    // "Sort/arrange" toggle — re-sorts the in-memory GENERIC_NAMES array and
-    // rebuilds every already-rendered Advance Order row's datalist.
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Up to 30 matches as clickable rows, or the first 30 entries when the
+    // query is empty (clicking into a blank field browses, same as
+    // <datalist> used to list everything on focus).
+    function renderSuggestions(box, items, query, labelFn, idFn) {
+        const q = query.trim().toLowerCase();
+        const matches = (q ? items.filter(i => labelFn(i).toLowerCase().includes(q)) : items).slice(0, 30);
+        if (matches.length === 0) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        box.innerHTML = matches.map(i =>
+            `<button type="button" class="small" data-id="${idFn(i)}">${escapeHtml(labelFn(i))}</button>`
+        ).join('');
+        box.style.display = 'block';
+    }
+
+    // "Sort/arrange" toggle — re-sorts the in-memory GENERIC_NAMES array; the
+    // next time any row's suggestion dropdown opens, it reads straight from
+    // this same array, so there's nothing else to rebuild here.
     function sortGenericNames(mode) {
         const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
         if (mode === 'name_desc') {
@@ -272,10 +324,6 @@
         } else {
             GENERIC_NAMES.sort((a, b) => collator.compare(a.generic_name, b.generic_name));
         }
-
-        document.querySelectorAll('#aoLineItemsBody datalist').forEach(dl => {
-            dl.innerHTML = genericDatalistOptions();
-        });
     }
 
     document.getElementById('itemSortSelect').addEventListener('change', function () {
@@ -361,11 +409,12 @@
             </div>
 
             <div class="row g-2">
-                <div class="col-md-12">
+                <div class="col-md-12 position-relative">
                     <label class="form-label small mb-1">Generic Description</label>
-                    <input type="text" class="form-control form-control-sm ao-generic-search-input" list="ao-generic-list-${index}"
+                    <input type="text" class="form-control form-control-sm ao-generic-search-input"
                         placeholder="Search generic name..." autocomplete="off" required>
-                    <datalist id="ao-generic-list-${index}">${genericDatalistOptions()}</datalist>
+                    <div class="item-suggestions ao-generic-suggestions position-absolute w-100"
+                        style="z-index: 1050; max-height: 280px; overflow-y: auto; display: none;"></div>
                 </div>
             </div>
             <div class="row g-2 mt-1">
@@ -416,6 +465,7 @@
         });
 
         const genericSearchInput = row.querySelector('.ao-generic-search-input');
+        const genericSuggestions = row.querySelector('.ao-generic-suggestions');
 
         async function loadAoAvailability(labelValue, preselect = null) {
             const cells = {
@@ -444,7 +494,31 @@
 
         genericSearchInput.addEventListener('input', function () {
             this.title = this.value;
+            if (document.activeElement === this) {
+                renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericLabel, g => g.id);
+            }
             loadAoAvailability(this.value);
+        });
+
+        genericSearchInput.addEventListener('focus', function () {
+            renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericLabel, g => g.id);
+        });
+
+        genericSearchInput.addEventListener('blur', function () {
+            setTimeout(() => { genericSuggestions.style.display = 'none'; }, 150);
+        });
+
+        genericSuggestions.addEventListener('mousedown', function (e) {
+            const btn = e.target.closest('[data-id]');
+            if (!btn) return;
+            e.preventDefault();
+            const generic = GENERIC_NAMES.find(g => String(g.id) === btn.dataset.id);
+            if (!generic) return;
+            genericSearchInput.value = genericLabel(generic);
+            genericSearchInput.title = genericLabel(generic);
+            loadAoAvailability(genericLabel(generic));
+            genericSuggestions.style.display = 'none';
+            genericSuggestions.innerHTML = '';
         });
 
         // A draft's saved Advance Order/Walk-in line is re-typed straight

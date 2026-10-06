@@ -3,6 +3,31 @@
 @section('title', $editingSalesOrder ? 'Edit Draft — ' . $editingSalesOrder->so_no : 'New Sales Order')
 
 @section('content')
+    <style>
+        /* The suggestion dropdown overlaps whatever sits below the search field
+           (it's position:absolute, so it doesn't push that content down) — it
+           must paint fully opaque or the row underneath bleeds through. Not
+           relying on Bootstrap's .list-group defaults here since this
+           template's own theme CSS doesn't reliably set them. */
+        .item-suggestions {
+            background-color: #fff;
+            border: 1px solid rgba(0, 0, 0, .15);
+            border-radius: .375rem;
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+        }
+        .item-suggestions button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background-color: #fff;
+            border: 0;
+            border-bottom: 1px solid #f1f1f1;
+            padding: .375rem .75rem;
+            cursor: pointer;
+        }
+        .item-suggestions button:last-child { border-bottom: 0; }
+        .item-suggestions button:hover { background-color: #f8f9fa; }
+    </style>
     <div class="card mt-3">
         <h5 class="card-header">{{ $editingSalesOrder ? 'Edit Draft — ' . $editingSalesOrder->so_no : 'New Sales Order' }}</h5>
         <div class="card-body">
@@ -191,24 +216,49 @@
 
     let rowIndex = 0;
 
-    // Generic Description is a searchable text field (native <datalist>,
-    // matching the same technique already used for the batch-number picker
-    // in Inventory Adjustment) rather than a long <select> — the label the
-    // user types/picks is matched back to the real generic_name_id.
+    // Generic Description is a searchable text field with its own JS-built
+    // suggestion dropdown (see renderSuggestions below) rather than a long
+    // <select> or a native <datalist> — the label the user types/picks is
+    // matched back to the real generic_name_id. A native <datalist> was
+    // tried first, but Chrome's own suggestion popup clips long generic
+    // names to its own internal width no matter how wide the <input> is, so
+    // the dropdown had to be built by hand to actually show the full name.
     function genericLabel(g) {
         return `${g.generic_name} (${g.unit}) — ${g.category_name}`;
-    }
-
-    function genericDatalistOptions() {
-        return GENERIC_NAMES.map(g => `<option value="${genericLabel(g)}"></option>`).join('');
     }
 
     function findGenericByLabel(label) {
         return GENERIC_NAMES.find(g => genericLabel(g) === label);
     }
 
-    // "Sort/arrange" toggle — re-sorts the in-memory GENERIC_NAMES array and
-    // rebuilds every already-rendered row's datalist.
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Shared by the Generic Description and Item Description pickers — up to
+    // 30 matches as clickable rows, or the first 30 entries when the query is
+    // empty (clicking into a blank field browses, same as <datalist> used to
+    // list everything on focus).
+    function renderSuggestions(box, items, query, labelFn, idFn) {
+        const q = query.trim().toLowerCase();
+        const matches = (q ? items.filter(i => labelFn(i).toLowerCase().includes(q)) : items).slice(0, 30);
+        if (matches.length === 0) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+
+        box.innerHTML = matches.map(i =>
+            `<button type="button" class="small" data-id="${idFn(i)}">${escapeHtml(labelFn(i))}</button>`
+        ).join('');
+        box.style.display = 'block';
+    }
+
+    // "Sort/arrange" toggle — re-sorts the in-memory GENERIC_NAMES array; the
+    // next time any row's suggestion dropdown opens, it reads straight from
+    // this same array, so there's nothing else to rebuild here.
     function sortGenericNames(mode) {
         const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
         if (mode === 'name_desc') {
@@ -218,10 +268,6 @@
         } else {
             GENERIC_NAMES.sort((a, b) => collator.compare(a.generic_name, b.generic_name));
         }
-
-        document.querySelectorAll('#lineItemsBody datalist').forEach(dl => {
-            dl.innerHTML = genericDatalistOptions();
-        });
     }
 
     document.getElementById('itemSortSelect').addEventListener('change', function () {
@@ -254,19 +300,21 @@
             </div>
 
             <div class="row g-2">
-                <div class="col-12">
+                <div class="col-12 position-relative">
                     <label class="form-label small mb-1">Generic Description</label>
-                    <input type="text" class="form-control generic-search-input" list="generic-list-${index}"
+                    <input type="text" class="form-control generic-search-input"
                         placeholder="Search generic name..." autocomplete="off" required>
-                    <datalist id="generic-list-${index}">${genericDatalistOptions()}</datalist>
                     <input type="hidden" name="items[${index}][generic_name_id]" class="generic-id-input">
+                    <div class="item-suggestions generic-suggestions position-absolute w-100"
+                        style="z-index: 1050; max-height: 280px; overflow-y: auto; display: none;"></div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 position-relative">
                     <label class="form-label small mb-1">Item Description <span class="text-muted">(optional)</span></label>
-                    <input type="text" class="form-control item-description-search-input" list="item-description-list-${index}"
+                    <input type="text" class="form-control item-description-search-input"
                         placeholder="Search item description..." autocomplete="off">
-                    <datalist id="item-description-list-${index}" class="item-description-datalist"></datalist>
                     <input type="hidden" name="items[${index}][product_id]" class="product-id-input">
+                    <div class="item-suggestions item-description-suggestions position-absolute w-100"
+                        style="z-index: 1050; max-height: 280px; overflow-y: auto; display: none;"></div>
                 </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Qty</label>
@@ -333,20 +381,20 @@
 
     function bindRowEvents(card) {
         const genericSearchInput = card.querySelector('.generic-search-input');
+        const genericSuggestions = card.querySelector('.generic-suggestions');
         const genericIdInput = card.querySelector('.generic-id-input');
         const priceInput = card.querySelector('.price-input');
         const itemDescriptionSearchInput = card.querySelector('.item-description-search-input');
-        const itemDescriptionDatalist = card.querySelector('.item-description-datalist');
+        const itemDescriptionSuggestions = card.querySelector('.item-description-suggestions');
         const productIdInput = card.querySelector('.product-id-input');
 
-        function itemDescriptionOptionsHtml(generic) {
-            return (generic && generic.products ? generic.products : [])
-                .map(p => `<option value="${p.item_description}"></option>`)
-                .join('');
-        }
+        // Item Description's options are scoped to whichever generic is
+        // currently selected — this is reset every time applyGeneric() runs.
+        let currentProducts = [];
+        const productLabel = p => p.item_description;
+        const productId = p => p.id;
 
-        genericSearchInput.addEventListener('input', function () {
-            const generic = findGenericByLabel(this.value);
+        function applyGeneric(generic) {
             genericIdInput.value = generic ? generic.id : '';
 
             if (generic) {
@@ -356,19 +404,16 @@
                 }
             }
 
-            // Item Description is scoped to whichever generic is currently
-            // selected — changing the generic invalidates any previously
-            // picked one, since it may not even exist under the new one.
-            itemDescriptionDatalist.innerHTML = itemDescriptionOptionsHtml(generic);
+            // Changing the generic invalidates any previously picked Item
+            // Description, since it may not even exist under the new one.
+            currentProducts = generic && generic.products ? generic.products : [];
             itemDescriptionSearchInput.value = '';
             productIdInput.value = '';
 
             computeTotals();
-        });
+        }
 
-        itemDescriptionSearchInput.addEventListener('input', function () {
-            const generic = findGenericByLabel(genericSearchInput.value);
-            const product = generic && generic.products ? generic.products.find(p => p.item_description === this.value) : null;
+        function applyItemDescription(product) {
             productIdInput.value = product ? product.id : '';
 
             // Per Sir's direction: once a specific product is identified, its
@@ -382,6 +427,65 @@
             }
 
             computeTotals();
+        }
+
+        genericSearchInput.addEventListener('input', function () {
+            // A resumed draft's prefill dispatches this same 'input' event
+            // programmatically (see addRow's prefill handling) without
+            // focusing the field first — only paint the dropdown for an
+            // actual, focused keystroke.
+            if (document.activeElement === this) {
+                renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericLabel, g => g.id);
+            }
+            applyGeneric(findGenericByLabel(this.value));
+        });
+
+        genericSearchInput.addEventListener('focus', function () {
+            renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericLabel, g => g.id);
+        });
+
+        genericSearchInput.addEventListener('blur', function () {
+            setTimeout(() => { genericSuggestions.style.display = 'none'; }, 150);
+        });
+
+        genericSuggestions.addEventListener('mousedown', function (e) {
+            const btn = e.target.closest('[data-id]');
+            if (!btn) return;
+            e.preventDefault();
+            const generic = GENERIC_NAMES.find(g => String(g.id) === btn.dataset.id);
+            if (!generic) return;
+            genericSearchInput.value = genericLabel(generic);
+            applyGeneric(generic);
+            genericSuggestions.style.display = 'none';
+            genericSuggestions.innerHTML = '';
+        });
+
+        itemDescriptionSearchInput.addEventListener('input', function () {
+            if (document.activeElement === this) {
+                renderSuggestions(itemDescriptionSuggestions, currentProducts, this.value, productLabel, productId);
+            }
+            const product = currentProducts.find(p => p.item_description === this.value);
+            applyItemDescription(product || null);
+        });
+
+        itemDescriptionSearchInput.addEventListener('focus', function () {
+            renderSuggestions(itemDescriptionSuggestions, currentProducts, this.value, productLabel, productId);
+        });
+
+        itemDescriptionSearchInput.addEventListener('blur', function () {
+            setTimeout(() => { itemDescriptionSuggestions.style.display = 'none'; }, 150);
+        });
+
+        itemDescriptionSuggestions.addEventListener('mousedown', function (e) {
+            const btn = e.target.closest('[data-id]');
+            if (!btn) return;
+            e.preventDefault();
+            const product = currentProducts.find(p => String(p.id) === btn.dataset.id);
+            if (!product) return;
+            itemDescriptionSearchInput.value = productLabel(product);
+            applyItemDescription(product);
+            itemDescriptionSuggestions.style.display = 'none';
+            itemDescriptionSuggestions.innerHTML = '';
         });
 
         card.querySelectorAll('.qty-input, .price-input, .advance-input').forEach(el => {
