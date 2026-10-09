@@ -208,6 +208,15 @@
         return GENERIC_NAMES.find(g => genericLabel(g) === label);
     }
 
+    // Per Sir: shown only in the suggestion dropdown (not baked into the
+    // input's own value, which stays the plain genericLabel() above) — so
+    // the encoder sees what's on hand while still picking, without it
+    // getting stuck in the field or breaking a resumed draft's exact-match
+    // prefill, which was saved from the plain label. Same as Sales Order.
+    function genericDisplayLabel(g) {
+        return `${genericLabel(g)} — Available: ${g.quantity}`;
+    }
+
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str;
@@ -354,6 +363,7 @@
         // currently selected — this is reset every time applyGeneric() runs.
         let currentProducts = [];
         const productLabel = p => p.item_description;
+        const productDisplayLabel = p => `${p.item_description} — Available: ${p.quantity}`;
         const productId = p => p.id;
 
         function applyGeneric(generic) {
@@ -397,13 +407,13 @@
             // focusing the field first — only paint the dropdown for an
             // actual, focused keystroke.
             if (document.activeElement === this) {
-                renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericLabel, g => g.id);
+                renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericDisplayLabel, g => g.id);
             }
             applyGeneric(findGenericByLabel(this.value));
         });
 
         genericSearchInput.addEventListener('focus', function () {
-            renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericLabel, g => g.id);
+            renderSuggestions(genericSuggestions, GENERIC_NAMES, this.value, genericDisplayLabel, g => g.id);
         });
 
         genericSearchInput.addEventListener('blur', function () {
@@ -424,14 +434,14 @@
 
         itemDescriptionSearchInput.addEventListener('input', function () {
             if (document.activeElement === this) {
-                renderSuggestions(itemDescriptionSuggestions, currentProducts, this.value, productLabel, productId);
+                renderSuggestions(itemDescriptionSuggestions, currentProducts, this.value, productDisplayLabel, productId);
             }
             const product = currentProducts.find(p => p.item_description === this.value);
             applyItemDescription(product || null);
         });
 
         itemDescriptionSearchInput.addEventListener('focus', function () {
-            renderSuggestions(itemDescriptionSuggestions, currentProducts, this.value, productLabel, productId);
+            renderSuggestions(itemDescriptionSuggestions, currentProducts, this.value, productDisplayLabel, productId);
         });
 
         itemDescriptionSearchInput.addEventListener('blur', function () {

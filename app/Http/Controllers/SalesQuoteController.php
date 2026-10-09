@@ -82,6 +82,11 @@ class SalesQuoteController extends Controller
                 'generic_name' => $genericName->generic_name,
                 'unit' => $genericName->unit,
                 'category_name' => $genericName->category->category_name,
+                // Per Sir: show what's on hand while the encoder is still
+                // picking, same as Sales Order — summed across every
+                // location (POS + Warehouse), since a Sales Quote doesn't
+                // itself draw from any one of them.
+                'quantity' => (int) $genericName->products->sum(fn (Product $product) => $product->location_stocks_sum_qty ?? 0),
                 'prices' => [
                     'retail' => $firstProduct?->unit_price,
                     'wholesale' => $firstProduct?->wholesale_price,
@@ -102,6 +107,7 @@ class SalesQuoteController extends Controller
                 'products' => $genericName->products->map(fn (Product $product) => [
                     'id' => $product->id,
                     'item_description' => $product->description ?: ($product->brand_name ?: $product->item_name),
+                    'quantity' => (int) ($product->location_stocks_sum_qty ?? 0),
                     'prices' => [
                         'retail' => $product->unit_price,
                         'wholesale' => $product->wholesale_price,
