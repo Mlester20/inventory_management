@@ -342,7 +342,7 @@
               <span class="menu-header-text">Purchase</span>
             </li>
             @php
-              $purchaseOrderActive = request()->routeIs('purchase-orders.*') || request()->routeIs('goods-receipts.*') || request()->routeIs('purchase-invoices.*');
+              $purchaseOrderActive = request()->routeIs('purchase-orders.*') || request()->routeIs('po-summary.*') || request()->routeIs('goods-receipts.*') || request()->routeIs('purchase-invoices.*');
             @endphp
             <li class="menu-item {{ $purchaseOrderActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -358,6 +358,11 @@
                 <li class="menu-item">
                   <a href="{{ route('purchase-orders.create') }}" class="menu-link">
                     <div data-i18n="Error">New Purchase Order</div>
+                  </a>
+                </li>
+                <li class="menu-item {{ request()->routeIs('po-summary.*') ? 'active' : '' }}">
+                  <a href="{{ route('po-summary.index') }}" class="menu-link">
+                    <div data-i18n="Error">Purchase Order Summary</div>
                   </a>
                 </li>
                 <li class="menu-item {{ request()->routeIs('goods-receipts.*') ? 'active' : '' }}">
