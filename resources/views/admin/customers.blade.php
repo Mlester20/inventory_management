@@ -639,7 +639,7 @@
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="mb-0">Customers</h5>
             <form method="GET" class="d-flex gap-2">
-                <input type="text" name="search" class="form-control form-control-sm" style="width: 220px;"
+                <input type="text" name="search" autocomplete="off" class="form-control form-control-sm" style="width: 220px;"
                     placeholder="Search customer name..." value="{{ request('search') }}">
                 <button type="submit" class="btn btn-sm btn-outline-primary">Search</button>
                 @if(request('search'))

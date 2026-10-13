@@ -12,7 +12,7 @@
             <form method="GET" class="row g-2 mb-3">
                 <div class="col-auto" style="min-width: 300px;">
                     <div class="input-group">
-                        <input type="search" name="search" class="form-control" placeholder="Search..." value="{{ $search }}">
+                        <input type="search" name="search" autocomplete="off" class="form-control" placeholder="Search..." value="{{ $search }}">
                         <button type="submit" class="btn btn-outline-secondary">Search</button>
                     </div>
                 </div>

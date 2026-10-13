@@ -68,7 +68,7 @@
         <div class="d-flex flex-wrap gap-2">
             <form method="GET" action="{{ route('po-summary.all-items') }}" class="d-flex gap-2">
                 <input type="hidden" name="scope" value="{{ $scope }}">
-                <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search by supplier / P.O / Generic / Item" style="min-width: 260px;">
+                <input type="text" name="search" autocomplete="off" value="{{ $search }}" class="form-control" placeholder="Search by supplier / P.O / Generic / Item" style="min-width: 260px;">
                 <button type="submit" class="btn btn-outline-secondary text-nowrap">Search</button>
                 @if($search !== '')
                     <a href="{{ route('po-summary.all-items', ['scope' => $scope]) }}" class="btn btn-outline-secondary text-nowrap">Clear</a>

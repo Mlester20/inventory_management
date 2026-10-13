@@ -32,7 +32,7 @@
             <input type="hidden" name="customer_id" value="{{ $customer?->id }}">
             <input type="hidden" name="sales_order_id" value="{{ $salesOrder?->id }}">
             <input type="hidden" name="generic_name_id" value="{{ $genericName?->id }}">
-            <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search by customer or D.R" style="min-width: 240px;">
+            <input type="text" name="search" autocomplete="off" value="{{ $search }}" class="form-control" placeholder="Search by customer or D.R" style="min-width: 240px;">
             <button type="submit" class="btn btn-outline-secondary text-nowrap">Search</button>
         </form>
     </div>

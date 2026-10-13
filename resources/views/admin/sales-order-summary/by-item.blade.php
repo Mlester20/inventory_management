@@ -35,7 +35,7 @@
                     <option value="{{ $category->id }}" {{ (string) $categoryId === (string) $category->id ? 'selected' : '' }}>{{ $category->category_name }}</option>
                 @endforeach
             </select>
-            <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search by P.O / S.O / Customer / Item" style="min-width: 240px;">
+            <input type="text" name="search" autocomplete="off" value="{{ $search }}" class="form-control" placeholder="Search by P.O / S.O / Customer / Item" style="min-width: 240px;">
             <button type="submit" class="btn btn-outline-secondary text-nowrap">Search</button>
             @if($search !== '' || $categoryId)
                 <a href="{{ route('so-summary.by-item', ['hide_zero_balance' => $hideZeroBalance ?: null, 'show_zero_on_hand' => $showZeroOnHand ?: null]) }}" class="btn btn-outline-secondary text-nowrap">Clear</a>

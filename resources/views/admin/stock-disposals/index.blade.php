@@ -11,7 +11,7 @@
         <div class="card-body">
             <form method="GET" class="mb-3" style="max-width: 400px;">
                 <div class="input-group">
-                    <input type="search" name="search" class="form-control" placeholder="Search by reference..." value="{{ $search }}">
+                    <input type="search" name="search" autocomplete="off" class="form-control" placeholder="Search by reference..." value="{{ $search }}">
                     <button type="submit" class="btn btn-outline-secondary">Search</button>
                 </div>
             </form>

@@ -15,7 +15,7 @@
         </div>
         <form method="GET" action="{{ route('po-summary.orders') }}" class="d-flex gap-2">
             <input type="hidden" name="supplier_id" value="{{ $supplier->id }}">
-            <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search by P.O #" style="min-width: 220px;">
+            <input type="text" name="search" autocomplete="off" value="{{ $search }}" class="form-control" placeholder="Search by P.O #" style="min-width: 220px;">
             <button type="submit" class="btn btn-outline-secondary text-nowrap">Search</button>
             @if($search !== '')
                 <a href="{{ route('po-summary.orders', ['supplier_id' => $supplier->id]) }}" class="btn btn-outline-secondary text-nowrap">Clear</a>

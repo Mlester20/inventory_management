@@ -31,8 +31,8 @@
 
         <form method="GET" action="{{ route('inventory-items.index') }}" class="d-flex mb-3" style="max-width: {{ $tab === 'history' ? '650px' : '400px' }};">
             <input type="hidden" name="tab" value="{{ $tab }}">
-            <input type="search" name="search" class="form-control me-2" placeholder="Search..." value="{{ $search }}"
-                @if($tab === 'history') list="historyProductDatalist" autocomplete="off" @endif>
+            <input type="search" name="search" autocomplete="off" class="form-control me-2" placeholder="Search..." value="{{ $search }}"
+                @if($tab === 'history') list="historyProductDatalist" @endif>
             @if($tab === 'history')
                 <datalist id="historyProductDatalist">
                     @foreach($historyProductsForJs as $p)

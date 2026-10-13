@@ -8,6 +8,7 @@
             <input
                 type="text"
                 name="search"
+                autocomplete="off"
                 class="form-control"
                 placeholder="Search by customer or D.R. no."
                 value="{{ $search }}"

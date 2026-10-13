@@ -15,7 +15,7 @@
         </div>
         <form method="GET" action="{{ route('so-summary.orders') }}" class="d-flex gap-2">
             <input type="hidden" name="customer_id" value="{{ $customer->id }}">
-            <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search by S.O / P.O" style="min-width: 220px;">
+            <input type="text" name="search" autocomplete="off" value="{{ $search }}" class="form-control" placeholder="Search by S.O / P.O" style="min-width: 220px;">
             <button type="submit" class="btn btn-outline-secondary text-nowrap">Search</button>
             @if($search !== '')
                 <a href="{{ route('so-summary.orders', ['customer_id' => $customer->id]) }}" class="btn btn-outline-secondary text-nowrap">Clear</a>

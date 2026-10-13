@@ -61,7 +61,7 @@
             <form method="GET" action="{{ route('so-summary.items') }}" class="d-flex gap-2">
                 <input type="hidden" name="customer_id" value="{{ $customer->id }}">
                 <input type="hidden" name="scope" value="{{ $scope }}">
-                <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search by P.O / Generic / Item" style="min-width: 240px;">
+                <input type="text" name="search" autocomplete="off" value="{{ $search }}" class="form-control" placeholder="Search by P.O / Generic / Item" style="min-width: 240px;">
                 <button type="submit" class="btn btn-outline-secondary text-nowrap">Search</button>
                 @if($search !== '')
                     <a href="{{ route('so-summary.items', ['customer_id' => $customer->id, 'scope' => $scope]) }}" class="btn btn-outline-secondary text-nowrap">Clear</a>
