@@ -170,6 +170,11 @@ class DeliveryReceiptController extends Controller
             return redirect()->route('delivery-receipts.show', $deliveryReceipt);
         }
 
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Delivery Receipt is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
+        }
+
         $validated = $request->validate($this->postedValidationRules());
 
         if ($validated['transaction_type'] === 'purchase_order') {
@@ -357,6 +362,11 @@ class DeliveryReceiptController extends Controller
 
             Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
             return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Delivery Receipt is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
         }
 
         $validated = $request->validate($this->postedValidationRules());

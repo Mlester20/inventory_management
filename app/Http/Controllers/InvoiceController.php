@@ -169,6 +169,11 @@ class InvoiceController extends Controller
             return redirect()->route('invoices.show', $invoice);
         }
 
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing an invoice is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
+        }
+
         return $this->postInvoice($request->validate($this->postedValidationRules()), null, $customerPaymentService);
     }
 
@@ -485,6 +490,11 @@ class InvoiceController extends Controller
 
             Alert::success('Draft saved', 'Resume it anytime from the Invoices list before posting.');
             return redirect()->route('invoices.show', $invoice);
+        }
+
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing an invoice is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
         }
 
         return $this->postInvoice($request->validate($this->postedValidationRules()), $invoice, $customerPaymentService);

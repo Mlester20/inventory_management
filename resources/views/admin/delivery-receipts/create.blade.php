@@ -185,7 +185,7 @@
                     <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
                         <i class="bx bx-save"></i> Save Draft
                     </button>
-                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Delivery Receipt</button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary" @disabled(Auth::user()->role === 'admin_staff') @if(Auth::user()->role === 'admin_staff') title="Finalizing is restricted to full admin accounts — use Save Draft instead." @endif>Save Delivery Receipt</button>
                     <a href="{{ route('delivery-receipts.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>

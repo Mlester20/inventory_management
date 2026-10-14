@@ -137,6 +137,11 @@ class PurchaseOrderController extends Controller
             return redirect()->route('purchase-orders.show', $purchaseOrder);
         }
 
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Purchase Order is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
+        }
+
         $validated = $request->validate($this->postedValidationRules());
 
         $purchaseOrder = $this->purchaseOrderService->createPurchaseOrder($validated);
@@ -240,6 +245,11 @@ class PurchaseOrderController extends Controller
 
             Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
             return redirect()->route('purchase-orders.show', $purchaseOrder);
+        }
+
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Purchase Order is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
         }
 
         $validated = $request->validate($this->postedValidationRules());
