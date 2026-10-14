@@ -76,6 +76,30 @@ class ProductPricesImportController extends Controller
         return Excel::download(new ProductsForPricesExport(), 'products-for-price-update-' . now()->format('Ymd-His') . '.xlsx');
     }
 
+    /**
+     * Same file as export(), scoped to only the products checked on the
+     * Products View — per Sir, so a handful of items needing a price fix
+     * don't require editing (and re-reading) the entire catalog.
+     */
+    public function exportSelected(Request $request)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Exporting products for price updates is restricted to full admin accounts.');
+
+            return redirect()->route('inventory-items.index', ['tab' => 'products']);
+        }
+
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:products,id',
+        ]);
+
+        return Excel::download(
+            new ProductsForPricesExport($validated['ids']),
+            'products-for-price-update-selected-' . now()->format('Ymd-His') . '.xlsx'
+        );
+    }
+
     public function downloadTemplate()
     {
         return Excel::download(new ProductPricesTemplateExport(), 'update-prices-import-template.xlsx');

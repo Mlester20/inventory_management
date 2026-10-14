@@ -203,6 +203,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('admin/products/{product}/archive', [ProductController::class, 'archive'])->name('products.archive');
     Route::post('admin/products/{product}/unarchive', [ProductController::class, 'unarchive'])->name('products.unarchive');
     Route::get('admin/products/export-prices', [ProductPricesImportController::class, 'export'])->name('products.export-prices');
+    Route::post('admin/products/export-prices-selected', [ProductPricesImportController::class, 'exportSelected'])->name('products.export-prices-selected');
     Route::post('admin/products/import-prices', [ProductPricesImportController::class, 'import'])->name('products.import-prices');
     Route::get('admin/products/import-prices/template', [ProductPricesImportController::class, 'downloadTemplate'])->name('products.import-prices.template');
     Route::post('admin/products/import', [ProductController::class, 'import'])->name('products.import');

@@ -10,10 +10,16 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 /**
  * Every current product in the Update Prices layout, with its system Code, so
  * the file can be edited in Excel and imported straight back: the Code makes
- * the match exact, so nothing can turn into a "new" product.
+ * the match exact, so nothing can turn into a "new" product. An optional list
+ * of product IDs scopes this to only the rows Sir checked on the Products
+ * View instead of the entire catalog.
  */
 class ProductsForPricesExport implements FromArray, WithHeadings, WithTitle
 {
+    public function __construct(protected ?array $productIds = null)
+    {
+    }
+
     public function title(): string
     {
         return 'PRICES';
@@ -30,6 +36,7 @@ class ProductsForPricesExport implements FromArray, WithHeadings, WithTitle
             ->join('generic_names as g', 'g.id', '=', 'products.generic_name_id')
             ->join('categories as c', 'c.id', '=', 'g.category_id')
             ->leftJoin('taxes as t', 't.id', '=', 'products.tax_id')
+            ->when($this->productIds, fn ($q) => $q->whereIn('products.id', $this->productIds))
             ->orderBy('c.category_name')
             ->orderBy('g.generic_name')
             ->orderBy('products.brand_name')

@@ -344,6 +344,15 @@
                                 </a>
                             </div>
                         </div>
+                        <button type="button" id="exportSelectedProductsBtn" class="btn btn-outline-secondary" disabled>
+                            <i class="bx bx-download me-1"></i> Export Selected (<span id="selectedProductsCount">0</span>)
+                        </button>
+                        <button type="button" id="clearSelectedProductsBtn" class="btn btn-link btn-sm text-muted" style="display: none;">
+                            Clear selection
+                        </button>
+                        <form id="exportSelectedProductsForm" method="POST" action="{{ route('products.export-prices-selected') }}" style="display: none;">
+                            @csrf
+                        </form>
                     @endif
                 </div>
                 <div class="d-flex gap-2">
@@ -376,6 +385,9 @@
                     <table class="table">
                         <thead>
                             <tr>
+                                @if(Auth::user()->role === 'admin')
+                                    <th><input type="checkbox" id="productsSelectAllCheckbox" title="Select all on this page"></th>
+                                @endif
                                 <th></th>
                                 <th>Code</th>
                                 <th>Category</th>
@@ -402,6 +414,9 @@
                                     $totalQty = (int) ($product->total_qty ?? 0);
                                 @endphp
                                 <tr>
+                                    @if(Auth::user()->role === 'admin')
+                                        <td><input type="checkbox" class="product-select-checkbox" value="{{ $product->id }}"></td>
+                                    @endif
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $product->code }}</td>
                                     <td>{{ $product->category->category_name ?? 'N/A' }}</td>
@@ -576,7 +591,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="15" class="text-center text-muted py-4">No products yet.</td></tr>
+                                <tr><td colspan="{{ Auth::user()->role === 'admin' ? 16 : 15 }}" class="text-center text-muted py-4">No products yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -846,5 +861,98 @@
             form.action = `{{ url('admin/product-batches') }}/${get('data-id')}`;
         });
     });
+
+    // Products View: checkbox selection for "Export Selected", persisted in
+    // localStorage so a pick made on one search/page survives navigating to
+    // another — per Sir, the items needing a price fix are often scattered
+    // across pages, not just whatever's on the current one.
+    (function () {
+        const selectAllCheckbox = document.getElementById('productsSelectAllCheckbox');
+        if (!selectAllCheckbox) return; // not the Products tab, or not admin
+
+        const STORAGE_KEY = 'inventoryItems.selectedProductIds';
+        const rowCheckboxes = Array.from(document.querySelectorAll('.product-select-checkbox'));
+        const countEl = document.getElementById('selectedProductsCount');
+        const exportBtn = document.getElementById('exportSelectedProductsBtn');
+        const clearBtn = document.getElementById('clearSelectedProductsBtn');
+        const exportForm = document.getElementById('exportSelectedProductsForm');
+
+        function loadSelected() {
+            try {
+                return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+            } catch (e) {
+                return new Set();
+            }
+        }
+
+        function saveSelected(set) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(set)));
+            } catch (e) { /* storage unavailable — selection just won't persist */ }
+        }
+
+        let selected = loadSelected();
+
+        function refreshToolbar() {
+            countEl.textContent = selected.size;
+            exportBtn.disabled = selected.size === 0;
+            clearBtn.style.display = selected.size > 0 ? 'inline-block' : 'none';
+
+            const checkedOnPage = rowCheckboxes.filter(cb => cb.checked).length;
+            selectAllCheckbox.checked = rowCheckboxes.length > 0 && checkedOnPage === rowCheckboxes.length;
+            selectAllCheckbox.indeterminate = checkedOnPage > 0 && checkedOnPage < rowCheckboxes.length;
+        }
+
+        // Restore this page's checkboxes from whatever was already selected
+        // on a previous page/search.
+        rowCheckboxes.forEach(cb => {
+            cb.checked = selected.has(cb.value);
+            cb.addEventListener('change', function () {
+                if (this.checked) {
+                    selected.add(this.value);
+                } else {
+                    selected.delete(this.value);
+                }
+                saveSelected(selected);
+                refreshToolbar();
+            });
+        });
+
+        selectAllCheckbox.addEventListener('change', function () {
+            rowCheckboxes.forEach(cb => {
+                cb.checked = this.checked;
+                if (this.checked) {
+                    selected.add(cb.value);
+                } else {
+                    selected.delete(cb.value);
+                }
+            });
+            saveSelected(selected);
+            refreshToolbar();
+        });
+
+        clearBtn?.addEventListener('click', function () {
+            selected.clear();
+            rowCheckboxes.forEach(cb => { cb.checked = false; });
+            saveSelected(selected);
+            refreshToolbar();
+        });
+
+        exportBtn?.addEventListener('click', function () {
+            if (selected.size === 0) return;
+
+            exportForm.querySelectorAll('input[name="ids[]"]').forEach(el => el.remove());
+            selected.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids[]';
+                input.value = id;
+                exportForm.appendChild(input);
+            });
+            exportForm.submit();
+        });
+
+        refreshToolbar();
+    })();
 </script>
 @endsection
