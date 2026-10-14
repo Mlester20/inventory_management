@@ -272,8 +272,9 @@ class SalesOrderController extends Controller
         $salesOrder->load('customer', 'preparedBy', 'items.genericName', 'items.product', 'deliveryReceipts');
 
         $vatPreview = $this->buildVatPreview($salesOrder->items);
+        $customers = Customer::orderBy('customer_name')->get();
 
-        return view('admin.sales-orders.show', compact('salesOrder', 'vatPreview'));
+        return view('admin.sales-orders.show', compact('salesOrder', 'vatPreview', 'customers'));
     }
 
     /**
@@ -344,6 +345,60 @@ class SalesOrderController extends Controller
         );
 
         Alert::success('Success', 'Notes updated successfully');
+        return redirect()->route('sales-orders.show', $salesOrder);
+    }
+
+    /**
+     * Correct the Customer on an already-posted Sales Order — e.g. the wrong
+     * one was picked when it was created, so there's no need to Cancel/Void
+     * just to fix that. Admin-only (unlike updateNotes, which is safe for
+     * anyone), since this changes who the order actually belongs to. Any
+     * Delivery Receipt already made against this order keeps its own
+     * customer_id and does NOT follow this change, so the encoder is warned
+     * when any exist, to go fix those separately if needed.
+     */
+    public function updateCustomer(Request $request, SalesOrder $salesOrder)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Changing the Customer on a Sales Order is restricted to full admin accounts.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        if ($salesOrder->isDraft()) {
+            Alert::info('Not needed', 'A draft can already be edited freely — use Continue Editing instead.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+        ]);
+
+        $oldCustomerName = $salesOrder->customer->customer_name ?? 'none';
+        $salesOrder->update($validated);
+        $salesOrder->refresh();
+        $newCustomerName = $salesOrder->customer->customer_name;
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'customer_corrected',
+            loggable: $salesOrder,
+            description: "Corrected Sales Order {$salesOrder->so_no}'s customer from \"{$oldCustomerName}\" to \"{$newCustomerName}\"",
+        );
+
+        $linkedDrCount = $salesOrder->deliveryReceipts()
+            ->where('is_draft', false)
+            ->where('status', '!=', 'cancelled')
+            ->count();
+
+        if ($linkedDrCount > 0) {
+            Alert::success(
+                'Customer updated',
+                "Customer changed to {$newCustomerName}. Note: {$linkedDrCount} existing Delivery Receipt(s) on this order still show \"{$oldCustomerName}\" and were NOT changed — correct those separately if needed."
+            );
+        } else {
+            Alert::success('Success', "Customer changed to {$newCustomerName}.");
+        }
+
         return redirect()->route('sales-orders.show', $salesOrder);
     }
 

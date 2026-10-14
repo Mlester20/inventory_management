@@ -25,6 +25,11 @@
                 <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#notesModal">
                     <i class="bx bx-note"></i> Add Notes
                 </button>
+                @if(Auth::user()->role === 'admin')
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editCustomerModal">
+                        <i class="bx bx-user"></i> Edit Customer
+                    </button>
+                @endif
                 @if($salesOrder->status !== 'completed' && $salesOrder->status !== 'cancelled')
                     <a href="{{ route('delivery-receipts.create', ['sales_order_id' => $salesOrder->id]) }}" class="btn btn-primary">
                         <i class="bx bx-plus"></i> Create Delivery Receipt
@@ -258,6 +263,47 @@
             </form>
         </div>
     </div>
+
+    @if(Auth::user()->role === 'admin' && ! $salesOrder->isDraft())
+        @php
+            $linkedDrCount = $salesOrder->deliveryReceipts->whereNotIn('status', ['cancelled'])->where('is_draft', false)->count();
+        @endphp
+        <div class="modal fade no-print" id="editCustomerModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form action="{{ route('sales-orders.update-customer', $salesOrder) }}" method="POST">
+                    @csrf
+                    @method('PATCH')
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Customer — {{ $salesOrder->so_no }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <label for="editCustomerSelect" class="form-label">Customer</label>
+                            <select name="customer_id" id="editCustomerSelect" class="form-select" required>
+                                @foreach($customers as $customer)
+                                    <option value="{{ $customer->id }}" {{ $customer->id === $salesOrder->customer_id ? 'selected' : '' }}>
+                                        {{ $customer->customer_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @if($linkedDrCount > 0)
+                                <p class="text-danger small mt-2 mb-0">
+                                    <i class="bx bx-error"></i>
+                                    This order already has {{ $linkedDrCount }} Delivery Receipt(s). Changing the customer here will NOT
+                                    update those — they'll keep showing "{{ $salesOrder->customer->customer_name }}". Correct them separately if needed.
+                                </p>
+                            @endif
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Save Customer</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 
     <div class="card so-print-only" id="printableSalesOrderSheet">
         <div class="card-body p-4 so-sheet">

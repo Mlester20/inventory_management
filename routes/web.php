@@ -248,6 +248,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('admin/sales-orders/{sales_order}', [SalesOrderController::class, 'destroy'])->name('sales-orders.destroy');
     Route::patch('admin/sales-orders/{id}/restore', [SalesOrderController::class, 'restore'])->name('sales-orders.restore');
     Route::post('admin/sales-orders/{sales_order}/cancel', [SalesOrderController::class, 'cancel'])->name('sales-orders.cancel');
+    Route::patch('admin/sales-orders/{sales_order}/customer', [SalesOrderController::class, 'updateCustomer'])->name('sales-orders.update-customer');
     Route::delete('admin/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
     Route::post('admin/customers/import', [CustomerController::class, 'import'])->name('customers.import');
     Route::get('admin/customers/import/template', [CustomerController::class, 'downloadTemplate'])->name('customers.import.template');
