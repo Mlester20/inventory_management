@@ -279,14 +279,17 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <label for="editCustomerSelect" class="form-label">Customer</label>
-                            <select name="customer_id" id="editCustomerSelect" class="form-select" required>
-                                @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}" {{ $customer->id === $salesOrder->customer_id ? 'selected' : '' }}>
-                                        {{ $customer->customer_name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <label for="editCustomerSearchInput" class="form-label">Customer</label>
+                            <div class="position-relative">
+                                <input type="text" id="editCustomerSearchInput" class="form-control" autocomplete="off"
+                                    placeholder="Search customer..." value="{{ $salesOrder->customer->customer_name }}" required>
+                                <input type="hidden" name="customer_id" id="editCustomerIdInput" value="{{ $salesOrder->customer_id }}">
+                                <div id="editCustomerSuggestions" class="item-suggestions position-absolute w-100"
+                                    style="z-index: 1060; max-height: 280px; overflow-y: auto; display: none;"></div>
+                            </div>
+                            <div id="editCustomerNoMatch" class="text-danger small mt-1" style="display: none;">
+                                No customer matches that name — pick one from the list.
+                            </div>
                             @if($linkedDrCount > 0)
                                 <p class="text-danger small mt-2 mb-0">
                                     <i class="bx bx-error"></i>
@@ -460,6 +463,27 @@
 <style>
     @include('partials.print.base-print')
 
+    /* Edit Customer's searchable dropdown — same opaque-popup pattern as the
+       Generic Description picker on the Sales Order create form. */
+    .item-suggestions {
+        background-color: #fff;
+        border: 1px solid rgba(0, 0, 0, .15);
+        border-radius: .375rem;
+        box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+    }
+    .item-suggestions button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background-color: #fff;
+        border: 0;
+        border-bottom: 1px solid #f1f1f1;
+        padding: .375rem .75rem;
+        cursor: pointer;
+    }
+    .item-suggestions button:last-child { border-bottom: 0; }
+    .item-suggestions button:hover { background-color: #f8f9fa; }
+
     .table-header-bg {
         background-color: #f7f8fa;
     }
@@ -590,5 +614,76 @@
         document.body.classList.add('print-mode-list');
         window.print();
     }
+
+    // Edit Customer modal: same searchable-dropdown pattern as the Generic
+    // Description picker on the Sales Order create form — a plain <select>
+    // works but doesn't scale once the customer list gets long.
+    (function () {
+        const searchInput = document.getElementById('editCustomerSearchInput');
+        if (!searchInput) return; // not admin, or a draft — modal doesn't exist
+
+        const CUSTOMERS = @json($customers->map(fn ($c) => ['id' => $c->id, 'name' => $c->customer_name])->values());
+        const idInput = document.getElementById('editCustomerIdInput');
+        const suggestionsBox = document.getElementById('editCustomerSuggestions');
+        const noMatchEl = document.getElementById('editCustomerNoMatch');
+        const form = searchInput.closest('form');
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function findByName(name) {
+            return CUSTOMERS.find(c => c.name === name) || null;
+        }
+
+        function renderSuggestions(query) {
+            const q = query.trim().toLowerCase();
+            const matches = (q ? CUSTOMERS.filter(c => c.name.toLowerCase().includes(q)) : CUSTOMERS).slice(0, 30);
+            if (matches.length === 0) {
+                suggestionsBox.style.display = 'none';
+                suggestionsBox.innerHTML = '';
+                return;
+            }
+            suggestionsBox.innerHTML = matches.map(c =>
+                `<button type="button" class="small" data-id="${c.id}">${escapeHtml(c.name)}</button>`
+            ).join('');
+            suggestionsBox.style.display = 'block';
+        }
+
+        searchInput.addEventListener('input', function () {
+            renderSuggestions(this.value);
+            const match = findByName(this.value);
+            idInput.value = match ? match.id : '';
+        });
+
+        searchInput.addEventListener('focus', function () {
+            renderSuggestions(this.value);
+        });
+
+        searchInput.addEventListener('blur', function () {
+            setTimeout(() => { suggestionsBox.style.display = 'none'; }, 150);
+        });
+
+        suggestionsBox.addEventListener('mousedown', function (e) {
+            const btn = e.target.closest('[data-id]');
+            if (!btn) return;
+            e.preventDefault();
+            const customer = CUSTOMERS.find(c => String(c.id) === btn.dataset.id);
+            if (!customer) return;
+            searchInput.value = customer.name;
+            idInput.value = customer.id;
+            suggestionsBox.style.display = 'none';
+            suggestionsBox.innerHTML = '';
+        });
+
+        form.addEventListener('submit', function (e) {
+            if (!idInput.value) {
+                e.preventDefault();
+                noMatchEl.style.display = 'block';
+            }
+        });
+    })();
 </script>
 @endsection
