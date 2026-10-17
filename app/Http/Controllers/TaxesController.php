@@ -14,6 +14,11 @@ class TaxesController extends Controller
      */
     public function index()
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Taxes are restricted to full admin accounts.');
+            return redirect()->route('admin.dashboard');
+        }
+
         $taxes = Taxes::orderBy('name')->paginate(15);
         return view('admin.taxes', compact('taxes'));
     }
@@ -23,6 +28,11 @@ class TaxesController extends Controller
      */
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Taxes are restricted to full admin accounts.');
+            return redirect()->route('admin.dashboard');
+        }
+
         $request->validate([
             'tax_name' => 'required|string|unique:taxes,name',
             'rate' => 'required|numeric|min:0',
@@ -51,6 +61,11 @@ class TaxesController extends Controller
      */
     public function update(Request $request, Taxes $tax)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Taxes are restricted to full admin accounts.');
+            return redirect()->route('admin.dashboard');
+        }
+
         $request->validate([
             'tax_name' => 'required|string|unique:taxes,name,' . $tax->id,
             'rate' => 'required|numeric|min:0',
@@ -85,6 +100,11 @@ class TaxesController extends Controller
      */
     public function destroy(Taxes $tax)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Taxes are restricted to full admin accounts.');
+            return redirect()->route('admin.dashboard');
+        }
+
         $taxName = $tax->name;
         $tax->delete();
 

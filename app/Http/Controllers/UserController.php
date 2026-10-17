@@ -14,6 +14,11 @@ class UserController extends Controller
      */
     public function index()
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'User Management is restricted to full admin accounts.');
+            return redirect()->route('admin.dashboard');
+        }
+
         $users = User::orderBy('name')->paginate(15);
         return view('admin.users', compact('users'));
     }

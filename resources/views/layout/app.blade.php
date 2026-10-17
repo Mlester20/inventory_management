@@ -222,6 +222,7 @@
               </ul>
             </li>
 
+            @if(Auth::user()->role === 'admin')
             <!-- Taxes & Invoice -->
             <li class="menu-header small text-uppercase">
               <span class="menu-header-text">Taxes &amp; Invoice</span>
@@ -239,6 +240,7 @@
                 </li>
               </ul>
             </li>
+            @endif
 
 
             <!-- Sales -->
@@ -322,6 +324,7 @@
                   </li>
                 </ul>
               </li>
+              @if(Auth::user()->role === 'admin')
               <li class="menu-item {{ request()->routeIs('purchases.*') ? 'active open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                   <i class="menu-icon tf-icons bx bx-cart"></i>
@@ -335,6 +338,7 @@
                   </li>
                 </ul>
               </li>
+              @endif
             </li>
 
             <!-- Purchase -->
@@ -474,6 +478,7 @@
                 </li>
               </ul>
             </li>
+            @if(Auth::user()->role === 'admin')
             <li class="menu-item {{ $salesReportActive ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-receipt"></i>
@@ -516,13 +521,14 @@
                 <div data-i18n="Expense Report">Expense Report</div>
               </a>
             </li>
+            @endif
+            @if(auth()->user()->role === 'admin')
             <li class="menu-item">
               <a href="{{ route('activity-logs.index') }}" class="menu-link {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
                 <i class="menu-icon tf-icons bx bx-history"></i>
                 <div data-i18n="Audit Trail">Audit Trail</div>
               </a>
             </li>
-            @if(auth()->user()->role === 'admin')
             <li class="menu-item">
               <a href="{{ route('import-results.index') }}" class="menu-link {{ request()->routeIs('import-results.*') ? 'active' : '' }}">
                 <i class="menu-icon tf-icons bx bx-error-circle"></i>
@@ -531,6 +537,7 @@
             </li>
             @endif
 
+            @if(Auth::user()->role === 'admin')
             <!-- Users -->
             <li class="menu-header small text-uppercase"><span class="menu-header-text">Users</span></li>
             <!-- User interface -->
@@ -547,6 +554,7 @@
                 </li>
               </ul>
             </li>
+            @endif
           </ul>
         </aside>
         <!-- / Menu -->

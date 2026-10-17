@@ -17,6 +17,11 @@ class PurchaseController extends Controller
      */
     public function index()
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Purchases is restricted to full admin accounts.');
+            return redirect()->route('admin.dashboard');
+        }
+
         $purchases = Purchase::with('productBatch.product')->latest('purchase_date')->paginate(15);
         $products = Product::all();
         return view('admin.purchases', compact('purchases', 'products'));
@@ -27,6 +32,11 @@ class PurchaseController extends Controller
      */
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Purchases is restricted to full admin accounts.');
+            return redirect()->route('admin.dashboard');
+        }
+
         $validated = $request->validate([
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',

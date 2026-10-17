@@ -58,6 +58,11 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Creating a new Item is restricted to full admin accounts.');
+            return redirect()->route('inventory-items.index', ['tab' => 'products']);
+        }
+
         $validated = $request->validate($this->rules());
 
         $imagePath = $request->hasFile('image')

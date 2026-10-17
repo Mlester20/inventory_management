@@ -78,6 +78,11 @@ class StockDisposalController extends Controller
      */
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Recording a Stock Disposal is restricted to full admin accounts.');
+            return redirect()->route('stock-disposals.index');
+        }
+
         $validated = $request->validate([
             'date' => 'required|date',
             'reason' => 'required|in:' . implode(',', array_keys(StockDisposal::REASONS)),

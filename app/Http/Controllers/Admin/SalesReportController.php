@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Services\SalesReportService;
 use Illuminate\Http\Request;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class SalesReportController extends Controller
 {
@@ -17,6 +18,11 @@ class SalesReportController extends Controller
      */
     public function summary(Request $request)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'The Sales Report is restricted to full admin accounts.');
+            return redirect()->route('admin.dashboard');
+        }
+
         $validated = $request->validate([
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
@@ -43,6 +49,11 @@ class SalesReportController extends Controller
      */
     public function perCustomer(Request $request)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'The Sales Report is restricted to full admin accounts.');
+            return redirect()->route('admin.dashboard');
+        }
+
         $validated = $request->validate([
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',

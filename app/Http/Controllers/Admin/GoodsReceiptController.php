@@ -351,6 +351,11 @@ class GoodsReceiptController extends Controller
      */
     public function destroy(GoodsReceipt $goodsReceipt)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting Goods Receipts is restricted to full admin accounts.');
+            return redirect()->route('goods-receipts.index');
+        }
+
         if (! $goodsReceipt->isDraft()) {
             Alert::info('Not supported', 'Deleting an issued Goods Receipt is not supported.');
             return redirect()->route('goods-receipts.show', $goodsReceipt);

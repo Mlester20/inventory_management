@@ -49,7 +49,9 @@
         {{-- ============================= GENERAL ITEM TAB ============================= --}}
         @if($tab === 'general')
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#genericItemModal">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#genericItemModal"
+                    @disabled(Auth::user()->role === 'admin_staff')
+                    @if(Auth::user()->role === 'admin_staff') title="Restricted to full admin accounts." @endif>
                     New Generic Item
                 </button>
                 <div class="d-flex gap-2">
@@ -323,7 +325,9 @@
         @if($tab === 'products')
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="d-flex gap-2">
-                    <button type="button" id="newProductBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
+                    <button type="button" id="newProductBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal"
+                        @disabled(Auth::user()->role === 'admin_staff')
+                        @if(Auth::user()->role === 'admin_staff') title="Restricted to full admin accounts." @endif>
                         <i class="bx bx-plus me-1"></i> New Item
                     </button>
                     @if(Auth::user()->role === 'admin')
@@ -530,6 +534,7 @@
                                                     <i class="bx bx-edit-alt me-1"></i> Edit
                                                 </button>
                                                 <button type="button" class="dropdown-item clone-product-btn"
+                                                    @disabled(Auth::user()->role === 'admin_staff')
                                                     data-bs-toggle="modal" data-bs-target="#productModal"
                                                     data-generic-name-id="{{ $product->generic_name_id }}"
                                                     data-brand-name="{{ $product->brand_name }}"

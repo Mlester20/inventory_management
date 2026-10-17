@@ -101,6 +101,11 @@ class PurchaseInvoiceController extends Controller
             return redirect()->route('purchase-invoices.show', $purchaseInvoice);
         }
 
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Purchase Invoice is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
+        }
+
         $validated = $request->validate($this->postedValidationRules());
 
         $purchaseInvoice = PurchaseInvoice::create($validated + [
@@ -211,6 +216,11 @@ class PurchaseInvoiceController extends Controller
 
             Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
             return redirect()->route('purchase-invoices.show', $purchaseInvoice);
+        }
+
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Purchase Invoice is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
         }
 
         $validated = $request->validate($this->postedValidationRules());

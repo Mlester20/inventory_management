@@ -78,14 +78,16 @@
                                                 <a href="{{ route('goods-receipts.edit', $goodsReceipt) }}" class="dropdown-item">
                                                     <i class="bx bx-edit-alt me-1"></i> Continue Editing
                                                 </a>
-                                                <div class="dropdown-divider"></div>
-                                                <form action="{{ route('goods-receipts.destroy', $goodsReceipt) }}" method="POST" class="m-0" onsubmit="return confirm('Delete draft {{ $goodsReceipt->gr_no }}? This cannot be undone.');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="dropdown-item text-danger">
-                                                        <i class="bx bx-trash me-1"></i> Delete Draft
-                                                    </button>
-                                                </form>
+                                                @if(Auth::user()->role === 'admin')
+                                                    <div class="dropdown-divider"></div>
+                                                    <form action="{{ route('goods-receipts.destroy', $goodsReceipt) }}" method="POST" class="m-0" onsubmit="return confirm('Delete draft {{ $goodsReceipt->gr_no }}? This cannot be undone.');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            <i class="bx bx-trash me-1"></i> Delete Draft
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </div>
                                     @endif

@@ -190,6 +190,11 @@ class SalesQuoteController extends Controller
             return redirect()->route('sales-quotes.show', $salesQuote);
         }
 
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Sales Quote is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
+        }
+
         $validated = $request->validate($this->postedValidationRules());
 
         $salesQuote = $this->salesQuoteService->createSalesQuote($validated);
@@ -371,6 +376,11 @@ class SalesQuoteController extends Controller
 
             Alert::success('Draft saved', 'Resume it anytime from the list before finalizing.');
             return redirect()->route('sales-quotes.show', $salesQuote);
+        }
+
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Sales Quote is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
         }
 
         $validated = $request->validate($this->postedValidationRules());

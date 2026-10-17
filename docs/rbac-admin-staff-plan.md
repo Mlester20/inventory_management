@@ -99,6 +99,16 @@ JSON path, which was confirmed to still succeed), a temp `admin` account confirm
 suppliers, sees real cost), and `php artisan test` showed the same 33 pre-existing unrelated failures (no
 regressions). Test accounts cleaned up, admin password restored after.
 
+**Update (2026-10-17): Sir sent a full access matrix** (`docs/proposals/USER_ADMIN STAFF ACCES.pdf`) covering every module, superseding ad-hoc decisions above where they conflict. Two explicit **reversals** of earlier decisions: (1) Users page — previously decided "stays visible, read-only" (2026-08-19 entry above); now fully hidden/blocked for admin_staff, same as `admin`-only pages. (2) Audit Trail — previously scoped to "own actions only"; now fully hidden/blocked, no own-actions view at all. Both `UserController::index()` and `ActivityLogController::index()` now redirect admin_staff to the dashboard with an Alert, and both menu items are wrapped in `role === 'admin'` only (not `admin`+`admin_staff`).
+
+Also newly restricted this round (none of these existed before): New Generic Item button, New Item + Clone buttons (Products), Inventory Adjustment "Save" (finalize — Save Draft still open), Stock Disposal "Save" (no draft concept here), Expiration Report "Dispose" button (flows through Stock Disposal), Sales Quote "Save Sales Quote" (finalize), Stock Transfer Delete-Draft + "Save Stock Transfer" (finalize), Repack "Save Repack" (finalize — no destroy() exists for Repack, nothing to restrict there), Goods Receipt "Delete Draft", Purchase Invoice "Save Purchase Invoice" (finalize), Expenses "Delete". Also newly HIDDEN entirely (page + menu, admin-only via redirect pattern matching CogsController): Taxes, POS Sales/Purchases (the legacy admin `purchases` module, not Purchase Order), Sales Report, Purchase Report, Expense Report.
+
+One open conflict flagged to the user, not yet resolved: the PDF says Inventory Summary report is "No changes" for admin_staff, but the existing 2026-08-19 Dashboard-masking work (see above) already hides Unit Price/Total Value columns there for non-admin. User said to skip this for now ("basic matter lang"), so Inventory Summary was left as-is (still masked) — revisit if Sir confirms he wants it unmasked.
+
+Still not built: Return Items "Save Draft" — the PDF asks for one, but `ReturnItemController` has no draft/is_draft concept at all today (status is hardcoded `pending` on create), so this is a new feature (needs a migration), not a permission toggle — bigger lift, flagged separately, not started.
+
+Branch: `feature/admin-staff-full-restrictions`. Verified live (2026-10-17): temp `admin_staff` + temp `admin` accounts — menu absence, page-redirect, button-disabled states, Draft-save-still-works, and a direct-POST bypass (Stock Transfer finalize) all confirmed server-side, not just UI. Temp accounts cleaned up after.
+
 **Naming reversed (2026-08-13):** the earlier direction in this doc (rename full-access `admin` →
 `super_admin`, free up `admin` for the restricted tier) was reverted. Steady na lang sa `admin` bilang full
 control — walang pagbabago dito, parehas pa rin ng ngayon. The new restricted tier gets its own new name

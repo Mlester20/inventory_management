@@ -152,6 +152,11 @@ class RepackController extends Controller
             return redirect()->route('repacks.show', $repack);
         }
 
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Repack is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
+        }
+
         $validated = $request->validate($this->postedValidationRules());
 
         try {
@@ -213,6 +218,11 @@ class RepackController extends Controller
 
             Alert::success('Draft saved', 'Resume it anytime from the Repacks list before posting.');
             return redirect()->route('repacks.show', $repack);
+        }
+
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Repack is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
         }
 
         $validated = $request->validate($this->postedValidationRules());

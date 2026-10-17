@@ -28,6 +28,11 @@ class GenericNameController extends Controller
      */
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Creating a new Generic Item is restricted to full admin accounts.');
+            return redirect()->route('inventory-items.index', ['tab' => 'general']);
+        }
+
         $request->validate([
             'code' => 'required|string|max:50|unique:generic_names,code',
             // Unique per (name, unit) — not name alone, so the same generic

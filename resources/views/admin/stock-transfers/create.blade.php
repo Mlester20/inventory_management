@@ -99,7 +99,7 @@
                     <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
                         <i class="bx bx-save"></i> Save Draft
                     </button>
-                    <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Stock Transfer</button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary" @disabled(Auth::user()->role === 'admin_staff') @if(Auth::user()->role === 'admin_staff') title="Finalizing is restricted to full admin accounts — use Save Draft instead." @endif>Save Stock Transfer</button>
                     <a href="{{ route('stock-transfers.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>

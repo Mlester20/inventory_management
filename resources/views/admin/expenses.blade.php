@@ -234,19 +234,21 @@
                                             <i class="bx bx-edit-alt me-1"></i> Edit
                                         </button>
 
-                                        <div class="dropdown-divider"></div>
+                                        @if(Auth::user()->role === 'admin')
+                                            <div class="dropdown-divider"></div>
 
-                                        <form action="{{ route('expenses.destroy', $expense) }}" method="POST">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button
-                                                type="submit"
-                                                class="dropdown-item text-danger"
-                                                onclick="return confirm('Are you sure you want to delete this expense?')"
-                                            >
-                                                <i class="bx bx-trash me-1"></i> Delete
-                                            </button>
-                                        </form>
+                                            <form action="{{ route('expenses.destroy', $expense) }}" method="POST">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button
+                                                    type="submit"
+                                                    class="dropdown-item text-danger"
+                                                    onclick="return confirm('Are you sure you want to delete this expense?')"
+                                                >
+                                                    <i class="bx bx-trash me-1"></i> Delete
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </div>
                             </td>

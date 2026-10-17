@@ -134,6 +134,11 @@ class StockTransferController extends Controller
             return redirect()->route('stock-transfers.show', $stockTransfer);
         }
 
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Stock Transfer is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
+        }
+
         $validated = $request->validate($this->postedValidationRules());
 
         try {
@@ -240,6 +245,11 @@ class StockTransferController extends Controller
             return redirect()->route('stock-transfers.show', $stockTransfer);
         }
 
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Finalizing a Stock Transfer is restricted to full admin accounts. Save as Draft instead.');
+            return back()->withInput();
+        }
+
         $validated = $request->validate($this->postedValidationRules());
 
         try {
@@ -265,6 +275,11 @@ class StockTransferController extends Controller
      */
     public function destroy(StockTransfer $stockTransfer)
     {
+        if (auth()->user()->role === 'admin_staff') {
+            Alert::error('Not allowed', 'Deleting Stock Transfers is restricted to full admin accounts.');
+            return redirect()->route('stock-transfers.index');
+        }
+
         if (! $stockTransfer->isDraft()) {
             Alert::info('Not supported', 'Deleting a posted Stock Transfer is not supported.');
             return redirect()->route('stock-transfers.show', $stockTransfer);

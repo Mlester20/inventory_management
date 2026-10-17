@@ -180,9 +180,15 @@
                                 </td>
                                 <td>
                                     @if ($item->status === 'expired')
-                                        <a href="{{ route('stock-disposals.create', ['product_batch_id' => $item->id]) }}" class="btn btn-sm btn-outline-danger">
-                                            <i class="bx bx-trash"></i> Dispose
-                                        </a>
+                                        @if(Auth::user()->role === 'admin_staff')
+                                            <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Restricted to full admin accounts.">
+                                                <i class="bx bx-trash"></i> Dispose
+                                            </button>
+                                        @else
+                                            <a href="{{ route('stock-disposals.create', ['product_batch_id' => $item->id]) }}" class="btn btn-sm btn-outline-danger">
+                                                <i class="bx bx-trash"></i> Dispose
+                                            </a>
+                                        @endif
                                     @else
                                         <span class="text-muted small">—</span>
                                     @endif
