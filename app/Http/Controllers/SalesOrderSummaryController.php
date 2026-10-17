@@ -25,11 +25,11 @@ class SalesOrderSummaryController extends Controller
 
     /**
      * Sir's access spec: Sales Order Summary is hidden entirely from a
-     * plain 'user' account (admin and admin_staff keep full access).
+     * 'pos' (POS/cashier) account (admin and admin_staff keep full access).
      */
-    protected function blockPlainUser(): ?\Illuminate\Http\RedirectResponse
+    protected function blockPosRole(): ?\Illuminate\Http\RedirectResponse
     {
-        if (auth()->user()->role === 'user') {
+        if (auth()->user()->role === 'pos') {
             Alert::error('Not allowed', 'Sales Order Summary is not available for this account.');
             return redirect()->route('pages.home');
         }
@@ -39,7 +39,7 @@ class SalesOrderSummaryController extends Controller
 
     public function index(Request $request)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -55,7 +55,7 @@ class SalesOrderSummaryController extends Controller
     /** The S.O count link: every Sales Order of the customer, whatever its status. */
     public function orders(Request $request)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -72,7 +72,7 @@ class SalesOrderSummaryController extends Controller
     /** The Undelivered / Qty Ordered links: the item lines of one customer, added up across Sales Orders. */
     public function items(Request $request)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -90,7 +90,7 @@ class SalesOrderSummaryController extends Controller
 
     public function exportItems(Request $request)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -110,7 +110,7 @@ class SalesOrderSummaryController extends Controller
      */
     public function allItems(Request $request)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -127,7 +127,7 @@ class SalesOrderSummaryController extends Controller
 
     public function exportAllItems(Request $request)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -147,7 +147,7 @@ class SalesOrderSummaryController extends Controller
      */
     public function byItem(Request $request)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -177,7 +177,7 @@ class SalesOrderSummaryController extends Controller
     /** The Delivered link (one Sales Order line's PO) and the per-item trace (every PO of a customer). */
     public function deliveries(Request $request)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 

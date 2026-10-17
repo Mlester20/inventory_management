@@ -36,7 +36,7 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required',
             'email' => 'required|email|unique:users,email',
-            'role' => 'required|in:user,admin,admin_staff',
+            'role' => 'required|in:user,pos,admin,admin_staff',
             'password' => 'required|min:6',
         ]);
         $user = User::create([

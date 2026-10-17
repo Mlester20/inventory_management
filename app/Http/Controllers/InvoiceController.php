@@ -23,13 +23,13 @@ class InvoiceController extends Controller
     public function __construct(protected InvoiceDraftService $invoiceDraftService) {}
 
     /**
-     * Sir's access spec: Sales Invoice is hidden entirely from a plain
-     * 'user' account — admin and admin_staff still see it fully (admin_staff
-     * just can't finalize/delete, enforced separately below).
+     * Sir's access spec: Sales Invoice is hidden entirely from a 'pos'
+     * (POS/cashier) account — admin and admin_staff still see it fully
+     * (admin_staff just can't finalize/delete, enforced separately below).
      */
-    protected function blockPlainUser(): ?\Illuminate\Http\RedirectResponse
+    protected function blockPosRole(): ?\Illuminate\Http\RedirectResponse
     {
-        if (auth()->user()->role === 'user') {
+        if (auth()->user()->role === 'pos') {
             Alert::error('Not allowed', 'Invoices are not available for this account.');
             return redirect()->route('pages.home');
         }
@@ -42,7 +42,7 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -75,7 +75,7 @@ class InvoiceController extends Controller
      */
     public function create()
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -176,7 +176,7 @@ class InvoiceController extends Controller
      */
     public function store(Request $request, CustomerPaymentService $customerPaymentService)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -463,7 +463,7 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -483,7 +483,7 @@ class InvoiceController extends Controller
      */
     public function edit(Invoice $invoice)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -502,7 +502,7 @@ class InvoiceController extends Controller
      */
     public function update(Request $request, Invoice $invoice, CustomerPaymentService $customerPaymentService)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -625,7 +625,7 @@ class InvoiceController extends Controller
 
     public function archive(Invoice $invoice)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 
@@ -644,7 +644,7 @@ class InvoiceController extends Controller
 
     public function unarchive(Invoice $invoice)
     {
-        if ($blocked = $this->blockPlainUser()) {
+        if ($blocked = $this->blockPosRole()) {
             return $blocked;
         }
 

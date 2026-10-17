@@ -76,7 +76,8 @@
                                         class="form-control"
                                         required
                                     >
-                                        <option value="user">User</option>
+                                        <option value="pos">POS (Cashier)</option>
+                                        <option value="user">User (Limited Staff View)</option>
                                         <option value="admin">Admin</option>
                                         <option value="admin_staff">Admin Staff</option>
                                     </select>
