@@ -198,7 +198,7 @@ class SalesOrderController extends Controller
             return redirect()->route('sales-orders.show', $salesOrder);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Sales Order is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -444,7 +444,7 @@ class SalesOrderController extends Controller
             return redirect()->route('sales-orders.show', $salesOrder);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Sales Order is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }

@@ -10,6 +10,7 @@ use App\Models\SalesOrder;
 use App\Services\SalesOrderSummaryService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
+use RealRashid\SweetAlert\Facades\Alert;
 
 /**
  * Sales Order Summary (Sir's mockup): a per-customer summary that drills down into the
@@ -22,8 +23,26 @@ class SalesOrderSummaryController extends Controller
     {
     }
 
+    /**
+     * Sir's access spec: Sales Order Summary is hidden entirely from a
+     * plain 'user' account (admin and admin_staff keep full access).
+     */
+    protected function blockPlainUser(): ?\Illuminate\Http\RedirectResponse
+    {
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'Sales Order Summary is not available for this account.');
+            return redirect()->route('pages.home');
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         $search = trim((string) $request->query('search', ''));
         $customers = $this->summary->customerSummary($search ?: null);
 
@@ -36,6 +55,10 @@ class SalesOrderSummaryController extends Controller
     /** The S.O count link: every Sales Order of the customer, whatever its status. */
     public function orders(Request $request)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         $customer = Customer::findOrFail($request->validate(['customer_id' => 'required|integer|exists:customers,id'])['customer_id']);
         $search = trim((string) $request->query('search', ''));
 
@@ -49,6 +72,10 @@ class SalesOrderSummaryController extends Controller
     /** The Undelivered / Qty Ordered links: the item lines of one customer, added up across Sales Orders. */
     public function items(Request $request)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         [$customer, $scope, $search] = $this->itemFilters($request);
         $customers = $this->summary->items($scope, $customer->id, $search ?: null);
 
@@ -63,6 +90,10 @@ class SalesOrderSummaryController extends Controller
 
     public function exportItems(Request $request)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         [$customer, $scope, $search] = $this->itemFilters($request);
         $customers = $this->summary->items($scope, $customer->id, $search ?: null);
 
@@ -79,6 +110,10 @@ class SalesOrderSummaryController extends Controller
      */
     public function allItems(Request $request)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         [$scope, $search] = $this->allItemFilters($request);
         $customers = $this->summary->items($scope, null, $search ?: null);
 
@@ -92,6 +127,10 @@ class SalesOrderSummaryController extends Controller
 
     public function exportAllItems(Request $request)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         [$scope, $search] = $this->allItemFilters($request);
         $customers = $this->summary->items($scope, null, $search ?: null);
 
@@ -108,6 +147,10 @@ class SalesOrderSummaryController extends Controller
      */
     public function byItem(Request $request)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         $validated = $request->validate([
             'category_id' => 'nullable|integer|exists:categories,id',
             'search' => 'nullable|string|max:100',
@@ -134,6 +177,10 @@ class SalesOrderSummaryController extends Controller
     /** The Delivered link (one Sales Order line's PO) and the per-item trace (every PO of a customer). */
     public function deliveries(Request $request)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         $validated = $request->validate([
             'customer_id' => 'nullable|integer|exists:customers,id',
             'sales_order_id' => 'nullable|integer|exists:sales_orders,id',

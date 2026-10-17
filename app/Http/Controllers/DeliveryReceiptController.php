@@ -170,7 +170,7 @@ class DeliveryReceiptController extends Controller
             return redirect()->route('delivery-receipts.show', $deliveryReceipt);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Delivery Receipt is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -364,7 +364,7 @@ class DeliveryReceiptController extends Controller
             return redirect()->route('delivery-receipts.show', $deliveryReceipt);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Delivery Receipt is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }

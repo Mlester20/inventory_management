@@ -114,12 +114,14 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
-        // admin_staff is blocked from the dedicated Customers page (a plain
-        // form POST, no Accept: application/json), but stays able to use the
-        // inline "quick add" popup during Delivery Receipt creation, which
-        // hits this same endpoint via fetch() with Accept: application/json
-        // — see resources/views/admin/delivery-receipts/create.blade.php.
-        if (auth()->user()->role === 'admin_staff' && ! $request->expectsJson()) {
+        // Neither admin_staff nor a plain user can reach the dedicated
+        // Customers page's "New Customer" form (a plain POST, no Accept:
+        // application/json), but both stay able to use the inline "quick
+        // add" popup during Delivery Receipt creation, which hits this same
+        // endpoint via fetch() with Accept: application/json — see
+        // resources/views/admin/delivery-receipts/create.blade.php. Blocking
+        // that path too would break normal day-to-day DR creation.
+        if (auth()->user()->role !== 'admin' && ! $request->expectsJson()) {
             Alert::error('Not allowed', 'Adding customers is restricted to full admin accounts.');
             return redirect()->route('customers.index');
         }
@@ -175,7 +177,7 @@ class CustomerController extends Controller
      */
     public function update(Request $request, Customer $customer)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Editing customers is restricted to full admin accounts.');
             return redirect()->route('customers.index');
         }

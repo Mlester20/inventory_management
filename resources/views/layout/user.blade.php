@@ -101,24 +101,6 @@
             </li>
             <li class="menu-item">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon tf-icons bx bx-receipt"></i>
-                <div data-i18n="Invoices">Invoices</div>
-              </a>
-              <ul class="menu-sub">
-                <li class="menu-item">
-                  <a href="{{ route('invoices.index') }}" class="menu-link">
-                    <div data-i18n="Error">Sales Invoices</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="{{ route('invoices.create') }}" class="menu-link">
-                    <div data-i18n="Error">New Invoice</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
-            <li class="menu-item">
-              <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-file"></i>
                 <div data-i18n="Sales Quote">Sales Quote</div>
               </a>
@@ -144,11 +126,6 @@
                 <li class="menu-item">
                   <a href="{{ route('sales-orders.index') }}" class="menu-link">
                     <div data-i18n="Error">Sales Orders</div>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="{{ route('so-summary.index') }}" class="menu-link">
-                    <div data-i18n="Error">Sales Order Summary</div>
                   </a>
                 </li>
                 <li class="menu-item">

@@ -23,10 +23,29 @@ class InvoiceController extends Controller
     public function __construct(protected InvoiceDraftService $invoiceDraftService) {}
 
     /**
+     * Sir's access spec: Sales Invoice is hidden entirely from a plain
+     * 'user' account — admin and admin_staff still see it fully (admin_staff
+     * just can't finalize/delete, enforced separately below).
+     */
+    protected function blockPlainUser(): ?\Illuminate\Http\RedirectResponse
+    {
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'Invoices are not available for this account.');
+            return redirect()->route('pages.home');
+        }
+
+        return null;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         $search = $request->input('search');
         $showTrashed = $request->boolean('show_trashed');
         $showArchived = $request->boolean('show_archived');
@@ -56,6 +75,10 @@ class InvoiceController extends Controller
      */
     public function create()
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         return view('admin.invoices.create', $this->formData());
     }
 
@@ -153,6 +176,10 @@ class InvoiceController extends Controller
      */
     public function store(Request $request, CustomerPaymentService $customerPaymentService)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         if ($request->input('save_action') === 'draft') {
             $validated = $request->validate($this->draftValidationRules());
 
@@ -436,6 +463,10 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         if ($invoice->isDraft()) {
             $invoice->load('draftItems.product', 'preparedBy', 'customer');
 
@@ -452,6 +483,10 @@ class InvoiceController extends Controller
      */
     public function edit(Invoice $invoice)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         // Only a draft can be edited — an issued invoice already deducted
         // stock and recorded its VAT breakdown, so editing that isn't supported.
         if (! $invoice->isDraft()) {
@@ -467,6 +502,10 @@ class InvoiceController extends Controller
      */
     public function update(Request $request, Invoice $invoice, CustomerPaymentService $customerPaymentService)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         if (! $invoice->isDraft()) {
             Alert::info('Not supported', 'Editing an issued invoice is not supported.');
             return redirect()->route('invoices.show', $invoice);
@@ -586,6 +625,10 @@ class InvoiceController extends Controller
 
     public function archive(Invoice $invoice)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         $invoice->update(['archived_at' => now()]);
 
         ActivityLog::record(
@@ -601,6 +644,10 @@ class InvoiceController extends Controller
 
     public function unarchive(Invoice $invoice)
     {
+        if ($blocked = $this->blockPlainUser()) {
+            return $blocked;
+        }
+
         $invoice->update(['archived_at' => null]);
 
         ActivityLog::record(

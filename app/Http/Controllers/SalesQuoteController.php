@@ -190,7 +190,7 @@ class SalesQuoteController extends Controller
             return redirect()->route('sales-quotes.show', $salesQuote);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Sales Quote is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -378,7 +378,7 @@ class SalesQuoteController extends Controller
             return redirect()->route('sales-quotes.show', $salesQuote);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Sales Quote is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
