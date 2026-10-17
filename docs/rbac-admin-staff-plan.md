@@ -208,3 +208,44 @@ the same "can't be suspended/deleted" protection as `admin`?).
 4. Confirm a plain `user` account is still fully blocked as before (unrelated to this change, but a quick
    regression check).
 5. Clean up all test accounts, verify deletion via explicit existence checks afterward.
+
+## Addendum (2026-10-18) — pos/user role split, branch `feature/pos-role-split`
+
+Sir confirmed (screenshot reply "Yes") a role-architecture change on top of everything above: the plain
+`user` role was always meant to be the POS/cashier account, so it's being renamed/migrated to a new `pos`
+role, and `user` is repurposed into a **third, narrower admin-side tier** matching the USER column of
+`docs/proposals/USER_ADMIN STAFF ACCES.pdf` — narrower than `admin_staff`, not a POS account at all.
+
+**Phase 1 (commit `9fb824b`)**: data migration moved every existing `role = 'user'` account to `role =
+'pos'`; `blockPosRole()`-style guards (Invoice, Sales Order Summary) renamed and re-pointed at `'pos'`;
+`UserController` role dropdown now offers `pos` / `user` / `admin` / `admin_staff`.
+
+**Phase 2 (commit `a1dca7b`)**: gave the repurposed `user` tier its actual restricted admin-side view —
+
+- Most existing `admin_staff`-only guards (controllers, Blade `@disabled` checks, the 21 layout-picker
+  `@extends(...)` views, the `AdminOnly` middleware) were broadened from `=== 'admin_staff'` /
+  `in_array([..., 'admin_staff'])` to also cover `'user'`, since on most modules the PDF gives `user` the
+  same "view with disabled buttons" treatment as `admin_staff`.
+- Four modules are **divergent** — `user` is strictly more restricted than `admin_staff` there — so each got
+  its own `blockUserTier()` guard (blocks only `'user'`, `admin_staff` unaffected) instead of a broadened
+  check: Purchase Orders, Purchase Order Summary, Purchase Invoices, Stock Transfers, Repacks. The Dashboard
+  got the same treatment (hidden from `user`, untouched for `admin_staff`).
+- Two modules are the **inverse** divergence — `admin_staff` keeps full, unrestricted access while `user`
+  is fully hidden — per the PDF's literal "No changes" vs "HIDE" rows: Sales Order Summary and Sales
+  Invoice. Confirmed before building rather than assuming uniform `admin_staff ⊇ user` ordering.
+- Sidebar menu (`layout/app.blade.php`): Purchase Orders/Purchase Order Summary/Purchase Invoices sub-items
+  and the standalone Stock Transfer/Repack items are wrapped in `@unless(Auth::user()->role === 'user')`,
+  while Goods Receipts (inside the same shared "Purchase Order" parent menu) stays unconditional/visible to
+  `user`. `admin_staff`'s sidebar is untouched.
+- Post-login/root redirect (`AuthenticatedSessionController`, `routes/web.php`) extended to a 3-way split:
+  `admin`/`admin_staff` → `admin.dashboard`, `user` → `inventory-items.index`, `pos` → `pages.home`.
+
+**Verified live (temp QA accounts, one per role, all cleaned up afterward, including the stray ActivityLog
+login rows the test runs generated)**: full allowed/blocked route matrix for `user`, `admin_staff`, `admin`,
+and `pos` (regression); sidebar HTML presence/absence for the divergent menu items; a direct raw-POST bypass
+attempt on Stock Transfer as `user` (blocked server-side, zero `StockTransfer` row and zero new
+`ActivityLog` entry created). `admin_staff` and `admin` behave identically to before this phase; `pos`
+behaves identically to the old plain-`user` role.
+
+Still not done: no follow-up message/PDF to Sir about Phase 2 completion has been sent — not requested yet.
+`feature/pos-role-split` has not been pushed to origin — local commits only, per standing instruction.
