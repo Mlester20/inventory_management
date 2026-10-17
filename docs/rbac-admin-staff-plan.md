@@ -107,7 +107,20 @@ Also newly restricted this round (none of these existed before): New Generic Ite
 
 **Built (2026-10-17, later):** Return Items "Save Draft" — the one PDF item that had no draft concept to restrict. `return_items` gets an `is_draft` boolean (status stays a separate concern, same split as Purchase Order) plus `quantity`/`return_date`/`reason` made nullable; `store()`/`update()` split draft vs posted exactly like every other module here, and the previously-dead `edit()`/`update()` resource routes now drive Continue Editing/resume-and-finalize. Also closed a safety gap this surfaced: a draft's `status` still defaults to `pending`, so `approve()`/`reject()` needed an explicit `isDraft()` guard or a draft could be approved before ever being finalized. Verified live with temp accounts: admin_staff blocked from finalizing (UI + server-side bypass attempt both confirmed blocked via ActivityLog trail), full admin can finalize a resumed draft, Delete Draft works.
 
-Both of Sir's PDF items are now fully closed — nothing outstanding from `docs/proposals/USER_ADMIN STAFF ACCES.pdf` remains unbuilt.
+Both of Sir's PDF items are now fully closed — nothing outstanding from `docs/proposals/USER_ADMIN STAFF ACCES.pdf`'s ADMIN STAFF column remains unbuilt.
+
+**Update (2026-10-17, later): the PDF's USER INTERFACE column analyzed too.** Found a much bigger gap than admin_staff ever had — a plain `user` account had ZERO restriction on Sales Quote, Sales Order, Delivery Receipt, Invoice, or Customers (every finalize-restriction check built this session only ever tested `role === 'admin_staff'`). Also found a real blocker: several rows (General Item View, Products View, Lot/Serial & Expiry, Categories, Inventory Adjustments, Stock Disposals, Suppliers, Customer Type, Goods Receipt, Expenses, Expiration Report, Inventory Summary, Product History) say "Disable [button]" for User — implying they should be *viewable* — but `user` currently gets a flat 403 on all of them via the `AdminOnly` middleware. Opening those up is a bigger architectural change, not a simple restriction, so a question PDF was sent to Sir first: `docs/proposals/USER-ACCESS-QUESTION.pdf`.
+
+Per the user's direction ("gawin mo ang available na i-restrict"), built everything that didn't depend on that open question, same branch (`f3f568d`):
+- Sales Quote / Sales Order / Delivery Receipt: broadened the finalize check from `=== 'admin_staff'` to `!== 'admin'` (Save Draft stays open to everyone).
+- Sales Order Summary: fully blocked for `user` (all 8 controller methods) — matches "HIDE".
+- Sales Invoice: fully blocked for `user` on every method they could reach (index/create/store/show/edit/update/archive/unarchive) — matches "HIDE". destroy/restore/cancel were already admin-only via route middleware.
+- Customers: broadened New/Edit from `admin_staff`-only to `!== 'admin'`, preserving the Delivery Receipt quick-add JSON carve-out for `user` too (verified live it still works — breaking it would stop normal DR creation).
+- `layout/user.blade.php`: removed the now-blocked Sales Invoice and Sales Order Summary menu items.
+
+Verified live (temp `user`/`admin_staff`/`admin` accounts): menu absence, redirects, disabled buttons, a direct-POST bypass on Sales Order finalize (blocked, nothing created in DB), DR quick-add still works for `user`, admin_staff and full admin both unaffected by the broadened checks.
+
+Still waiting on Sir's answer before touching: whether to open view-access to the AdminOnly-gated modules for `user`, and whether "user" in his spec even means the current POS/regular staff role at all.
 
 Branch: `feature/admin-staff-full-restrictions`. Verified live (2026-10-17): temp `admin_staff` + temp `admin` accounts — menu absence, page-redirect, button-disabled states, Draft-save-still-works, and a direct-POST bypass (Stock Transfer finalize) all confirmed server-side, not just UI. Temp accounts cleaned up after.
 
