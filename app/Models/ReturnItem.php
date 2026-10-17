@@ -19,11 +19,21 @@ class ReturnItem extends Model
         'reason',
         'notes',
         'status',
+        'is_draft',
         'refund_method',
         'refund_amount',
         'stock_disposition',
         'stock_disposal_id',
     ];
+
+    protected $casts = [
+        'is_draft' => 'boolean',
+    ];
+
+    public function isDraft(): bool
+    {
+        return (bool) $this->is_draft;
+    }
 
     public const REFUND_METHODS = [
         'credit' => 'Store Credit',

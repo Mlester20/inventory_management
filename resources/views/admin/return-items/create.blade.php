@@ -1,10 +1,10 @@
 @extends('layout.app')
 
-@section('title', 'New Return Item')
+@section('title', isset($editingReturnItem) ? 'Edit Draft Return Item' : 'New Return Item')
 
 @section('content')
     <div class="card mt-3">
-        <h5 class="card-header">New Return Item</h5>
+        <h5 class="card-header">{{ isset($editingReturnItem) ? 'Edit Draft Return Item' : 'New Return Item' }}</h5>
         <div class="card-body">
             @if ($errors->any())
                 <div class="alert alert-danger">
@@ -16,21 +16,24 @@
                 </div>
             @endif
 
-            <form action="{{ route('return-items.store') }}" method="POST" id="returnItemForm">
+            <form action="{{ isset($editingReturnItem) ? route('return-items.update', $editingReturnItem) : route('return-items.store') }}" method="POST" id="returnItemForm">
                 @csrf
+                @if(isset($editingReturnItem))
+                    @method('PUT')
+                @endif
 
                 <div class="row">
                     <div class="col-12 mb-3">
                         <label for="customer_search" class="form-label">Customer</label>
                         <input type="text" name="customer_search" id="customer_search" class="form-control"
                             list="customer_datalist" placeholder="Search customer, or leave blank for no customer / no credit"
-                            autocomplete="off" value="{{ old('customer_search') }}">
+                            autocomplete="off" value="{{ old('customer_search', $editingReturnItem?->customer?->customer_name ?? '') }}">
                         <datalist id="customer_datalist">
                             @foreach ($customers as $customer)
                                 <option value="{{ $customer->customer_name }}"></option>
                             @endforeach
                         </datalist>
-                        <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id') }}">
+                        <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id', $editingReturnItem?->customer_id ?? '') }}">
                         <div class="form-text" id="customerHint">Once a customer is selected, the Item field only offers what they've actually been invoiced for — so a return can't be recorded against something they never bought.</div>
                     </div>
                 </div>
@@ -38,18 +41,15 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="return_date" class="form-label">Return Date</label>
-                        <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', now()->toDateString()) }}" required>
+                        <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', $editingReturnItem?->return_date ?? now()->toDateString()) }}">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="reason" class="form-label">Reason</label>
-                        <select name="reason" id="reason" class="form-select" required>
+                        <select name="reason" id="reason" class="form-select">
                             <option value="">-- Select Reason --</option>
-                            <option value="Defective Product">Defective Product</option>
-                            <option value="Wrong Item Received">Wrong Item Received</option>
-                            <option value="Not as Described">Not as Described</option>
-                            <option value="Changed Mind">Changed Mind</option>
-                            <option value="Damaged During Delivery">Damaged During Delivery</option>
-                            <option value="Other">Other</option>
+                            @foreach(['Defective Product', 'Wrong Item Received', 'Not as Described', 'Changed Mind', 'Damaged During Delivery', 'Other'] as $reasonOption)
+                                <option value="{{ $reasonOption }}" {{ old('reason', $editingReturnItem?->reason ?? '') === $reasonOption ? 'selected' : '' }}>{{ $reasonOption }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -62,9 +62,14 @@
                     <div class="col-md-4">
                         <label class="form-label">Item</label>
                         <input type="text" class="form-control" id="itemSearchInput" list="itemList"
-                            placeholder="Search item..." autocomplete="off" required>
+                            placeholder="Search item..." autocomplete="off"
+                            @php
+                                $editingProduct = $editingReturnItem?->productBatch?->product;
+                                $editingItemLabel = $editingProduct ? ($editingProduct->description ?: $editingProduct->item_name) : '';
+                            @endphp
+                            value="{{ old('item_search', $editingItemLabel) }}">
                         <datalist id="itemList"></datalist>
-                        <input type="hidden" name="product_batch_id" id="productBatchIdInput">
+                        <input type="hidden" name="product_batch_id" id="productBatchIdInput" value="{{ old('product_batch_id', $editingReturnItem?->product_batch_id ?? '') }}">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Total Purchased</label>
@@ -72,27 +77,36 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Lot/Batch No.</label>
-                        <input type="text" class="form-control" id="batchInput" list="batchList" autocomplete="off">
+                        <input type="text" class="form-control" id="batchInput" list="batchList" autocomplete="off"
+                            value="{{ $editingReturnItem?->productBatch?->batch_no ?? '' }}">
                         <datalist id="batchList"></datalist>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Expiry</label>
-                        <input type="text" class="form-control" id="expiryDisplay" readonly>
+                        <input type="text" class="form-control" id="expiryDisplay" readonly
+                            value="{{ $editingReturnItem?->productBatch?->expiration_date?->format('Y-m-d') ?? '' }}">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Quantity</label>
-                        <input type="number" name="quantity" id="quantityInput" class="form-control" min="1" value="1" required>
+                        <input type="number" name="quantity" id="quantityInput" class="form-control" min="1" value="{{ old('quantity', $editingReturnItem?->quantity ?? 1) }}">
                     </div>
                 </div>
-                <div class="form-text mt-1" id="pickHint">Pick an item, then choose its batch — the batch is required before this return can be saved.</div>
+                <div class="form-text mt-1" id="pickHint">Pick an item, then choose its batch — the batch is required before this return can be submitted (Save Draft works without it).</div>
 
                 <div class="mb-3 mt-3">
                     <label for="notes" class="form-label">Notes</label>
-                    <textarea class="form-control" name="notes" id="notes" rows="2" placeholder="Add any additional details...">{{ old('notes') }}</textarea>
+                    <textarea class="form-control" name="notes" id="notes" rows="2" placeholder="Add any additional details...">{{ old('notes', $editingReturnItem?->notes ?? '') }}</textarea>
                 </div>
 
                 <div class="mt-3">
-                    <button type="submit" class="btn btn-primary">Save Return Item</button>
+                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                        <i class="bx bx-save"></i> Save Draft
+                    </button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary"
+                        @disabled(Auth::user()->role === 'admin_staff')
+                        @if(Auth::user()->role === 'admin_staff') title="Finalizing is restricted to full admin accounts — use Save Draft instead." @endif>
+                        Save Return Item
+                    </button>
                     <a href="{{ route('return-items.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>
@@ -215,7 +229,10 @@
     });
 
     document.getElementById('returnItemForm').addEventListener('submit', function (e) {
-        if (!productBatchIdInput.value) {
+        // Save Draft intentionally allows an incomplete line — only the
+        // real "Save Return Item" submit requires a resolved batch.
+        const isDraftSave = e.submitter && e.submitter.value === 'draft';
+        if (!isDraftSave && !productBatchIdInput.value) {
             e.preventDefault();
             alert('Select the item\'s specific lot/batch before saving.');
         }

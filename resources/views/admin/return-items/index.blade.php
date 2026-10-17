@@ -35,15 +35,19 @@
                 @forelse($returnItems as $returnItem)
                 <tr>
                     <td>{{ $returnItem->id }}</td>
-                    <td>{{ $returnItem->productBatch->product->item_name }}</td>
+                    <td>{{ $returnItem->productBatch->product->item_name ?? '—' }}</td>
                     <td>{{ $returnItem->customer->customer_name ?? '—' }}</td>
-                    <td>{{ $returnItem->quantity }}</td>
-                    <td>{{ $returnItem->return_date }}</td>
-                    <td>{{ $returnItem->reason }}</td>
+                    <td>{{ $returnItem->quantity ?? '—' }}</td>
+                    <td>{{ $returnItem->return_date ?? '—' }}</td>
+                    <td>{{ $returnItem->reason ?? '—' }}</td>
                     <td>
-                        <span class="badge bg-{{ $returnItem->status === 'approved' ? 'success' : ($returnItem->status === 'rejected' ? 'danger' : 'warning') }}">
-                            {{ ucfirst($returnItem->status) }}
-                        </span>
+                        @if($returnItem->isDraft())
+                            <span class="badge bg-secondary">Draft</span>
+                        @else
+                            <span class="badge bg-{{ $returnItem->status === 'approved' ? 'success' : ($returnItem->status === 'rejected' ? 'danger' : 'warning') }}">
+                                {{ ucfirst($returnItem->status) }}
+                            </span>
+                        @endif
                     </td>
                     <td>
                         @if($returnItem->stock_disposition)
@@ -68,7 +72,18 @@
                         @endif
                     </td>
                     <td>
-                        @if($returnItem->status === 'pending')
+                        @if($returnItem->isDraft())
+                            <a href="{{ route('return-items.edit', $returnItem) }}" class="btn btn-primary btn-sm">
+                                <i class="bx bx-edit-alt"></i> Continue Editing
+                            </a>
+                            <form action="{{ route('return-items.destroy', $returnItem) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this draft return item? This cannot be undone.');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="bx bx-trash"></i> Delete Draft
+                                </button>
+                            </form>
+                        @elseif($returnItem->status === 'pending')
                             <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approveModal{{ $returnItem->id }}">
                                 Approve
                             </button>
