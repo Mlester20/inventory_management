@@ -121,10 +121,8 @@
                                 <th>Category</th>
                                 <th>Supplier</th>
                                 <th class="text-end">Qty on Hand</th>
-                                @if(Auth::user()->role === 'admin')
-                                    <th class="text-end">Unit Price</th>
-                                    <th class="text-end">Total Value</th>
-                                @endif
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-end">Total Value</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -135,10 +133,8 @@
                                 <td>{{ $item->category->category_name ?? 'N/A' }}</td>
                                 <td>{{ $item->supplier->supplier_name ?? 'N/A' }}</td>
                                 <td class="text-end">{{ $item->on_hand_qty }}</td>
-                                @if(Auth::user()->role === 'admin')
-                                    <td class="text-end">{{ number_format($item->unit_price, 2) }}</td>
-                                    <td class="text-end">{{ number_format($item->total_value, 2) }}</td>
-                                @endif
+                                <td class="text-end">{{ number_format($item->unit_price, 2) }}</td>
+                                <td class="text-end">{{ number_format($item->total_value, 2) }}</td>
                                 <td>
                                     @if ($item->is_low_stock)
                                         <span class="badge bg-warning text-dark">Low Stock</span>
@@ -149,15 +145,13 @@
                             </tr>
                 @if ($loop->last)
                         </tbody>
-                        @if(Auth::user()->role === 'admin')
-                            <tfoot>
-                                <tr class="table-info fw-bold">
-                                    <td colspan="5">GRAND TOTAL</td>
-                                    <td class="text-end">{{ number_format($grandTotal, 2) }}</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        @endif
+                        <tfoot>
+                            <tr class="table-info fw-bold">
+                                <td colspan="5">GRAND TOTAL</td>
+                                <td class="text-end">{{ number_format($grandTotal, 2) }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
                 @if($items->hasPages())
