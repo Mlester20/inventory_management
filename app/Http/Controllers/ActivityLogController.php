@@ -17,7 +17,7 @@ class ActivityLogController extends Controller
      */
     public function index(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'The Audit Trail is restricted to full admin accounts.');
             return redirect()->route('admin.dashboard');
         }

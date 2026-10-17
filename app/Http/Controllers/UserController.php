@@ -14,7 +14,7 @@ class UserController extends Controller
      */
     public function index()
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'User Management is restricted to full admin accounts.');
             return redirect()->route('admin.dashboard');
         }
@@ -28,7 +28,7 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Managing user accounts is restricted to full admin accounts.');
             return redirect()->route('users.index');
         }
@@ -62,7 +62,7 @@ class UserController extends Controller
 
     public function destroy(string $id)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Managing user accounts is restricted to full admin accounts.');
             return redirect()->route('users.index');
         }
@@ -95,7 +95,7 @@ class UserController extends Controller
      */
     public function toggleStatus(User $user)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Managing user accounts is restricted to full admin accounts.');
             return redirect()->route('users.index');
         }

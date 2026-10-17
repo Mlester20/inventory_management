@@ -17,7 +17,7 @@ class PurchaseController extends Controller
      */
     public function index()
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Purchases is restricted to full admin accounts.');
             return redirect()->route('admin.dashboard');
         }
@@ -32,7 +32,7 @@ class PurchaseController extends Controller
      */
     public function store(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Purchases is restricted to full admin accounts.');
             return redirect()->route('admin.dashboard');
         }
@@ -138,7 +138,7 @@ class PurchaseController extends Controller
      */
     public function destroy(Purchase $purchase)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting purchases is restricted to full admin accounts.');
             return redirect()->route('purchases.index');
         }

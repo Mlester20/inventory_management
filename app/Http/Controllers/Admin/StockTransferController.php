@@ -19,10 +19,29 @@ class StockTransferController extends Controller
     public function __construct(protected StockTransferService $stockTransferService) {}
 
     /**
+     * Sir's access spec: Stock Transfers are hidden entirely from the
+     * restricted 'user' tier (unlike admin_staff, which can still view/
+     * create — just not finalize or delete, enforced separately below).
+     */
+    protected function blockUserTier(): ?\Illuminate\Http\RedirectResponse
+    {
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'Stock Transfers are not available for this account.');
+            return redirect()->route('inventory-items.index');
+        }
+
+        return null;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $search = $request->input('search');
 
         $stockTransfers = StockTransfer::query()
@@ -42,6 +61,10 @@ class StockTransferController extends Controller
      */
     public function create()
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         return view('admin.stock-transfers.create', $this->formData());
     }
 
@@ -118,6 +141,10 @@ class StockTransferController extends Controller
      */
     public function store(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if ($request->input('save_action') === 'draft') {
             $validated = $request->validate($this->draftValidationRules());
 
@@ -134,7 +161,7 @@ class StockTransferController extends Controller
             return redirect()->route('stock-transfers.show', $stockTransfer);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Stock Transfer is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -197,6 +224,10 @@ class StockTransferController extends Controller
      */
     public function show(StockTransfer $stockTransfer)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $stockTransfer->load('fromLocation', 'toLocation', 'preparedBy', 'lines.productBatch.product');
 
         return view('admin.stock-transfers.show', compact('stockTransfer'));
@@ -211,6 +242,10 @@ class StockTransferController extends Controller
      */
     public function edit(StockTransfer $stockTransfer)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if (! $stockTransfer->isDraft()) {
             Alert::info('Not supported', 'Editing a posted Stock Transfer is not supported.');
             return redirect()->route('stock-transfers.show', $stockTransfer);
@@ -224,6 +259,10 @@ class StockTransferController extends Controller
      */
     public function update(Request $request, StockTransfer $stockTransfer)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if (! $stockTransfer->isDraft()) {
             Alert::info('Not supported', 'Editing a posted Stock Transfer is not supported.');
             return redirect()->route('stock-transfers.show', $stockTransfer);
@@ -245,7 +284,7 @@ class StockTransferController extends Controller
             return redirect()->route('stock-transfers.show', $stockTransfer);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Stock Transfer is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -275,7 +314,7 @@ class StockTransferController extends Controller
      */
     public function destroy(StockTransfer $stockTransfer)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting Stock Transfers is restricted to full admin accounts.');
             return redirect()->route('stock-transfers.index');
         }

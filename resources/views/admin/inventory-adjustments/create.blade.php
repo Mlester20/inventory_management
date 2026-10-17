@@ -108,7 +108,7 @@
                     <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
                         <i class="bx bx-save"></i> Save Draft
                     </button>
-                    <button type="submit" name="save_action" value="posted" class="btn btn-primary" @disabled(Auth::user()->role === 'admin_staff') @if(Auth::user()->role === 'admin_staff') title="Finalizing is restricted to full admin accounts — use Save Draft instead." @endif>Save</button>
+                    <button type="submit" name="save_action" value="posted" class="btn btn-primary" @disabled(Auth::user()->role !== 'admin') @if(Auth::user()->role !== 'admin') title="Finalizing is restricted to full admin accounts — use Save Draft instead." @endif>Save</button>
                     <a href="{{ route('inventory-adjustments.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>

@@ -121,7 +121,7 @@ class InventoryAdjustmentController extends Controller
             return redirect()->route('inventory-adjustments.show', $adjustment);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing an Inventory Adjustment is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -288,7 +288,7 @@ class InventoryAdjustmentController extends Controller
             return redirect()->route('inventory-adjustments.show', $adjustment);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing an Inventory Adjustment is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }

@@ -10,6 +10,7 @@ use App\Models\Supplier;
 use App\Services\PurchaseOrderSummaryService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
+use RealRashid\SweetAlert\Facades\Alert;
 
 /**
  * Purchase Order Summary (Sir's request, "similar to the Sales Order Summary"): a per-supplier
@@ -22,8 +23,27 @@ class PurchaseOrderSummaryController extends Controller
     {
     }
 
+    /**
+     * Sir's access spec: Purchase Order Summary is hidden entirely from the
+     * restricted 'user' tier — admin_staff keeps full, unrestricted access
+     * ("No changes" per the PDF).
+     */
+    protected function blockUserTier(): ?\Illuminate\Http\RedirectResponse
+    {
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'Purchase Order Summary is not available for this account.');
+            return redirect()->route('inventory-items.index');
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $search = trim((string) $request->query('search', ''));
         $suppliers = $this->summary->supplierSummary($search ?: null);
 
@@ -36,6 +56,10 @@ class PurchaseOrderSummaryController extends Controller
     /** The P.O count link: every Purchase Order of the supplier, whatever its status. */
     public function orders(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $supplier = Supplier::findOrFail($request->validate(['supplier_id' => 'required|integer|exists:suppliers,id'])['supplier_id']);
         $search = trim((string) $request->query('search', ''));
 
@@ -49,6 +73,10 @@ class PurchaseOrderSummaryController extends Controller
     /** The Pending / Qty Ordered links: the item lines of one supplier, added up across Purchase Orders. */
     public function items(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         [$supplier, $scope, $search] = $this->itemFilters($request);
         $suppliers = $this->summary->items($scope, $supplier->id, $search ?: null);
 
@@ -63,6 +91,10 @@ class PurchaseOrderSummaryController extends Controller
 
     public function exportItems(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         [$supplier, $scope, $search] = $this->itemFilters($request);
         $suppliers = $this->summary->items($scope, $supplier->id, $search ?: null);
 
@@ -79,6 +111,10 @@ class PurchaseOrderSummaryController extends Controller
      */
     public function allItems(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         [$scope, $search] = $this->allItemFilters($request);
         $suppliers = $this->summary->items($scope, null, $search ?: null);
 
@@ -92,6 +128,10 @@ class PurchaseOrderSummaryController extends Controller
 
     public function exportAllItems(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         [$scope, $search] = $this->allItemFilters($request);
         $suppliers = $this->summary->items($scope, null, $search ?: null);
 
@@ -107,6 +147,10 @@ class PurchaseOrderSummaryController extends Controller
      */
     public function byItem(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $validated = $request->validate([
             'category_id' => 'nullable|integer|exists:categories,id',
             'search' => 'nullable|string|max:100',
@@ -133,6 +177,10 @@ class PurchaseOrderSummaryController extends Controller
     /** The Received link (one Purchase Order line's GRs) and the per-item trace (every GR of a supplier). */
     public function receipts(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $validated = $request->validate([
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'purchase_order_id' => 'nullable|integer|exists:purchase_orders,id',

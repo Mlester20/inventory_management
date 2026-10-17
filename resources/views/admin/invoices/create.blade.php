@@ -1,4 +1,4 @@
-@extends(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? 'layout.app' : 'layout.user')
+@extends(in_array(Auth::user()->role, ['admin', 'admin_staff', 'user'], true) ? 'layout.app' : 'layout.user')
 
 @section('title', $editingInvoice ? 'Edit Draft — ' . $editingInvoice->sales_no : 'New Invoice')
 
@@ -181,7 +181,7 @@
                 <div class="alert alert-info small">
                     A direct invoice sells from the <strong>POS stock</strong> only. Each item shows its POS stock and
                     its Warehouse stock — stock that is still in the Warehouse has to be transferred to POS first.
-                    @if(in_array(Auth::user()->role, ['admin', 'admin_staff'], true))
+                    @if(in_array(Auth::user()->role, ['admin', 'admin_staff', 'user'], true))
                         <a href="{{ route('stock-transfers.create') }}" target="_blank">New Stock Transfer</a>
                     @endif
                 </div>

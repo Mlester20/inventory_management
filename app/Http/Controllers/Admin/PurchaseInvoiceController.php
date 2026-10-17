@@ -15,10 +15,29 @@ use RealRashid\SweetAlert\Facades\Alert;
 class PurchaseInvoiceController extends Controller
 {
     /**
+     * Sir's access spec: Purchase Invoice is hidden entirely from the
+     * restricted 'user' tier (unlike admin_staff, which can still view/
+     * create — just not finalize or delete, enforced separately below).
+     */
+    protected function blockUserTier(): ?\Illuminate\Http\RedirectResponse
+    {
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'Purchase Invoices are not available for this account.');
+            return redirect()->route('inventory-items.index');
+        }
+
+        return null;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $search = $request->input('search');
 
         $purchaseInvoices = PurchaseInvoice::query()
@@ -43,6 +62,10 @@ class PurchaseInvoiceController extends Controller
      */
     public function create()
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         return view('admin.purchase-invoices.create', $this->formData() + ['editingPurchaseInvoice' => null]);
     }
 
@@ -81,6 +104,10 @@ class PurchaseInvoiceController extends Controller
      */
     public function store(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if ($request->input('save_action') === 'draft') {
             $validated = $request->validate($this->draftValidationRules());
 
@@ -101,7 +128,7 @@ class PurchaseInvoiceController extends Controller
             return redirect()->route('purchase-invoices.show', $purchaseInvoice);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Purchase Invoice is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -168,6 +195,10 @@ class PurchaseInvoiceController extends Controller
      */
     public function show(PurchaseInvoice $purchaseInvoice)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $purchaseInvoice->load('supplier', 'purchaseOrder', 'goodsReceipt', 'preparedBy');
 
         return view('admin.purchase-invoices.show', compact('purchaseInvoice'));
@@ -181,6 +212,10 @@ class PurchaseInvoiceController extends Controller
      */
     public function edit(PurchaseInvoice $purchaseInvoice)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if (! $purchaseInvoice->isDraft()) {
             Alert::info('Not supported', 'Editing a recorded Purchase Invoice is not supported.');
             return redirect()->route('purchase-invoices.show', $purchaseInvoice);
@@ -194,6 +229,10 @@ class PurchaseInvoiceController extends Controller
      */
     public function update(Request $request, PurchaseInvoice $purchaseInvoice)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if (! $purchaseInvoice->isDraft()) {
             Alert::info('Not supported', 'Editing a recorded Purchase Invoice is not supported.');
             return redirect()->route('purchase-invoices.show', $purchaseInvoice);
@@ -218,7 +257,7 @@ class PurchaseInvoiceController extends Controller
             return redirect()->route('purchase-invoices.show', $purchaseInvoice);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Purchase Invoice is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -243,7 +282,7 @@ class PurchaseInvoiceController extends Controller
      */
     public function destroy(PurchaseInvoice $purchaseInvoice)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting Purchase Invoices is restricted to full admin accounts.');
             return redirect()->route('purchase-invoices.index');
         }

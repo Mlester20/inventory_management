@@ -401,7 +401,7 @@ class DeliveryReceiptController extends Controller
      */
     public function destroy(DeliveryReceipt $deliveryReceipt)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting Delivery Receipts is restricted to full admin accounts.');
             return redirect()->route('delivery-receipts.show', $deliveryReceipt);
         }
@@ -429,7 +429,7 @@ class DeliveryReceiptController extends Controller
      */
     public function restore(int $id)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Restoring Delivery Receipts is restricted to full admin accounts.');
             return redirect()->route('delivery-receipts.index');
         }
@@ -456,7 +456,7 @@ class DeliveryReceiptController extends Controller
      */
     public function cancel(DeliveryReceipt $deliveryReceipt)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Cancelling Delivery Receipts is restricted to full admin accounts.');
             return redirect()->route('delivery-receipts.show', $deliveryReceipt);
         }

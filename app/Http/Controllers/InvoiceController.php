@@ -23,15 +23,21 @@ class InvoiceController extends Controller
     public function __construct(protected InvoiceDraftService $invoiceDraftService) {}
 
     /**
-     * Sir's access spec: Sales Invoice is hidden entirely from a 'pos'
-     * (POS/cashier) account — admin and admin_staff still see it fully
-     * (admin_staff just can't finalize/delete, enforced separately below).
+     * Sir's access spec: Sales Invoice is hidden entirely from both the
+     * 'pos' (POS/cashier) account and the restricted 'user' tier — admin
+     * and admin_staff still see it fully (admin_staff just can't finalize/
+     * delete, enforced separately below).
      */
     protected function blockPosRole(): ?\Illuminate\Http\RedirectResponse
     {
         if (auth()->user()->role === 'pos') {
             Alert::error('Not allowed', 'Invoices are not available for this account.');
             return redirect()->route('pages.home');
+        }
+
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'Invoices are not available for this account.');
+            return redirect()->route('inventory-items.index');
         }
 
         return null;
@@ -196,7 +202,7 @@ class InvoiceController extends Controller
             return redirect()->route('invoices.show', $invoice);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing an invoice is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -531,7 +537,7 @@ class InvoiceController extends Controller
             return redirect()->route('invoices.show', $invoice);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing an invoice is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -544,7 +550,7 @@ class InvoiceController extends Controller
      */
     public function destroy(Invoice $invoice)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting invoices is restricted to full admin accounts.');
             return redirect()->route('invoices.index');
         }
@@ -573,7 +579,7 @@ class InvoiceController extends Controller
      */
     public function restore(int $id)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Restoring invoices is restricted to full admin accounts.');
             return redirect()->route('invoices.index');
         }
@@ -600,7 +606,7 @@ class InvoiceController extends Controller
      */
     public function cancel(Invoice $invoice)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Cancelling invoices is restricted to full admin accounts.');
             return redirect()->route('invoices.show', $invoice);
         }

@@ -25,3 +25,6 @@ Thumbs.db
 *.pdf
 *.txt
 /docs
+qa_products_import_test.xlsx
+~$qa_products_import_test.xlsx
+/SampleData(Excel)

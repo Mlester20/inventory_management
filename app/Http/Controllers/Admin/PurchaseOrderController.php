@@ -17,10 +17,29 @@ class PurchaseOrderController extends Controller
     public function __construct(protected PurchaseOrderService $purchaseOrderService) {}
 
     /**
+     * Sir's access spec: Purchase Orders are hidden entirely from the
+     * restricted 'user' tier (unlike admin_staff, which can still view/
+     * create — just not finalize or delete, enforced separately below).
+     */
+    protected function blockUserTier(): ?\Illuminate\Http\RedirectResponse
+    {
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'Purchase Orders are not available for this account.');
+            return redirect()->route('inventory-items.index');
+        }
+
+        return null;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $search = $request->input('search');
 
         $purchaseOrders = PurchaseOrder::query()
@@ -45,6 +64,10 @@ class PurchaseOrderController extends Controller
      */
     public function create()
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         return view('admin.purchase-orders.create', $this->formData());
     }
 
@@ -121,6 +144,10 @@ class PurchaseOrderController extends Controller
      */
     public function store(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if ($request->input('save_action') === 'draft') {
             $validated = $request->validate($this->draftValidationRules());
 
@@ -137,7 +164,7 @@ class PurchaseOrderController extends Controller
             return redirect()->route('purchase-orders.show', $purchaseOrder);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Purchase Order is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -200,6 +227,10 @@ class PurchaseOrderController extends Controller
      */
     public function show(PurchaseOrder $purchaseOrder)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $purchaseOrder->load('supplier', 'preparedBy', 'items.product', 'items.genericName', 'goodsReceipts');
 
         return view('admin.purchase-orders.show', compact('purchaseOrder'));
@@ -213,6 +244,10 @@ class PurchaseOrderController extends Controller
      */
     public function edit(PurchaseOrder $purchaseOrder)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if (! $purchaseOrder->isDraft()) {
             Alert::info('Not supported', 'Editing an issued Purchase Order is not supported.');
             return redirect()->route('purchase-orders.show', $purchaseOrder);
@@ -226,6 +261,10 @@ class PurchaseOrderController extends Controller
      */
     public function update(Request $request, PurchaseOrder $purchaseOrder)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if (! $purchaseOrder->isDraft()) {
             Alert::info('Not supported', 'Editing an issued Purchase Order is not supported.');
             return redirect()->route('purchase-orders.show', $purchaseOrder);
@@ -247,7 +286,7 @@ class PurchaseOrderController extends Controller
             return redirect()->route('purchase-orders.show', $purchaseOrder);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Purchase Order is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -272,7 +311,7 @@ class PurchaseOrderController extends Controller
      */
     public function destroy(PurchaseOrder $purchaseOrder)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting Purchase Orders is restricted to full admin accounts.');
             return redirect()->route('purchase-orders.index');
         }

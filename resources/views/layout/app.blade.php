@@ -354,6 +354,7 @@
                 <div data-i18n="Purchase Order">Purchase Order</div>
               </a>
               <ul class="menu-sub">
+                @unless(Auth::user()->role === 'user')
                 <li class="menu-item {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">
                   <a href="{{ route('purchase-orders.index') }}" class="menu-link">
                     <div data-i18n="Error">Purchase Orders</div>
@@ -369,6 +370,7 @@
                     <div data-i18n="Error">Purchase Order Summary</div>
                   </a>
                 </li>
+                @endunless
                 <li class="menu-item {{ request()->routeIs('goods-receipts.*') ? 'active' : '' }}">
                   <a href="{{ route('goods-receipts.index') }}" class="menu-link">
                     <div data-i18n="Error">Goods Receipts</div>
@@ -379,6 +381,7 @@
                     <div data-i18n="Error">New Goods Receipt</div>
                   </a>
                 </li>
+                @unless(Auth::user()->role === 'user')
                 <li class="menu-item {{ request()->routeIs('purchase-invoices.*') ? 'active' : '' }}">
                   <a href="{{ route('purchase-invoices.index') }}" class="menu-link">
                     <div data-i18n="Error">Purchase Invoices</div>
@@ -389,8 +392,10 @@
                     <div data-i18n="Error">New Purchase Invoice</div>
                   </a>
                 </li>
+                @endunless
               </ul>
             </li>
+            @unless(Auth::user()->role === 'user')
             <li class="menu-item {{ request()->routeIs('stock-transfers.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-transfer-alt"></i>
@@ -427,6 +432,7 @@
                 </li>
               </ul>
             </li>
+            @endunless
 
             <!-- Expenses -->
             <li class="menu-header small text-uppercase">

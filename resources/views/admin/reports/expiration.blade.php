@@ -180,7 +180,7 @@
                                 </td>
                                 <td>
                                     @if ($item->status === 'expired')
-                                        @if(Auth::user()->role === 'admin_staff')
+                                        @if(Auth::user()->role !== 'admin')
                                             <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Restricted to full admin accounts.">
                                                 <i class="bx bx-trash"></i> Dispose
                                             </button>

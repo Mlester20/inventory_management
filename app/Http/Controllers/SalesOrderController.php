@@ -469,7 +469,7 @@ class SalesOrderController extends Controller
      */
     public function destroy(SalesOrder $salesOrder)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting Sales Orders is restricted to full admin accounts.');
             return redirect()->route('sales-orders.index');
         }
@@ -498,7 +498,7 @@ class SalesOrderController extends Controller
      */
     public function restore(int $id)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Restoring Sales Orders is restricted to full admin accounts.');
             return redirect()->route('sales-orders.index');
         }
@@ -527,7 +527,7 @@ class SalesOrderController extends Controller
      */
     public function cancel(SalesOrder $salesOrder)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Cancelling Sales Orders is restricted to full admin accounts.');
             return redirect()->route('sales-orders.show', $salesOrder);
         }

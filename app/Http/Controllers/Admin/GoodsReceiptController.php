@@ -189,7 +189,7 @@ class GoodsReceiptController extends Controller
             return redirect()->route('goods-receipts.show', $goodsReceipt);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Goods Receipt is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -316,7 +316,7 @@ class GoodsReceiptController extends Controller
             return redirect()->route('goods-receipts.show', $goodsReceipt);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Goods Receipt is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -351,7 +351,7 @@ class GoodsReceiptController extends Controller
      */
     public function destroy(GoodsReceipt $goodsReceipt)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting Goods Receipts is restricted to full admin accounts.');
             return redirect()->route('goods-receipts.index');
         }

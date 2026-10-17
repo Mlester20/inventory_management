@@ -122,7 +122,7 @@ class SupplierController extends Controller
      */
     public function store(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Adding suppliers is restricted to full admin accounts.');
             return redirect()->route('suppliers.index');
         }
@@ -163,7 +163,7 @@ class SupplierController extends Controller
      */
     public function update(Request $request, Supplier $supplier)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Editing suppliers is restricted to full admin accounts.');
             return redirect()->route('suppliers.index');
         }
@@ -212,7 +212,7 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting suppliers is restricted to full admin accounts.');
             return redirect()->route('suppliers.index');
         }
@@ -249,7 +249,7 @@ class SupplierController extends Controller
      */
     public function import(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Importing suppliers is restricted to full admin accounts.');
             return redirect()->route('suppliers.index');
         }

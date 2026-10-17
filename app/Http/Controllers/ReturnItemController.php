@@ -138,7 +138,7 @@ class ReturnItemController extends Controller
             return redirect()->route('return-items.index');
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Submitting a Return Item is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -218,7 +218,7 @@ class ReturnItemController extends Controller
             return redirect()->route('return-items.index');
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Submitting a Return Item is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }

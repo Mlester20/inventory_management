@@ -58,7 +58,7 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Creating a new Item is restricted to full admin accounts.');
             return redirect()->route('inventory-items.index', ['tab' => 'products']);
         }
@@ -121,7 +121,7 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting items is restricted to full admin accounts.');
             return redirect()->route('inventory-items.index', ['tab' => 'products']);
         }
@@ -156,7 +156,7 @@ class ProductController extends Controller
      */
     public function restore(int $id)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Restoring items is restricted to full admin accounts.');
             return redirect()->route('inventory-items.index', ['tab' => 'products']);
         }
@@ -214,7 +214,7 @@ class ProductController extends Controller
      */
     public function import(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Importing products is restricted to full admin accounts.');
             return redirect()->route('inventory-items.index', ['tab' => 'products']);
         }

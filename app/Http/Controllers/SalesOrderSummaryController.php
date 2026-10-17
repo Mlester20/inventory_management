@@ -24,14 +24,20 @@ class SalesOrderSummaryController extends Controller
     }
 
     /**
-     * Sir's access spec: Sales Order Summary is hidden entirely from a
-     * 'pos' (POS/cashier) account (admin and admin_staff keep full access).
+     * Sir's access spec: Sales Order Summary is hidden entirely from both
+     * the 'pos' (POS/cashier) account and the restricted 'user' tier —
+     * admin and admin_staff both keep full, unrestricted access.
      */
     protected function blockPosRole(): ?\Illuminate\Http\RedirectResponse
     {
         if (auth()->user()->role === 'pos') {
             Alert::error('Not allowed', 'Sales Order Summary is not available for this account.');
             return redirect()->route('pages.home');
+        }
+
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'Sales Order Summary is not available for this account.');
+            return redirect()->route('inventory-items.index');
         }
 
         return null;

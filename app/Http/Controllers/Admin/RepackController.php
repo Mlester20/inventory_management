@@ -24,8 +24,27 @@ class RepackController extends Controller
 {
     public function __construct(protected RepackService $repackService) {}
 
+    /**
+     * Sir's access spec: Repacks are hidden entirely from the restricted
+     * 'user' tier (unlike admin_staff, which can still view/create — just
+     * not finalize, enforced separately below).
+     */
+    protected function blockUserTier(): ?\Illuminate\Http\RedirectResponse
+    {
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'Repacks are not available for this account.');
+            return redirect()->route('inventory-items.index');
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $search = $request->input('search');
 
         $repacks = Repack::query()
@@ -40,6 +59,10 @@ class RepackController extends Controller
 
     public function create()
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         return view('admin.repacks.create', $this->formData());
     }
 
@@ -137,6 +160,10 @@ class RepackController extends Controller
 
     public function store(Request $request)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if ($request->input('save_action') === 'draft') {
             $validated = $request->validate($this->draftValidationRules());
             $repack = $this->repackService->saveDraft($validated, auth()->id());
@@ -152,7 +179,7 @@ class RepackController extends Controller
             return redirect()->route('repacks.show', $repack);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Repack is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }
@@ -178,6 +205,10 @@ class RepackController extends Controller
 
     public function show(Repack $repack)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         $repack->load('location', 'preparedBy', 'voidedBy', 'lines.sourceBatch.product', 'lines.destinationProduct', 'lines.destinationBatch');
 
         return view('admin.repacks.show', compact('repack'));
@@ -190,6 +221,10 @@ class RepackController extends Controller
      */
     public function edit(Repack $repack)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if (! $repack->isDraft()) {
             Alert::info('Not supported', 'Editing a posted Repack is not supported.');
             return redirect()->route('repacks.show', $repack);
@@ -200,6 +235,10 @@ class RepackController extends Controller
 
     public function update(Request $request, Repack $repack)
     {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
         if (! $repack->isDraft()) {
             Alert::info('Not supported', 'Editing a posted Repack is not supported.');
             return redirect()->route('repacks.show', $repack);
@@ -220,7 +259,7 @@ class RepackController extends Controller
             return redirect()->route('repacks.show', $repack);
         }
 
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Finalizing a Repack is restricted to full admin accounts. Save as Draft instead.');
             return back()->withInput();
         }

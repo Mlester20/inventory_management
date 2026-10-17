@@ -234,7 +234,7 @@ class CustomerController extends Controller
      */
     public function destroy(Customer $customer)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting customers is restricted to full admin accounts.');
             return redirect()->route('customers.index');
         }
@@ -274,7 +274,7 @@ class CustomerController extends Controller
      */
     public function import(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Importing customers is restricted to full admin accounts.');
             return redirect()->route('customers.index');
         }

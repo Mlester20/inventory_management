@@ -1,4 +1,4 @@
-@extends(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? 'layout.app' : 'layout.user')
+@extends(in_array(Auth::user()->role, ['admin', 'admin_staff', 'user'], true) ? 'layout.app' : 'layout.user')
 
 @section('title', $editingDeliveryReceipt ? 'Edit Draft — ' . $editingDeliveryReceipt->dr_no : 'New Delivery Receipt')
 
@@ -117,7 +117,7 @@
                                     @endforeach
                                 </datalist>
                                 <input type="hidden" name="customer_id" id="ao_customer_id" value="{{ old('customer_id', $editingDeliveryReceipt?->customer_id) }}">
-                                @if(in_array(Auth::user()->role, ['admin', 'admin_staff'], true))
+                                @if(in_array(Auth::user()->role, ['admin', 'admin_staff', 'user'], true))
                                     <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
                                         New?
                                     </button>

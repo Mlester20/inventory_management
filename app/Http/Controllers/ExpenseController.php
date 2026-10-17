@@ -88,7 +88,7 @@ class ExpenseController extends Controller
      */
     public function destroy(Expense $expense)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting Expenses is restricted to full admin accounts.');
             return redirect()->route('expenses.index');
         }

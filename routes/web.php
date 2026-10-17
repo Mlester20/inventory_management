@@ -59,7 +59,14 @@ use App\Http\Controllers\Api\ActivityLogController as ApiActivityLogController;
 //redirect to login page if not authenticated, otherwise redirect to appropriate dashboard
 Route::get('/', function () {
     if (Auth::check()) {
-        return redirect()->intended(in_array(Auth::user()->role, ['admin', 'admin_staff'], true) ? route('admin.dashboard') : route('pages.home'));
+        $role = Auth::user()->role;
+        $target = match (true) {
+            in_array($role, ['admin', 'admin_staff'], true) => route('admin.dashboard'),
+            $role === 'user' => route('inventory-items.index'),
+            default => route('pages.home'),
+        };
+
+        return redirect()->intended($target);
     }
     return view('auth');
 })->name('auth');

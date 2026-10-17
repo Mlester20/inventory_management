@@ -82,11 +82,17 @@ class AuthenticatedSessionController extends Controller
     private function redirectBasedOnRole(): string
     {
         $user = Auth::user();
-        
+
         if (in_array($user->role, ['admin', 'admin_staff'], true)) {
             return route('admin.dashboard');
         }
-        
+
+        // The restricted 'user' tier (2026-10) can't see the Dashboard, so
+        // it lands on the first module its own access spec actually allows.
+        if ($user->role === 'user') {
+            return route('inventory-items.index');
+        }
+
         return route('pages.home');
     }
 

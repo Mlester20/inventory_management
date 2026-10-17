@@ -72,7 +72,7 @@
                     <button type="button" class="btn btn-secondary" id="addRowBtn">
                         <i class="bx bx-plus"></i> Add Line
                     </button>
-                    <button type="submit" class="btn btn-primary" @disabled(Auth::user()->role === 'admin_staff') @if(Auth::user()->role === 'admin_staff') title="Restricted to full admin accounts." @endif>Save Stock Disposal</button>
+                    <button type="submit" class="btn btn-primary" @disabled(Auth::user()->role !== 'admin') @if(Auth::user()->role !== 'admin') title="Restricted to full admin accounts." @endif>Save Stock Disposal</button>
                     <a href="{{ route('stock-disposals.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>
             </form>

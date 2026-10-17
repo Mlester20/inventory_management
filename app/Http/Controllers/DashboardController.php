@@ -10,6 +10,7 @@ use App\Models\StockMovement;
 use App\Models\Category;
 use App\Services\DashboardService;
 use Illuminate\Http\Request;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class DashboardController extends Controller
 {
@@ -20,6 +21,16 @@ class DashboardController extends Controller
      */
     public function index()
     {
+        // Not in Sir's access spec at all, but it's wall-to-wall financial
+        // figures with nothing operational the restricted 'user' tier
+        // actually needs — same "when in doubt, keep it with the other
+        // money screens" reasoning as COGS/the Reports. admin_staff still
+        // sees it (masked), unaffected by this.
+        if (auth()->user()->role === 'user') {
+            Alert::error('Not allowed', 'The Dashboard is not available for this account.');
+            return redirect()->route('inventory-items.index');
+        }
+
         // --- Stock Summary ---
         $totalItems = Product::count();
 

@@ -18,7 +18,7 @@ class SalesReportController extends Controller
      */
     public function summary(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'The Sales Report is restricted to full admin accounts.');
             return redirect()->route('admin.dashboard');
         }
@@ -49,7 +49,7 @@ class SalesReportController extends Controller
      */
     public function perCustomer(Request $request)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'The Sales Report is restricted to full admin accounts.');
             return redirect()->route('admin.dashboard');
         }

@@ -407,7 +407,7 @@ class SalesQuoteController extends Controller
      */
     public function destroy(SalesQuote $salesQuote)
     {
-        if (auth()->user()->role === 'admin_staff') {
+        if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Deleting Sales Quotes is restricted to full admin accounts.');
             return redirect()->route('sales-quotes.index');
         }
