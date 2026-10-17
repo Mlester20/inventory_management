@@ -249,3 +249,14 @@ behaves identically to the old plain-`user` role.
 
 Still not done: no follow-up message/PDF to Sir about Phase 2 completion has been sent — not requested yet.
 `feature/pos-role-split` has not been pushed to origin — local commits only, per standing instruction.
+
+**Re-verified against the PDF row-by-row (2026-10-18):** cross-checked every USER INTERFACE row in
+`docs/proposals/USER_ADMIN STAFF ACCES.pdf` against what's built. All 19 explicit "HIDE" rows for the USER
+column (Sales Order Summary, Sales Invoice + New Invoice, POS Sales/Purchases, Purchase Orders + New PO +
+PO Summary, Purchase Invoice + New PI, Stock Transfers + New ST, Repacks + New Repack, COGS/Sales/Purchase/
+Expense Report, Audit Trail, Import Results, Users, Taxes) match what's hidden in code — the heavy hiding
+on the `user` tier is expected per the PDF, not over-restriction. One gap found: **Dashboard is hidden from
+`user` in code (`DashboardController`) but is not a row in the PDF at all** — that block was an unrequested
+assumption from the earlier session. Asked the user directly; **decision: keep it hidden** (admin-side page,
+safer default) even though it's not literally specified by Sir's document — flagging here in case Sir
+later asks why `user` can't see the Dashboard.
