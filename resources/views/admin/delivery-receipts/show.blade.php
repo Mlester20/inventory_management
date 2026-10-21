@@ -287,7 +287,8 @@
                                             <tr class="table-header-bg">
                                                 <th>Delivery Receipt line</th>
                                                 <th class="text-end">Qty</th>
-                                                <th style="width: 45%;">Sales Order line</th>
+                                                <th style="width: 38%;">Sales Order line</th>
+                                                <th style="width: 110px;">Qty to link</th>
                                             </tr>
                                         </thead>
                                         <tbody id="linkLinesBody"></tbody>
@@ -453,6 +454,7 @@
             'label' => $line->productBatch->product->item_name . ($line->batch_no ? ' — Lot ' . $line->batch_no : ''),
             'generic_name_id' => $line->productBatch->product->generic_name_id,
             'qty' => $line->qty,
+            'invoiced' => $line->invoiced_qty,
         ];
     })->values();
 @endphp
@@ -467,26 +469,53 @@
         const summary = document.getElementById('linkSummary');
         const submitBtn = document.getElementById('linkSubmitBtn');
 
+        function rowQty(tr) {
+            return parseInt(tr.querySelector('.link-qty').value, 10) || 0;
+        }
+
         function recalc(so) {
             const totals = {};
             let anyLinked = false;
-            body.querySelectorAll('select.link-so-item').forEach(sel => {
-                if (!sel.value) return;
+            let ok = true;
+            const notes = [];
+
+            body.querySelectorAll('tr').forEach(tr => {
+                const sel = tr.querySelector('select.link-so-item');
+                const qtyInput = tr.querySelector('.link-qty');
+                const line = DR_LINES.find(l => String(l.id) === tr.dataset.line);
+                const qty = rowQty(tr);
+                qtyInput.disabled = !sel.value;
+                if (!sel.value) {
+                    qtyInput.value = '';
+                    return;
+                }
                 anyLinked = true;
-                totals[sel.value] = (totals[sel.value] || 0) + parseInt(sel.dataset.qty, 10);
+                if (qty < 1 || qty > line.qty) {
+                    ok = false;
+                    notes.push('<div class="text-danger">' + line.label + ': qty to link must be between 1 and ' + line.qty + '.</div>');
+                    return;
+                }
+                if (qty < line.qty && line.qty - qty < line.invoiced) {
+                    ok = false;
+                    notes.push('<div class="text-danger">' + line.label + ': ' + line.invoiced + ' already invoiced, so at most ' + (line.qty - line.invoiced) + ' can be linked separately.</div>');
+                    return;
+                }
+                totals[sel.value] = (totals[sel.value] || 0) + qty;
+                if (qty < line.qty) {
+                    notes.push('<div class="text-muted">' + line.label + ': ' + qty + ' linked, ' + (line.qty - qty) + ' stays on this receipt without a Sales Order.</div>');
+                }
             });
 
-            let ok = anyLinked;
-            const lines = [];
             so.items.forEach(item => {
                 const linked = totals[item.id] || 0;
                 if (!linked) return;
                 const over = linked > item.remaining;
                 if (over) ok = false;
-                lines.push('<div class="' + (over ? 'text-danger' : 'text-success') + '">' + item.generic_name + ': linking ' + linked + ' of ' + item.remaining + ' remaining' + (over ? ' — too many' : '') + '</div>');
+                notes.unshift('<div class="' + (over ? 'text-danger' : 'text-success') + '">' + item.generic_name + ': linking ' + linked + ' of ' + item.remaining + ' remaining' + (over ? ' — too many' : '') + '</div>');
             });
-            summary.innerHTML = lines.join('') || '<div class="text-muted">Pick a Sales Order line for at least one row.</div>';
-            submitBtn.disabled = !ok;
+
+            summary.innerHTML = notes.join('') || '<div class="text-muted">Pick a Sales Order line for at least one row.</div>';
+            submitBtn.disabled = !(ok && anyLinked);
         }
 
         select.addEventListener('change', function () {
@@ -503,12 +532,25 @@
                     options += '<option value="' + item.id + '">' + item.generic_name + ' (ordered ' + item.qty + ', delivered ' + item.delivered + ', remaining ' + item.remaining + ')</option>';
                 });
                 const tr = document.createElement('tr');
+                tr.dataset.line = line.id;
                 tr.innerHTML = '<td>' + line.label + '</td><td class="text-end">' + line.qty + '</td>'
-                    + '<td><select class="form-select form-select-sm link-so-item" name="line_map[' + line.id + ']" data-qty="' + line.qty + '">' + options + '</select></td>';
+                    + '<td><select class="form-select form-select-sm link-so-item" name="line_map[' + line.id + ']">' + options + '</select></td>'
+                    + '<td><input type="number" class="form-control form-control-sm text-end link-qty" name="link_qty[' + line.id + ']" min="1" max="' + line.qty + '" disabled></td>';
                 body.appendChild(tr);
+
                 const sel = tr.querySelector('select');
-                if (matches.length === 1) sel.value = String(matches[0].id);
-                sel.addEventListener('change', () => recalc(so));
+                const qtyInput = tr.querySelector('.link-qty');
+                const fillDefault = () => {
+                    const item = matches.find(m => String(m.id) === sel.value);
+                    qtyInput.disabled = !item;
+                    qtyInput.value = item ? Math.min(line.qty, item.remaining) : '';
+                };
+                if (matches.length === 1) {
+                    sel.value = String(matches[0].id);
+                    fillDefault();
+                }
+                sel.addEventListener('change', () => { fillDefault(); recalc(so); });
+                qtyInput.addEventListener('input', () => recalc(so));
             });
             recalc(so);
         });

@@ -313,18 +313,20 @@ class DeliveryReceiptController extends Controller
             'sales_order_id' => 'required|exists:sales_orders,id',
             'line_map' => 'required|array',
             'line_map.*' => 'nullable|integer',
+            'link_qty' => 'nullable|array',
+            'link_qty.*' => 'nullable|integer|min:1',
         ]);
 
         $salesOrder = SalesOrder::findOrFail($validated['sales_order_id']);
 
-        $this->deliveryReceiptService->linkToSalesOrder($deliveryReceipt, $salesOrder, $validated['line_map'], auth()->id());
+        $this->deliveryReceiptService->linkToSalesOrder($deliveryReceipt, $salesOrder, $validated['line_map'], auth()->id(), $validated['link_qty'] ?? []);
 
         ActivityLog::record(
             module: 'DeliveryReceipt',
             action: 'linked_sales_order',
             loggable: $deliveryReceipt,
             description: "Linked Delivery Receipt {$deliveryReceipt->dr_no} to Sales Order {$salesOrder->so_no}",
-            metadata: ['sales_order_id' => $salesOrder->id, 'line_map' => $validated['line_map']],
+            metadata: ['sales_order_id' => $salesOrder->id, 'line_map' => $validated['line_map'], 'link_qty' => $validated['link_qty'] ?? []],
         );
 
         Alert::success('Success', "Delivery Receipt linked to {$salesOrder->so_no}.");

@@ -402,11 +402,17 @@ class DeliveryReceiptService
      * delivered_qty, and refreshes the Sales Order's status. The DR becomes a
      * Purchase Order DR, so invoicing it afterwards uses the Sales Order's price.
      *
+     * Not every line has to be linked, and a line can be linked for less than its
+     * full qty (e.g. 5 of 20 pcs belong to the order): the DR line is then split
+     * in two — the linked part and the untouched remainder, same batch, so the
+     * total delivered and the stock are unchanged.
+     *
      * @param array<int,int|string|null> $lineMap DR item id => Sales Order item id (blank = leave unlinked)
+     * @param array<int,int|string|null> $qtyMap  DR item id => qty to link (blank = the line's full qty)
      */
-    public function linkToSalesOrder(DeliveryReceipt $deliveryReceipt, SalesOrder $salesOrder, array $lineMap, ?int $userId = null): void
+    public function linkToSalesOrder(DeliveryReceipt $deliveryReceipt, SalesOrder $salesOrder, array $lineMap, ?int $userId = null, array $qtyMap = []): void
     {
-        DB::transaction(function () use ($deliveryReceipt, $salesOrder, $lineMap) {
+        DB::transaction(function () use ($deliveryReceipt, $salesOrder, $lineMap, $qtyMap) {
             $deliveryReceipt = DeliveryReceipt::lockForUpdate()->findOrFail($deliveryReceipt->id);
 
             if ($deliveryReceipt->isDraft() || $deliveryReceipt->isCancelled()
@@ -419,7 +425,7 @@ class DeliveryReceiptService
             }
 
             $salesOrderItems = $salesOrder->items()->lockForUpdate()->get()->keyBy('id');
-            $lines = $deliveryReceipt->items()->with('productBatch.product')->get();
+            $lines = $deliveryReceipt->items()->with('productBatch.product')->lockForUpdate()->get();
             $linkedQty = [];
             $links = [];
 
@@ -429,25 +435,49 @@ class DeliveryReceiptService
                     continue;
                 }
 
+                $name = $line->productBatch->product->item_name;
                 $soItem = $salesOrderItems->get($soItemId);
                 if (! $soItem || (int) $soItem->generic_name_id !== (int) $line->productBatch->product->generic_name_id) {
-                    throw ValidationException::withMessages(['link' => "{$line->productBatch->product->item_name} can only be linked to a Sales Order line of the same generic item."]);
+                    throw ValidationException::withMessages(['link' => "{$name} can only be linked to a Sales Order line of the same generic item."]);
                 }
 
-                $linkedQty[$soItemId] = ($linkedQty[$soItemId] ?? 0) + $line->qty;
+                $qty = (int) ($qtyMap[$line->id] ?? 0) ?: (int) $line->qty;
+                if ($qty < 1 || $qty > $line->qty) {
+                    throw ValidationException::withMessages(['link' => "Qty to link for {$name} must be between 1 and {$line->qty}."]);
+                }
+
+                // The part of a line that is already invoiced has to stay with the
+                // untouched remainder — an invoice already points at this line.
+                if ($qty < $line->qty && $line->qty - $qty < $line->invoiced_qty) {
+                    $max = $line->qty - $line->invoiced_qty;
+                    throw ValidationException::withMessages(['link' => "{$name} already has {$line->invoiced_qty} invoiced, so at most {$max} can be linked separately."]);
+                }
+
+                $linkedQty[$soItemId] = ($linkedQty[$soItemId] ?? 0) + $qty;
                 if ($linkedQty[$soItemId] > $soItem->remaining_qty) {
-                    throw ValidationException::withMessages(['link' => "Linked qty for {$line->productBatch->product->item_name} ({$linkedQty[$soItemId]}) exceeds the remaining balance on the Sales Order ({$soItem->remaining_qty})."]);
+                    throw ValidationException::withMessages(['link' => "Linked qty for {$name} ({$linkedQty[$soItemId]}) exceeds the remaining balance on the Sales Order ({$soItem->remaining_qty})."]);
                 }
 
-                $links[$line->id] = $soItemId;
+                $links[$line->id] = [$soItemId, $qty];
             }
 
             if (empty($links)) {
                 throw ValidationException::withMessages(['link' => 'Link at least one Delivery Receipt line to a Sales Order line.']);
             }
 
-            foreach ($links as $lineId => $soItemId) {
-                $lines->firstWhere('id', $lineId)->update(['sales_order_item_id' => $soItemId]);
+            foreach ($links as $lineId => [$soItemId, $qty]) {
+                $line = $lines->firstWhere('id', $lineId);
+
+                if ($qty < $line->qty) {
+                    $linkedPart = $line->replicate();
+                    $linkedPart->qty = $qty;
+                    $linkedPart->invoiced_qty = 0;
+                    $linkedPart->sales_order_item_id = $soItemId;
+                    $linkedPart->save();
+                    $line->update(['qty' => $line->qty - $qty]);
+                } else {
+                    $line->update(['sales_order_item_id' => $soItemId]);
+                }
             }
             foreach ($linkedQty as $soItemId => $qty) {
                 $salesOrderItems->get($soItemId)->increment('delivered_qty', $qty);
