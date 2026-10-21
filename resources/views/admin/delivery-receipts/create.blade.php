@@ -362,6 +362,8 @@
         document.getElementById('tabBtnPurchase').classList.toggle('active', tab === 'purchase_order');
         document.getElementById('tabBtnWalkIn').classList.toggle('active', tab === 'walk_in');
 
+        document.getElementById('addAoRowBtn').style.display = showAdvancePanel ? '' : 'none';
+
         if (showAdvancePanel) {
             document.getElementById('so_no_display').value = '';
         }
@@ -543,7 +545,7 @@
         }
     }
 
-    function renderAvailability(cells, items, index, salesOrderItemId, remainingQty, unit, preselect = null, suggestedBrandName = null) {
+    function renderAvailability(cells, items, index, salesOrderItemId, remainingQty, unit, preselect = null, suggestedBrandName = null, isExtraBatch = false) {
         const optionsHtml = itemOptionsHtml(items);
 
         if (!optionsHtml) {
@@ -564,10 +566,10 @@
         cells.item.innerHTML = `
             <select class="form-select form-select-sm item-select" name="items[${index}][product_batch_id]">${optionsHtml}</select>
             ${suggestedBrandName ? '<div class="form-text small suggested-brand-note"></div>' : ''}
-            <div class="form-check mt-1">
+            ${isExtraBatch ? '' : `<div class="form-check mt-1">
                 <input class="form-check-input skip-item-checkbox" type="checkbox" id="skip-item-${index}">
                 <label class="form-check-label small" for="skip-item-${index}">Not delivering this item yet</label>
-            </div>
+            </div>`}
         `;
         cells.batch.innerHTML = `<input type="text" class="form-control form-control-sm batch-display" readonly>`;
         cells.expiry.innerHTML = `<input type="text" class="form-control form-control-sm expiry-display" readonly>`;
@@ -628,7 +630,7 @@
                 syncSelected();
             }
         }
-        skipCheckbox.addEventListener('change', syncSkipState);
+        if (skipCheckbox) skipCheckbox.addEventListener('change', syncSkipState);
 
         // Overlay a resumed draft's saved batch/qty/remarks for this line —
         // only if that batch is still among the live fetched options (stock
@@ -728,6 +730,49 @@
         }
         emptyMsg.classList.add('d-none');
 
+        // The Item/Batch/Expiry/Qty/Unit/Remarks fields of one delivered batch —
+        // shared by a Sales Order line's first row and any "Add another batch" row.
+        const batchFieldsHtml = () => `
+            <div class="row g-2">
+                <div class="col-md-12">
+                    <label class="form-label small mb-1">Item Description</label>
+                    <div class="item-select-cell"><span class="text-muted small">Checking availability…</span></div>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Lot/Batch No.</label>
+                    <div class="batch-cell"></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Expiry Date</label>
+                    <div class="expiry-cell"></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Qty</label>
+                    <div class="qty-cell"></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small mb-1">Unit</label>
+                    <div class="unit-cell"></div>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-12">
+                    <label class="form-label small mb-1">Remarks</label>
+                    <div class="remarks-cell"></div>
+                </div>
+            </div>
+        `;
+        const batchCells = container => ({
+            item: container.querySelector('.item-select-cell'),
+            batch: container.querySelector('.batch-cell'),
+            expiry: container.querySelector('.expiry-cell'),
+            qty: container.querySelector('.qty-cell'),
+            remarks: container.querySelector('.remarks-cell'),
+            unit: container.querySelector('.unit-cell'),
+        });
+
         for (const line of data.items) {
             const index = poRowIndex++;
             const row = document.createElement('div');
@@ -737,53 +782,65 @@
                     <span class="fw-semibold">${line.generic_name}</span>
                     <span class="badge bg-warning text-dark">Remaining: ${line.remaining_qty}</span>
                 </div>
-                <div class="row g-2">
-                    <div class="col-md-12">
-                        <label class="form-label small mb-1">Item Description</label>
-                        <div class="item-select-cell"><span class="text-muted small">Checking availability…</span></div>
-                    </div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small mb-1">Lot/Batch No.</label>
-                        <div class="batch-cell"></div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small mb-1">Expiry Date</label>
-                        <div class="expiry-cell"></div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small mb-1">Qty</label>
-                        <div class="qty-cell"></div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label small mb-1">Unit</label>
-                        <div class="unit-cell"></div>
-                    </div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col-md-12">
-                        <label class="form-label small mb-1">Remarks</label>
-                        <div class="remarks-cell"></div>
-                    </div>
-                </div>
+                <div class="first-batch">${batchFieldsHtml()}</div>
+                <div class="extra-batches"></div>
+                <button type="button" class="btn btn-sm btn-outline-primary mt-2 add-batch-btn d-none">
+                    <i class="bx bx-plus"></i> Add another batch
+                </button>
             `;
             body.appendChild(row);
 
-            const cells = {
-                item: row.querySelector('.item-select-cell'),
-                batch: row.querySelector('.batch-cell'),
-                expiry: row.querySelector('.expiry-cell'),
-                qty: row.querySelector('.qty-cell'),
-                remarks: row.querySelector('.remarks-cell'),
-                unit: row.querySelector('.unit-cell'),
-            };
             const items = await fetchAvailableItems(line.generic_name_id);
             // A draft resumed on this tab saved its own batch/qty/remarks
             // per Sales Order line — overlay it onto this freshly fetched
             // pending line (remaining_qty is always live, never stale).
-            const preselect = PO_PREFILL_LINES.find(p => String(p.sales_order_item_id) === String(line.sales_order_item_id)) || null;
-            renderAvailability(cells, items, index, line.sales_order_item_id, line.remaining_qty, line.unit, preselect, line.brand_name);
+            // A line split across batches saved several rows for the same
+            // Sales Order line: the first fills the main row, the rest come
+            // back as extra-batch rows.
+            const savedRows = PO_PREFILL_LINES.filter(p => String(p.sales_order_item_id) === String(line.sales_order_item_id));
+            const preselect = savedRows[0] || null;
+            renderAvailability(batchCells(row.querySelector('.first-batch')), items, index, line.sales_order_item_id, line.remaining_qty, line.unit, preselect, line.brand_name);
+
+            const addBatchBtn = row.querySelector('.add-batch-btn');
+            if (!row.querySelector('.first-batch .item-select')) {
+                continue; // nothing in stock: no batch to split across
+            }
+            addBatchBtn.classList.remove('d-none');
+
+            const addExtraBatch = (savedRow = null) => {
+                const extra = document.createElement('div');
+                extra.className = 'border-top mt-3 pt-3';
+                extra.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-semibold text-muted">Additional batch</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-batch-btn"><i class="bx bx-trash"></i> Remove</button>
+                    </div>
+                    ${batchFieldsHtml()}
+                `;
+                row.querySelector('.extra-batches').appendChild(extra);
+                extra.querySelector('.remove-batch-btn').addEventListener('click', () => extra.remove());
+
+                const extraCells = batchCells(extra);
+                renderAvailability(extraCells, items, poRowIndex++, line.sales_order_item_id, line.remaining_qty, line.unit, savedRow, null, true);
+
+                // Default the new row to whatever of this Sales Order line the
+                // other rows haven't covered yet (still capped by that batch's stock).
+                const newQty = extraCells.qty.querySelector('.qty-input');
+                const newSelect = extraCells.item.querySelector('.item-select');
+                if (!savedRow && newQty && newSelect) {
+                    const fillLeftover = () => {
+                        const covered = [...row.querySelectorAll('.qty-input')]
+                            .filter(input => input !== newQty && !input.disabled)
+                            .reduce((sum, input) => sum + (parseInt(input.value, 10) || 0), 0);
+                        const leftover = Math.max(line.remaining_qty - covered, 1);
+                        newQty.value = Math.min(leftover, parseInt(newQty.max, 10) || leftover);
+                    };
+                    fillLeftover();
+                    newSelect.addEventListener('change', fillLeftover);
+                }
+            };
+            addBatchBtn.addEventListener('click', () => addExtraBatch());
+            savedRows.slice(1).forEach(saved => addExtraBatch(saved));
         }
     });
 

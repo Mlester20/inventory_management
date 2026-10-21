@@ -202,19 +202,7 @@ class InventoryAdjustmentService
             return ProductBatch::findOrFail($line['product_batch_id']);
         }
 
-        $batchNo = $line['batch_no'] ?? null;
-
-        if ($batchNo) {
-            $existing = $product->batches()->where('batch_no', $batchNo)->first();
-            if ($existing) {
-                return $existing;
-            }
-        }
-
-        return $product->batches()->create([
-            'batch_no' => $batchNo,
-            'expiration_date' => $line['expiration_date'] ?? null,
-        ]);
+        return $product->findOrCreateBatch($line['batch_no'] ?? null, $line['expiration_date'] ?? null);
     }
 
     /**

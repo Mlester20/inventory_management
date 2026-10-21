@@ -107,6 +107,34 @@ class Product extends Model
     }
 
     /**
+     * Reuse the batch a received/adjusted line belongs to, or create it. A typed
+     * batch_no matches on batch_no alone; a line with no Lot matches the product's
+     * existing no-Lot batch (same expiry), so repeated no-Lot receipts pool into
+     * one batch instead of each creating its own.
+     */
+    public function findOrCreateBatch(?string $batchNo, $expirationDate = null): ProductBatch
+    {
+        $batchNo = trim((string) $batchNo);
+        $expirationDate = $expirationDate ?: null;
+
+        $query = $this->batches();
+
+        if ($batchNo !== '') {
+            $existing = $query->where('batch_no', $batchNo)->first();
+        } else {
+            $existing = $query
+                ->where(fn ($q) => $q->whereNull('batch_no')->orWhere('batch_no', ''))
+                ->when($expirationDate, fn ($q) => $q->whereDate('expiration_date', $expirationDate), fn ($q) => $q->whereNull('expiration_date'))
+                ->first();
+        }
+
+        return $existing ?? $this->batches()->create([
+            'batch_no' => $batchNo !== '' ? $batchNo : null,
+            'expiration_date' => $expirationDate,
+        ]);
+    }
+
+    /**
      * All location_stocks rows across every batch of this product — the
      * single relation nearly every quantity read below sums or filters.
      */
