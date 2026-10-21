@@ -394,6 +394,71 @@ class DeliveryReceiptService
     }
 
     /**
+     * Attach an already-posted Advance Order Delivery Receipt to a Sales Order
+     * of the same customer — the DR was created without one (e.g. as a workaround
+     * when a Sales Order line couldn't be split across batches). Stock was already
+     * deducted when the DR was posted, so this moves no stock; it only records
+     * which Sales Order line each DR line fulfils, raises those lines'
+     * delivered_qty, and refreshes the Sales Order's status. The DR becomes a
+     * Purchase Order DR, so invoicing it afterwards uses the Sales Order's price.
+     *
+     * @param array<int,int|string|null> $lineMap DR item id => Sales Order item id (blank = leave unlinked)
+     */
+    public function linkToSalesOrder(DeliveryReceipt $deliveryReceipt, SalesOrder $salesOrder, array $lineMap, ?int $userId = null): void
+    {
+        DB::transaction(function () use ($deliveryReceipt, $salesOrder, $lineMap) {
+            $deliveryReceipt = DeliveryReceipt::lockForUpdate()->findOrFail($deliveryReceipt->id);
+
+            if ($deliveryReceipt->isDraft() || $deliveryReceipt->isCancelled()
+                || $deliveryReceipt->transaction_type !== 'advance_order' || $deliveryReceipt->sales_order_id) {
+                throw ValidationException::withMessages(['link' => 'Only a posted Advance Order Delivery Receipt with no Sales Order can be linked.']);
+            }
+
+            if ($salesOrder->isDraft() || $salesOrder->isArchived() || (int) $salesOrder->customer_id !== (int) $deliveryReceipt->customer_id) {
+                throw ValidationException::withMessages(['link' => 'Pick an active Sales Order of the same customer as this Delivery Receipt.']);
+            }
+
+            $salesOrderItems = $salesOrder->items()->lockForUpdate()->get()->keyBy('id');
+            $lines = $deliveryReceipt->items()->with('productBatch.product')->get();
+            $linkedQty = [];
+            $links = [];
+
+            foreach ($lines as $line) {
+                $soItemId = (int) ($lineMap[$line->id] ?? 0);
+                if (! $soItemId) {
+                    continue;
+                }
+
+                $soItem = $salesOrderItems->get($soItemId);
+                if (! $soItem || (int) $soItem->generic_name_id !== (int) $line->productBatch->product->generic_name_id) {
+                    throw ValidationException::withMessages(['link' => "{$line->productBatch->product->item_name} can only be linked to a Sales Order line of the same generic item."]);
+                }
+
+                $linkedQty[$soItemId] = ($linkedQty[$soItemId] ?? 0) + $line->qty;
+                if ($linkedQty[$soItemId] > $soItem->remaining_qty) {
+                    throw ValidationException::withMessages(['link' => "Linked qty for {$line->productBatch->product->item_name} ({$linkedQty[$soItemId]}) exceeds the remaining balance on the Sales Order ({$soItem->remaining_qty})."]);
+                }
+
+                $links[$line->id] = $soItemId;
+            }
+
+            if (empty($links)) {
+                throw ValidationException::withMessages(['link' => 'Link at least one Delivery Receipt line to a Sales Order line.']);
+            }
+
+            foreach ($links as $lineId => $soItemId) {
+                $lines->firstWhere('id', $lineId)->update(['sales_order_item_id' => $soItemId]);
+            }
+            foreach ($linkedQty as $soItemId => $qty) {
+                $salesOrderItems->get($soItemId)->increment('delivered_qty', $qty);
+            }
+
+            $deliveryReceipt->update(['sales_order_id' => $salesOrder->id, 'transaction_type' => 'purchase_order']);
+            $this->refreshSalesOrderStatus($salesOrder->fresh());
+        });
+    }
+
+    /**
      * Recompute a Sales Order's status from its line items' delivered quantities.
      */
     protected function refreshSalesOrderStatus(SalesOrder $salesOrder): void

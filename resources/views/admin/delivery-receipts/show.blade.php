@@ -30,6 +30,11 @@
                         </button>
                     </form>
                 @endif
+                @if($canLink)
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#linkSalesOrderModal">
+                        <i class="bx bx-link"></i> Link to Sales Order
+                    </button>
+                @endif
                 <button type="button" class="btn btn-outline-primary" onclick="window.print()">
                     <i class="bx bx-printer"></i> Print
                 </button>
@@ -246,6 +251,63 @@
         </div>
     </form>
 
+    @if($canLink)
+        <div class="modal fade no-print" id="linkSalesOrderModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <form action="{{ route('delivery-receipts.link-sales-order', $deliveryReceipt) }}" method="POST" id="linkSalesOrderForm">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Link {{ $deliveryReceipt->dr_no }} to a Sales Order</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            @if(empty($linkCandidates))
+                                <div class="alert alert-info mb-0">
+                                    {{ $deliveryReceipt->customer->customer_name }} has no open Sales Order to link to.
+                                </div>
+                            @else
+                                <p class="text-muted small">
+                                    This Delivery Receipt was posted without a Sales Order, so the order's balance and status never caught up.
+                                    Linking records what it already delivered against the order — no stock moves, since it was deducted when the receipt was posted.
+                                    It then becomes a Purchase Order delivery, and invoicing it will use the Sales Order's price.
+                                </p>
+                                <div class="mb-3">
+                                    <label for="linkSalesOrderSelect" class="form-label">Sales Order ({{ $deliveryReceipt->customer->customer_name }})</label>
+                                    <select name="sales_order_id" id="linkSalesOrderSelect" class="form-select" required>
+                                        <option value="">-- Select Sales Order --</option>
+                                        @foreach($linkCandidates as $candidate)
+                                            <option value="{{ $candidate['id'] }}">{{ $candidate['so_no'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div id="linkLinesWrap" class="d-none">
+                                    <table class="table table-sm align-middle">
+                                        <thead>
+                                            <tr class="table-header-bg">
+                                                <th>Delivery Receipt line</th>
+                                                <th class="text-end">Qty</th>
+                                                <th style="width: 45%;">Sales Order line</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="linkLinesBody"></tbody>
+                                    </table>
+                                    <div id="linkSummary" class="small"></div>
+                                </div>
+                            @endif
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            @if(! empty($linkCandidates))
+                                <button type="submit" class="btn btn-primary" id="linkSubmitBtn" disabled>Link Delivery Receipt</button>
+                            @endif
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
     <div class="card dr-print-only" id="printableDeliveryNote">
         <div class="card-body p-4 dr-sheet">
 
@@ -383,6 +445,76 @@
 
 @section('scripts')
 @include('admin.partials.withholding-tax-script')
+@if($canLink && ! empty($linkCandidates))
+@php
+    $linkDrLines = $deliveryReceipt->items->map(function ($line) {
+        return [
+            'id' => $line->id,
+            'label' => $line->productBatch->product->item_name . ($line->batch_no ? ' — Lot ' . $line->batch_no : ''),
+            'generic_name_id' => $line->productBatch->product->generic_name_id,
+            'qty' => $line->qty,
+        ];
+    })->values();
+@endphp
+<script>
+    (function () {
+        const SALES_ORDERS = @json($linkCandidates);
+        const DR_LINES = @json($linkDrLines);
+
+        const select = document.getElementById('linkSalesOrderSelect');
+        const wrap = document.getElementById('linkLinesWrap');
+        const body = document.getElementById('linkLinesBody');
+        const summary = document.getElementById('linkSummary');
+        const submitBtn = document.getElementById('linkSubmitBtn');
+
+        function recalc(so) {
+            const totals = {};
+            let anyLinked = false;
+            body.querySelectorAll('select.link-so-item').forEach(sel => {
+                if (!sel.value) return;
+                anyLinked = true;
+                totals[sel.value] = (totals[sel.value] || 0) + parseInt(sel.dataset.qty, 10);
+            });
+
+            let ok = anyLinked;
+            const lines = [];
+            so.items.forEach(item => {
+                const linked = totals[item.id] || 0;
+                if (!linked) return;
+                const over = linked > item.remaining;
+                if (over) ok = false;
+                lines.push('<div class="' + (over ? 'text-danger' : 'text-success') + '">' + item.generic_name + ': linking ' + linked + ' of ' + item.remaining + ' remaining' + (over ? ' — too many' : '') + '</div>');
+            });
+            summary.innerHTML = lines.join('') || '<div class="text-muted">Pick a Sales Order line for at least one row.</div>';
+            submitBtn.disabled = !ok;
+        }
+
+        select.addEventListener('change', function () {
+            const so = SALES_ORDERS.find(o => String(o.id) === this.value);
+            body.innerHTML = '';
+            wrap.classList.toggle('d-none', !so);
+            submitBtn.disabled = true;
+            if (!so) return;
+
+            DR_LINES.forEach(line => {
+                const matches = so.items.filter(item => item.generic_name_id === line.generic_name_id);
+                let options = '<option value="">— Do not link this line —</option>';
+                matches.forEach(item => {
+                    options += '<option value="' + item.id + '">' + item.generic_name + ' (ordered ' + item.qty + ', delivered ' + item.delivered + ', remaining ' + item.remaining + ')</option>';
+                });
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + line.label + '</td><td class="text-end">' + line.qty + '</td>'
+                    + '<td><select class="form-select form-select-sm link-so-item" name="line_map[' + line.id + ']" data-qty="' + line.qty + '">' + options + '</select></td>';
+                body.appendChild(tr);
+                const sel = tr.querySelector('select');
+                if (matches.length === 1) sel.value = String(matches[0].id);
+                sel.addEventListener('change', () => recalc(so));
+            });
+            recalc(so);
+        });
+    })();
+</script>
+@endif
 <script>
     function refreshCreateInvoiceBtn() {
         const anyChecked = document.querySelectorAll('.line-checkbox:checked').length > 0;

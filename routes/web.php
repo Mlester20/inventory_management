@@ -156,6 +156,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('admin/advance-orders', [AdvanceOrderController::class, 'index'])->name('advance-orders.index');
     Route::post('admin/advance-orders/create-invoice', [AdvanceOrderController::class, 'createInvoice'])->name('advance-orders.create-invoice');
     Route::post('admin/delivery-receipts/{deliveryReceipt}/mark-delivered', [DeliveryReceiptController::class, 'markDelivered'])->name('delivery-receipts.mark-delivered');
+    Route::post('admin/delivery-receipts/{deliveryReceipt}/link-sales-order', [DeliveryReceiptController::class, 'linkSalesOrder'])->name('delivery-receipts.link-sales-order');
 
     // Customers are usable by both admin and regular users too — deleting
     // one is the one action that stays admin-only (see below).

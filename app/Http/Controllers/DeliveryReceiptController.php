@@ -256,7 +256,79 @@ class DeliveryReceiptController extends Controller
     {
         $deliveryReceipt->load('customer', 'salesOrder', 'preparedBy', 'items.productBatch.product.genericName', 'items.sales.invoice', 'items.salesOrderItem');
 
-        return view('admin.delivery-receipts.show', compact('deliveryReceipt'));
+        $canLink = $this->canLinkSalesOrder($deliveryReceipt);
+        $linkCandidates = $canLink ? $this->linkCandidates($deliveryReceipt) : [];
+
+        return view('admin.delivery-receipts.show', compact('deliveryReceipt', 'canLink', 'linkCandidates'));
+    }
+
+    protected function canLinkSalesOrder(DeliveryReceipt $deliveryReceipt): bool
+    {
+        return auth()->user()->role === 'admin' && ! $deliveryReceipt->isDraft() && ! $deliveryReceipt->isCancelled()
+            && $deliveryReceipt->transaction_type === 'advance_order' && ! $deliveryReceipt->sales_order_id;
+    }
+
+    /**
+     * Active, not-yet-completed Sales Orders of this DR's customer, for the
+     * "Link to Sales Order" picker — only offered on a posted Advance Order DR
+     * that has no Sales Order yet.
+     */
+    protected function linkCandidates(DeliveryReceipt $deliveryReceipt): array
+    {
+        return SalesOrder::with('items.genericName')
+            ->where('customer_id', $deliveryReceipt->customer_id)
+            ->where('is_draft', false)
+            ->whereNull('archived_at')
+            ->whereIn('status', ['open', 'partially_delivered'])
+            ->orderBy('so_no')
+            ->get()
+            ->map(fn (SalesOrder $so) => [
+                'id' => $so->id,
+                'so_no' => $so->so_no,
+                'items' => $so->items->filter(fn ($item) => $item->remaining_qty > 0)->map(fn ($item) => [
+                    'id' => $item->id,
+                    'generic_name_id' => $item->generic_name_id,
+                    'generic_name' => $item->genericName->generic_name ?? '—',
+                    'qty' => $item->qty,
+                    'delivered' => $item->delivered_qty,
+                    'remaining' => $item->remaining_qty,
+                ])->values()->all(),
+            ])
+            ->all();
+    }
+
+    /**
+     * Attach a posted Advance Order DR to a Sales Order (see
+     * DeliveryReceiptService::linkToSalesOrder) so the Sales Order's balances
+     * and status catch up with what was already delivered.
+     */
+    public function linkSalesOrder(Request $request, DeliveryReceipt $deliveryReceipt)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Linking a Delivery Receipt to a Sales Order is restricted to full admin accounts.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        $validated = $request->validate([
+            'sales_order_id' => 'required|exists:sales_orders,id',
+            'line_map' => 'required|array',
+            'line_map.*' => 'nullable|integer',
+        ]);
+
+        $salesOrder = SalesOrder::findOrFail($validated['sales_order_id']);
+
+        $this->deliveryReceiptService->linkToSalesOrder($deliveryReceipt, $salesOrder, $validated['line_map'], auth()->id());
+
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'linked_sales_order',
+            loggable: $deliveryReceipt,
+            description: "Linked Delivery Receipt {$deliveryReceipt->dr_no} to Sales Order {$salesOrder->so_no}",
+            metadata: ['sales_order_id' => $salesOrder->id, 'line_map' => $validated['line_map']],
+        );
+
+        Alert::success('Success', "Delivery Receipt linked to {$salesOrder->so_no}.");
+        return redirect()->route('delivery-receipts.show', $deliveryReceipt);
     }
 
     /**
