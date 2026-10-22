@@ -147,11 +147,12 @@
                     <div class="border rounded p-2 mb-3 small">
                         <strong>Split from {{ $parent->dr_no }}</strong> ({{ $deliveryReceipt->created_at->format('M d, Y') }}) — this receipt carries the part linked to
                         {{ $deliveryReceipt->salesOrder->so_no ?? 'the Sales Order' }}. Original quantities:
-                        @foreach($deliveryReceipt->items->groupBy('product_batch_id') as $batchId => $rows)
-                            @php $here = $rows->sum('qty'); $left = $parentLeft[$batchId] ?? 0; @endphp
-                            {{ $rows->first()->productBatch->product->item_name }}: {{ $here + $left }}
-                            ({{ $here }} here{{ $left ? ', ' . $left . ' left on ' . $parent->dr_no : '' }}){{ ! $loop->last ? ';' : '.' }}
-                        @endforeach
+                        {{ $deliveryReceipt->items->groupBy('product_batch_id')->map(function ($rows, $batchId) use ($parentLeft, $parent) {
+                            $here = $rows->sum('qty');
+                            $left = $parentLeft[$batchId] ?? 0;
+                            return $rows->first()->productBatch->product->item_name . ': ' . ($here + $left)
+                                . ' (' . $here . ' here' . ($left ? ', ' . $left . ' left on ' . $parent->dr_no : '') . ')';
+                        })->implode('; ') }}.
                     </div>
                 @endif
 
@@ -160,10 +161,7 @@
                         <strong>Part of this receipt was split off</strong> — the quantities below are what remains here.
                         @foreach($deliveryReceipt->splitChildren as $child)
                             Moved to {{ $child->dr_no }} ({{ $child->salesOrder->so_no ?? '—' }}, {{ $child->created_at->format('M d, Y') }}):
-                            @foreach($child->items->groupBy('product_batch_id') as $rows)
-                                {{ $rows->first()->productBatch->product->item_name }} {{ $rows->sum('qty') }}{{ ! $loop->last ? ',' : '' }}
-                            @endforeach
-                            {{ ! $loop->last ? ';' : '.' }}
+                            {{ $child->items->groupBy('product_batch_id')->map(fn ($rows) => $rows->first()->productBatch->product->item_name . ' ' . $rows->sum('qty'))->implode(', ') }}{{ ! $loop->last ? ';' : '.' }}
                         @endforeach
                     </div>
                 @endif
