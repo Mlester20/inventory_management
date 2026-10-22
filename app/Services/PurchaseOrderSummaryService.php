@@ -43,6 +43,7 @@ class PurchaseOrderSummaryService
             ->selectRaw("suppliers.id as supplier_id, suppliers.supplier_name,
                 COUNT(*) as po_count,
                 SUM(purchase_orders.status = 'completed') as completed,
+                SUM(purchase_orders.status = 'closed') as closed,
                 SUM(purchase_orders.status = 'partially_received') as partially_received")
             ->get();
 
@@ -60,6 +61,7 @@ class PurchaseOrderSummaryService
         return $counts->map(function ($row) use ($qty) {
             $poCount = (int) $row->po_count;
             $completed = (int) $row->completed;
+            $closed = (int) $row->closed;
             $partiallyReceived = (int) $row->partially_received;
 
             return [
@@ -68,8 +70,9 @@ class PurchaseOrderSummaryService
                 'po_count' => $poCount,
                 'completed' => $completed,
                 'partially_received' => $partiallyReceived,
-                // Whatever is left after the other buckets, so the three always add up to the count.
-                'open' => $poCount - $completed - $partiallyReceived,
+                'closed' => $closed,
+                // Whatever is left after the other buckets, so they always add up to the count.
+                'open' => $poCount - $completed - $partiallyReceived - $closed,
                 'qty_ordered' => (int) ($qty[$row->supplier_id]->qty_ordered ?? 0),
                 'pending' => (int) ($qty[$row->supplier_id]->pending ?? 0),
             ];
@@ -91,11 +94,12 @@ class PurchaseOrderSummaryService
             ->get();
     }
 
-    /** OPEN / PARTIALLY RECEIVED / COMPLETED — the same buckets as the summary. */
+    /** OPEN / PARTIALLY RECEIVED / COMPLETED / CLOSED — the same buckets as the summary. */
     public static function statusLabel(PurchaseOrder $order): string
     {
         return match ($order->status) {
             'completed' => 'COMPLETED',
+            'closed' => 'CLOSED',
             'partially_received' => 'PARTIALLY RECEIVED',
             default => 'OPEN',
         };

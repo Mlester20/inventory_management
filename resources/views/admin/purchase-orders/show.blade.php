@@ -24,10 +24,28 @@
             </div>
         @else
             <div class="d-flex gap-2">
-                @if($purchaseOrder->status !== 'completed' && $purchaseOrder->status !== 'cancelled')
+                @if(! in_array($purchaseOrder->status, ['completed', 'cancelled', 'closed'], true))
                     <a href="{{ route('goods-receipts.create', ['purchase_order_id' => $purchaseOrder->id]) }}" class="btn btn-primary">
                         <i class="bx bx-plus"></i> Create Goods Receipt
                     </a>
+                @endif
+                @if(Auth::user()->role === 'admin' && in_array($purchaseOrder->status, ['open', 'partially_received'], true))
+                    @php $unreceivedUnits = $purchaseOrder->items->sum(fn ($item) => max(0, $item->qty - $item->received_qty)); @endphp
+                    <form action="{{ route('purchase-orders.close', $purchaseOrder) }}" method="POST"
+                          onsubmit="return confirmSubmit(this, 'Close {{ $purchaseOrder->po_no }}? The {{ $unreceivedUnits }} unit(s) still unreceived will no longer be expected, and no more Goods Receipts can be made against it. What was already received stays. You can reopen it later.');">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bx bx-lock-alt"></i> Close PO
+                        </button>
+                    </form>
+                @endif
+                @if(Auth::user()->role === 'admin' && $purchaseOrder->status === 'closed')
+                    <form action="{{ route('purchase-orders.reopen', $purchaseOrder) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-secondary">
+                            <i class="bx bx-lock-open-alt"></i> Reopen
+                        </button>
+                    </form>
                 @endif
                 <button type="button" class="btn btn-outline-primary" onclick="window.print()">
                     <i class="bx bx-printer"></i> Print
@@ -58,7 +76,7 @@
                         @if($purchaseOrder->isDraft())
                             <span class="badge bg-secondary">DRAFT</span>
                         @else
-                            <span class="badge bg-{{ ['open' => 'warning', 'partially_received' => 'info', 'completed' => 'success', 'cancelled' => 'danger'][$purchaseOrder->status] ?? 'secondary' }}">
+                            <span class="badge bg-{{ ['open' => 'warning', 'partially_received' => 'info', 'completed' => 'success', 'closed' => 'dark', 'cancelled' => 'danger'][$purchaseOrder->status] ?? 'secondary' }}">
                                 {{ ucfirst(str_replace('_', ' ', $purchaseOrder->status)) }}
                             </span>
                         @endif
@@ -73,6 +91,23 @@
             </div>
         </div>
     </div>
+
+    @if ($errors->any())
+        <div class="alert alert-danger no-print">
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    @if($purchaseOrder->status === 'closed')
+        <div class="alert alert-warning no-print">
+            <i class="bx bx-lock-alt me-1"></i>
+            This Purchase Order was closed — {{ $purchaseOrder->items->sum(fn ($item) => max(0, $item->qty - $item->received_qty)) }} unit(s) will not be received.
+        </div>
+    @endif
 
     <div class="card mb-4">
         <h5 class="card-header">Line Items</h5>

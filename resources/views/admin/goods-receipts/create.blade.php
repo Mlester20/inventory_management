@@ -138,7 +138,16 @@
                         </div>
                     </div>
 
-                    <h6 class="mb-2">Pending Lines</h6>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <div>
+                            <h6 class="mb-0">Pending Lines</h6>
+                            <span id="poSelectedCount" class="text-muted small"></span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="poSelectAllBtn">Select all</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="poDeselectAllBtn">Deselect all</button>
+                        </div>
+                    </div>
                     <div id="poLineItemsBody"></div>
                     <div id="poEmptyMessage" class="alert alert-info d-none">Select a Purchase Order to load its pending lines.</div>
                 </div>
@@ -187,6 +196,8 @@
         // inputs can't silently block native HTML5 validation on submit.
         document.querySelectorAll('#direct_tab input, #direct_tab select').forEach(el => el.disabled = !directVisible);
         document.querySelectorAll('#purchase_order_tab input, #purchase_order_tab select').forEach(el => el.disabled = directVisible);
+        // ...but a PO line the receiver unticked must stay out of the form even while this tab is shown.
+        document.querySelectorAll('#poLineItemsBody .line-item-card').forEach(applyPoCardState);
 
         // "Add Item" only applies to the Direct Receipt tab (Against-PO rows
         // come from the PO's own pending lines, plus Split Item per-line) —
@@ -239,6 +250,14 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    // escapeHtml() leaves " alone, which is fine between tags but not inside value="..." —
+    // an item named ICE BAG, 6" (ADVAN) cut the attribute short and lost the brand.
+    function escapeAttr(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     // Renders up to 30 matches as clickable rows under an Item input. Capped
@@ -530,15 +549,52 @@
         // (remaining_qty is always live, never stale) instead of the
         // fetch's own defaults. Multiple saved lines against the same PO
         // line (from Split Item) render as that many cards.
+        // A resumed draft only saved the lines that were ticked — the rest come back unticked.
+        const resumingDraft = PO_PREFILL_LINES.length > 0;
         data.items.forEach(line => {
             const matches = PO_PREFILL_LINES.filter(p => String(p.purchase_order_item_id) === String(line.purchase_order_item_id));
             if (matches.length === 0) {
-                renderPoLine(body, line, false);
+                renderPoLine(body, line, false, null, !resumingDraft);
                 return;
             }
             matches.forEach((prefill, i) => renderPoLine(body, line, i > 0, prefill));
         });
+        refreshPoSelectedCount();
     });
+
+    // A ticked "Receive" box means this line is part of the receipt. Unticked lines are dimmed and
+    // disabled, so they are never posted and stay pending on the Purchase Order.
+    function applyPoCardState(card) {
+        const tabHidden = document.getElementById('purchase_order_tab').style.display === 'none';
+        const checkbox = card.querySelector('.receive-checkbox');
+        checkbox.disabled = tabHidden;
+        card.classList.toggle('opacity-50', !checkbox.checked);
+        card.querySelectorAll('input, select').forEach(el => {
+            if (el !== checkbox) el.disabled = tabHidden || !checkbox.checked;
+        });
+    }
+
+    function refreshPoSelectedCount() {
+        const cards = document.querySelectorAll('#poLineItemsBody .line-item-card');
+        const ticked = document.querySelectorAll('#poLineItemsBody .receive-checkbox:checked').length;
+        document.getElementById('poSelectedCount').textContent = cards.length ? `${ticked} of ${cards.length} lines selected to receive` : '';
+    }
+
+    document.getElementById('poLineItemsBody').addEventListener('change', function (e) {
+        if (!e.target.classList.contains('receive-checkbox')) return;
+        applyPoCardState(e.target.closest('.line-item-card'));
+        refreshPoSelectedCount();
+    });
+
+    function setAllPoCards(checked) {
+        document.querySelectorAll('#poLineItemsBody .line-item-card').forEach(card => {
+            card.querySelector('.receive-checkbox').checked = checked;
+            applyPoCardState(card);
+        });
+        refreshPoSelectedCount();
+    }
+    document.getElementById('poSelectAllBtn').addEventListener('click', () => setAllPoCards(true));
+    document.getElementById('poDeselectAllBtn').addEventListener('click', () => setAllPoCards(false));
 
     // Sum of every rendered card's qty for this PO line except $excludeCard —
     // lets a card's own cap reflect what its siblings (from Split Item)
@@ -547,7 +603,7 @@
         const cards = document.querySelectorAll(`#poLineItemsBody .line-item-card[data-po-item-id="${purchaseOrderItemId}"]`);
         let total = 0;
         cards.forEach(c => {
-            if (c === excludeCard) return;
+            if (c === excludeCard || !c.querySelector('.receive-checkbox').checked) return;
             total += parseInt(c.querySelector('.qty-input').value, 10) || 0;
         });
         return total;
@@ -557,7 +613,7 @@
     // pending line normally, and again by "Split Item" when the same PO
     // line is being received under more than one brand/batch — every card
     // for the same purchase_order_item_id shares one combined qty cap.
-    function renderPoLine(body, line, isSplit, prefill = null) {
+    function renderPoLine(body, line, isSplit, prefill = null, receive = true) {
         const index = poRowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -586,22 +642,30 @@
 
         card.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-semibold">${line.item_name}</span>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check mb-0" title="Untick if this item did not arrive in this delivery — it stays pending on the Purchase Order.">
+                        <input class="form-check-input receive-checkbox" type="checkbox" id="receive-${index}" ${receive ? 'checked' : ''}>
+                        <label class="form-check-label small" for="receive-${index}">Receive</label>
+                    </div>
+                    <span class="fw-semibold">${escapeHtml(line.item_name)}</span>
+                </div>
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-warning text-dark">Remaining: ${line.remaining_qty}</span>
                     <button type="button" class="btn btn-sm btn-outline-secondary split-item-btn" title="Received under another brand or batch too?">
                         <i class="bx bx-git-branch"></i> Split Item
                     </button>
-                    ${isSplit ? `<button type="button" class="btn btn-sm btn-outline-danger remove-row-btn"><i class="bx bx-trash"></i></button>` : ''}
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn" title="Remove this line from the receipt (it stays pending on the Purchase Order)">
+                        <i class="bx bx-trash"></i> Remove
+                    </button>
                 </div>
             </div>
             <div class="row g-2">
                 <div class="col-md-6">
                     <label class="form-label small mb-1">Brand</label>
                     <input type="text" class="form-control po-brand-input${initialItem ? '' : ' is-invalid'}" list="po-brand-list-${index}"
-                        value="${initialItem ? initialItem.name : line.description}" autocomplete="off"
+                        value="${escapeAttr(initialItem ? initialItem.name : line.description)}" autocomplete="off"
                         placeholder="${initialItem ? '' : 'Select the brand actually received'}">
-                    <datalist id="po-brand-list-${index}">${brandSiblings.map(i => `<option value="${i.name}"></option>`).join('')}</datalist>
+                    <datalist id="po-brand-list-${index}">${brandSiblings.map(i => `<option value="${escapeAttr(i.name)}"></option>`).join('')}</datalist>
                     ${initialItem ? '' : '<div class="invalid-feedback d-block">Pick the brand received for this item before saving.</div>'}
                 </div>
                 <div class="col-6 col-md-3">
@@ -625,7 +689,7 @@
             <div class="row g-2 mt-1">
                 <div class="col-md-3">
                     <label class="form-label small mb-1">Unit</label>
-                    <input type="text" name="items[${index}][unit]" class="form-control" readonly value="${line.unit || ''}">
+                    <input type="text" name="items[${index}][unit]" class="form-control" readonly value="${escapeAttr(line.unit || '')}">
                 </div>
                 <div class="col-md-9">
                     <label class="form-label small mb-1">Remarks</label>
@@ -708,12 +772,13 @@
 
         card.querySelector('.split-item-btn').addEventListener('click', () => renderPoLine(body, line, true));
 
-        if (isSplit) {
-            card.querySelector('.remove-row-btn').addEventListener('click', () => card.remove());
-        }
+        card.querySelector('.remove-row-btn').addEventListener('click', () => {
+            card.remove();
+            refreshPoSelectedCount();
+        });
 
-        const poVisible = document.getElementById('purchase_order_tab').style.display !== 'none';
-        card.querySelectorAll('input, select').forEach(el => el.disabled = !poVisible);
+        applyPoCardState(card);
+        refreshPoSelectedCount();
     }
 
     // Auto-trigger the Purchase Order tab load if a purchase_order_id was preselected via the URL
@@ -734,6 +799,16 @@
         const isDraft = e.submitter && e.submitter.value === 'draft';
         const poActive = document.getElementById('purchase_order_tab').style.display !== 'none';
         if (isDraft || !poActive) return;
+
+        if (document.querySelectorAll('#poLineItemsBody .receive-checkbox:checked').length === 0) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Nothing to receive',
+                text: 'Tick at least one line that arrived in this delivery.',
+            });
+            return;
+        }
 
         const unresolved = Array.from(document.querySelectorAll('#poLineItemsBody .po-product-id-input'))
             .filter(input => !input.disabled && !input.value);

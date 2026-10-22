@@ -3,10 +3,72 @@
 namespace App\Services;
 
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseOrderService
 {
+    /**
+     * Stop expecting whatever is still unreceived on an issued Purchase Order (the
+     * supplier will never deliver it). Received quantities, stock and cost are not
+     * touched — the order just becomes CLOSED, so it drops out of "pending" and no
+     * further Goods Receipt can be made against it. Returns the lines that were
+     * still short, for the audit trail.
+     *
+     * @return array<int,array{item:string,ordered:int,received:int,unreceived:int}>
+     */
+    public function closeOrder(PurchaseOrder $purchaseOrder): array
+    {
+        return DB::transaction(function () use ($purchaseOrder) {
+            $order = PurchaseOrder::with(['items.product', 'items.genericName'])->lockForUpdate()->findOrFail($purchaseOrder->id);
+
+            if ($order->isDraft() || ! in_array($order->status, ['open', 'partially_received'], true)) {
+                throw ValidationException::withMessages(['close' => 'Only an open or partially received Purchase Order can be closed.']);
+            }
+
+            $unreceived = $order->items
+                ->filter(fn (PurchaseOrderItem $item) => $item->remaining_qty > 0)
+                ->map(fn (PurchaseOrderItem $item) => [
+                    'item' => $item->product->item_name ?? $item->genericName->generic_name ?? '—',
+                    'ordered' => (int) $item->qty,
+                    'received' => (int) $item->received_qty,
+                    'unreceived' => (int) $item->remaining_qty,
+                ])
+                ->values()
+                ->all();
+
+            $order->update(['status' => 'closed']);
+
+            return $unreceived;
+        });
+    }
+
+    /**
+     * Undo a Close: the order goes back to whatever its received quantities say
+     * (open / partially received / completed).
+     */
+    public function reopenOrder(PurchaseOrder $purchaseOrder): PurchaseOrder
+    {
+        return DB::transaction(function () use ($purchaseOrder) {
+            $order = PurchaseOrder::with('items')->lockForUpdate()->findOrFail($purchaseOrder->id);
+
+            if ($order->status !== 'closed') {
+                throw ValidationException::withMessages(['close' => 'Only a closed Purchase Order can be reopened.']);
+            }
+
+            $status = match (true) {
+                $order->items->every(fn (PurchaseOrderItem $item) => $item->received_qty >= $item->qty) => 'completed',
+                $order->items->contains(fn (PurchaseOrderItem $item) => $item->received_qty > 0) => 'partially_received',
+                default => 'open',
+            };
+
+            $order->update(['status' => $status]);
+
+            return $order;
+        });
+    }
+
     /**
      * Create a Purchase Order with its line items. A line orders a Generic
      * Item — the specific brand (product_id) isn't decided until Goods

@@ -21,6 +21,11 @@ class GoodsReceiptService
      */
     public function getPendingPurchaseOrderItems(PurchaseOrder $purchaseOrder): Collection
     {
+        // A closed order is no longer expecting anything.
+        if ($purchaseOrder->status === 'closed') {
+            return new Collection();
+        }
+
         return $purchaseOrder->items()
             ->with(['product.batches', 'genericName'])
             ->get()
@@ -175,7 +180,13 @@ class GoodsReceiptService
 
             $purchaseOrderItem = null;
             if (! empty($line['purchase_order_item_id'])) {
-                $purchaseOrderItem = PurchaseOrderItem::findOrFail($line['purchase_order_item_id']);
+                $purchaseOrderItem = PurchaseOrderItem::with('purchaseOrder')->findOrFail($line['purchase_order_item_id']);
+
+                if ($purchaseOrderItem->purchaseOrder->status === 'closed') {
+                    throw ValidationException::withMessages([
+                        'items' => "Purchase Order {$purchaseOrderItem->purchaseOrder->po_no} is closed — reopen it before receiving against it.",
+                    ]);
+                }
 
                 if ($qty > $purchaseOrderItem->remaining_qty) {
                     throw ValidationException::withMessages([
@@ -227,6 +238,11 @@ class GoodsReceiptService
      */
     protected function refreshPurchaseOrderStatus(PurchaseOrder $purchaseOrder): void
     {
+        // Closing is a deliberate decision, not derived from quantities — never overwrite it.
+        if ($purchaseOrder->status === 'closed') {
+            return;
+        }
+
         $items = $purchaseOrder->items;
 
         $status = match (true) {

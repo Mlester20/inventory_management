@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $badge = ['COMPLETED' => 'bg-success', 'PARTIALLY RECEIVED' => 'bg-info', 'OPEN' => 'bg-warning'];
+    $badge = ['COMPLETED' => 'bg-success', 'PARTIALLY RECEIVED' => 'bg-info', 'CLOSED' => 'bg-dark', 'OPEN' => 'bg-warning'];
 @endphp
 <div class="container-xxl flex-grow-1 container-p-y">
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">

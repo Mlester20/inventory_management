@@ -76,6 +76,7 @@
                         <th class="text-center">Completed</th>
                         <th class="text-center">Partially Received</th>
                         <th class="text-center">Open</th>
+                        <th class="text-center">Closed</th>
                         <th class="text-center">Qty Ordered</th>
                         <th class="text-center">Pending</th>
                     </tr>
@@ -90,6 +91,7 @@
                             <td class="text-center">{{ number_format($row['completed']) }}</td>
                             <td class="text-center">{{ number_format($row['partially_received']) }}</td>
                             <td class="text-center">{{ number_format($row['open']) }}</td>
+                            <td class="text-center">{{ number_format($row['closed']) }}</td>
                             <td class="text-center">
                                 @if($row['qty_ordered'] > 0)
                                     <a href="{{ route('po-summary.items', ['supplier_id' => $row['supplier_id'], 'scope' => 'ordered']) }}" title="Every ordered item">{{ number_format($row['qty_ordered']) }}</a>
@@ -106,7 +108,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted py-4">No Purchase Orders{{ $search !== '' ? ' for this search' : '' }}.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-4">No Purchase Orders{{ $search !== '' ? ' for this search' : '' }}.</td></tr>
                     @endforelse
                 </tbody>
                 @if($suppliers->isNotEmpty())
@@ -117,6 +119,7 @@
                             <td class="text-center">{{ number_format($suppliers->sum('completed')) }}</td>
                             <td class="text-center">{{ number_format($suppliers->sum('partially_received')) }}</td>
                             <td class="text-center">{{ number_format($suppliers->sum('open')) }}</td>
+                            <td class="text-center">{{ number_format($suppliers->sum('closed')) }}</td>
                             <td class="text-center">{{ number_format($suppliers->sum('qty_ordered')) }}</td>
                             <td class="text-center">{{ number_format($suppliers->sum('pending')) }}</td>
                         </tr>

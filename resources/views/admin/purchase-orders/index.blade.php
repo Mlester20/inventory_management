@@ -49,7 +49,7 @@
                                 @if($purchaseOrder->isDraft())
                                     <span class="badge bg-secondary">DRAFT</span>
                                 @else
-                                    <span class="badge bg-{{ ['open' => 'warning', 'partially_received' => 'info', 'completed' => 'success', 'cancelled' => 'danger'][$purchaseOrder->status] ?? 'secondary' }}">
+                                    <span class="badge bg-{{ ['open' => 'warning', 'partially_received' => 'info', 'completed' => 'success', 'closed' => 'dark', 'cancelled' => 'danger'][$purchaseOrder->status] ?? 'secondary' }}">
                                         {{ ucfirst(str_replace('_', ' ', $purchaseOrder->status)) }}
                                     </span>
                                 @endif

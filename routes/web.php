@@ -231,6 +231,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('admin/expense-categories', ExpenseCategoryController::class)->only(['store', 'destroy']);
     Route::resource('admin/purchase-orders', PurchaseOrderController::class);
+    Route::post('admin/purchase-orders/{purchaseOrder}/close', [PurchaseOrderController::class, 'close'])->name('purchase-orders.close');
+    Route::post('admin/purchase-orders/{purchaseOrder}/reopen', [PurchaseOrderController::class, 'reopen'])->name('purchase-orders.reopen');
     Route::get('admin/purchase-order-summary', [PurchaseOrderSummaryController::class, 'index'])->name('po-summary.index');
     Route::get('admin/purchase-order-summary/orders', [PurchaseOrderSummaryController::class, 'orders'])->name('po-summary.orders');
     Route::get('admin/purchase-order-summary/items', [PurchaseOrderSummaryController::class, 'items'])->name('po-summary.items');

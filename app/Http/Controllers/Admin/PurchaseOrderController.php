@@ -237,6 +237,60 @@ class PurchaseOrderController extends Controller
     }
 
     /**
+     * Close an issued Purchase Order whose remaining items will never arrive (the same
+     * kind of manual decision as "Mark as Delivered" on a Delivery Receipt).
+     */
+    public function close(PurchaseOrder $purchaseOrder)
+    {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Closing Purchase Orders is restricted to full admin accounts.');
+            return redirect()->route('purchase-orders.show', $purchaseOrder);
+        }
+
+        $unreceived = $this->purchaseOrderService->closeOrder($purchaseOrder);
+        $totalUnreceived = array_sum(array_column($unreceived, 'unreceived'));
+
+        ActivityLog::record(
+            module: 'PurchaseOrder',
+            action: 'closed',
+            loggable: $purchaseOrder,
+            description: "Closed Purchase Order {$purchaseOrder->po_no} with {$totalUnreceived} unit(s) never received",
+            metadata: ['unreceived' => $unreceived],
+        );
+
+        Alert::success('Closed', "{$purchaseOrder->po_no} is now closed.");
+        return redirect()->route('purchase-orders.show', $purchaseOrder);
+    }
+
+    public function reopen(PurchaseOrder $purchaseOrder)
+    {
+        if ($blocked = $this->blockUserTier()) {
+            return $blocked;
+        }
+
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Reopening Purchase Orders is restricted to full admin accounts.');
+            return redirect()->route('purchase-orders.show', $purchaseOrder);
+        }
+
+        $order = $this->purchaseOrderService->reopenOrder($purchaseOrder);
+
+        ActivityLog::record(
+            module: 'PurchaseOrder',
+            action: 'reopened',
+            loggable: $purchaseOrder,
+            description: "Reopened Purchase Order {$purchaseOrder->po_no} (now {$order->status})",
+        );
+
+        Alert::success('Reopened', "{$purchaseOrder->po_no} is open for receiving again.");
+        return redirect()->route('purchase-orders.show', $purchaseOrder);
+    }
+
+    /**
      * A draft has never been received against, so editing it is completely
      * safe — reuses the same create view, pre-filled with the draft's own
      * current items. A posted (issued) order is not supported for editing,

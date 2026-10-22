@@ -24,6 +24,7 @@
                     <th class="text-end">COMPLETED</th>
                     <th class="text-end">PARTIALLY<br>RECEIVED</th>
                     <th class="text-end">OPEN</th>
+                    <th class="text-end">CLOSED</th>
                     <th class="text-end">QTY ORDERED</th>
                     <th class="text-end">PENDING</th>
                 </tr>
@@ -36,6 +37,7 @@
                         <td class="text-end">{{ number_format($row['completed']) }}</td>
                         <td class="text-end">{{ number_format($row['partially_received']) }}</td>
                         <td class="text-end">{{ number_format($row['open']) }}</td>
+                        <td class="text-end">{{ number_format($row['closed']) }}</td>
                         <td class="text-end">{{ number_format($row['qty_ordered']) }}</td>
                         <td class="text-end fw-bold">{{ number_format($row['pending']) }}</td>
                     </tr>
@@ -48,6 +50,7 @@
                     <td class="text-end">{{ number_format($suppliers->sum('completed')) }}</td>
                     <td class="text-end">{{ number_format($suppliers->sum('partially_received')) }}</td>
                     <td class="text-end">{{ number_format($suppliers->sum('open')) }}</td>
+                    <td class="text-end">{{ number_format($suppliers->sum('closed')) }}</td>
                     <td class="text-end">{{ number_format($suppliers->sum('qty_ordered')) }}</td>
                     <td class="text-end">{{ number_format($suppliers->sum('pending')) }}</td>
                 </tr>
