@@ -254,7 +254,7 @@ class DeliveryReceiptController extends Controller
      */
     public function show(DeliveryReceipt $deliveryReceipt)
     {
-        $deliveryReceipt->load('customer', 'salesOrder', 'preparedBy', 'items.productBatch.product.genericName', 'items.sales.invoice', 'items.salesOrderItem');
+        $deliveryReceipt->load('customer', 'salesOrder', 'preparedBy', 'items.productBatch.product.genericName', 'items.sales.invoice', 'items.salesOrderItem', 'splitFrom.items.productBatch.product', 'splitChildren.salesOrder', 'splitChildren.items.productBatch.product');
 
         $canLink = $this->canLinkSalesOrder($deliveryReceipt);
         $linkCandidates = $canLink ? $this->linkCandidates($deliveryReceipt) : [];
@@ -319,18 +319,23 @@ class DeliveryReceiptController extends Controller
 
         $salesOrder = SalesOrder::findOrFail($validated['sales_order_id']);
 
-        $this->deliveryReceiptService->linkToSalesOrder($deliveryReceipt, $salesOrder, $validated['line_map'], auth()->id(), $validated['link_qty'] ?? []);
+        $linked = $this->deliveryReceiptService->linkToSalesOrder($deliveryReceipt, $salesOrder, $validated['line_map'], auth()->id(), $validated['link_qty'] ?? []);
+        $wasSplit = $linked->id !== $deliveryReceipt->id;
 
         ActivityLog::record(
             module: 'DeliveryReceipt',
             action: 'linked_sales_order',
             loggable: $deliveryReceipt,
-            description: "Linked Delivery Receipt {$deliveryReceipt->dr_no} to Sales Order {$salesOrder->so_no}",
-            metadata: ['sales_order_id' => $salesOrder->id, 'line_map' => $validated['line_map'], 'link_qty' => $validated['link_qty'] ?? []],
+            description: $wasSplit
+                ? "Linked part of Delivery Receipt {$deliveryReceipt->dr_no} to Sales Order {$salesOrder->so_no} as new Delivery Receipt {$linked->dr_no}"
+                : "Linked Delivery Receipt {$deliveryReceipt->dr_no} to Sales Order {$salesOrder->so_no}",
+            metadata: ['sales_order_id' => $salesOrder->id, 'line_map' => $validated['line_map'], 'link_qty' => $validated['link_qty'] ?? [], 'new_delivery_receipt' => $wasSplit ? $linked->dr_no : null],
         );
 
-        Alert::success('Success', "Delivery Receipt linked to {$salesOrder->so_no}.");
-        return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        Alert::success('Success', $wasSplit
+            ? "Linked to {$salesOrder->so_no} as new {$linked->dr_no}. What was not linked stays on {$deliveryReceipt->dr_no}."
+            : "Delivery Receipt linked to {$salesOrder->so_no}.");
+        return redirect()->route('delivery-receipts.show', $linked);
     }
 
     /**

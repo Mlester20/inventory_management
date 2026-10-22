@@ -139,6 +139,35 @@
                     </div>
                 </div>
 
+                @if($deliveryReceipt->splitFrom)
+                    @php
+                        $parent = $deliveryReceipt->splitFrom;
+                        $parentLeft = $parent->items->groupBy('product_batch_id')->map(fn ($rows) => $rows->sum('qty'));
+                    @endphp
+                    <div class="border rounded p-2 mb-3 small">
+                        <strong>Split from {{ $parent->dr_no }}</strong> ({{ $deliveryReceipt->created_at->format('M d, Y') }}) — this receipt carries the part linked to
+                        {{ $deliveryReceipt->salesOrder->so_no ?? 'the Sales Order' }}. Original quantities:
+                        @foreach($deliveryReceipt->items->groupBy('product_batch_id') as $batchId => $rows)
+                            @php $here = $rows->sum('qty'); $left = $parentLeft[$batchId] ?? 0; @endphp
+                            {{ $rows->first()->productBatch->product->item_name }}: {{ $here + $left }}
+                            ({{ $here }} here{{ $left ? ', ' . $left . ' left on ' . $parent->dr_no : '' }}){{ ! $loop->last ? ';' : '.' }}
+                        @endforeach
+                    </div>
+                @endif
+
+                @if($deliveryReceipt->splitChildren->isNotEmpty())
+                    <div class="border rounded p-2 mb-3 small">
+                        <strong>Part of this receipt was split off</strong> — the quantities below are what remains here.
+                        @foreach($deliveryReceipt->splitChildren as $child)
+                            Moved to {{ $child->dr_no }} ({{ $child->salesOrder->so_no ?? '—' }}, {{ $child->created_at->format('M d, Y') }}):
+                            @foreach($child->items->groupBy('product_batch_id') as $rows)
+                                {{ $rows->first()->productBatch->product->item_name }} {{ $rows->sum('qty') }}{{ ! $loop->last ? ',' : '' }}
+                            @endforeach
+                            {{ ! $loop->last ? ';' : '.' }}
+                        @endforeach
+                    </div>
+                @endif
+
                 <hr>
 
                 <div class="table-responsive">
@@ -270,7 +299,8 @@
                                 <p class="text-muted small">
                                     This Delivery Receipt was posted without a Sales Order, so the order's balance and status never caught up.
                                     Linking records what it already delivered against the order — no stock moves, since it was deducted when the receipt was posted.
-                                    It then becomes a Purchase Order delivery, and invoicing it will use the Sales Order's price.
+                                    What you link becomes a Purchase Order delivery (invoicing it uses the Sales Order's price). If anything is left unlinked,
+                                    the linked part moves to a new Delivery Receipt and the rest stays here as an Advance Order, free to be linked to another order later.
                                 </p>
                                 <div class="mb-3">
                                     <label for="linkSalesOrderSelect" class="form-label">Sales Order ({{ $deliveryReceipt->customer->customer_name }})</label>
@@ -502,9 +532,18 @@
                 }
                 totals[sel.value] = (totals[sel.value] || 0) + qty;
                 if (qty < line.qty) {
-                    notes.push('<div class="text-muted">' + line.label + ': ' + qty + ' linked, ' + (line.qty - qty) + ' stays on this receipt without a Sales Order.</div>');
+                    notes.push('<div class="text-muted">' + line.label + ': ' + qty + ' linked, ' + (line.qty - qty) + ' stays on this Advance Order receipt.</div>');
                 }
             });
+
+            const leftover = DR_LINES.some(line => {
+                const tr = body.querySelector('tr[data-line="' + line.id + '"]');
+                const sel = tr.querySelector('select.link-so-item');
+                return !sel.value || rowQty(tr) < line.qty;
+            });
+            if (anyLinked && leftover) {
+                notes.push('<div class="text-muted">A new Delivery Receipt will be created for what you link. The rest stays on {{ $deliveryReceipt->dr_no }}.</div>');
+            }
 
             so.items.forEach(item => {
                 const linked = totals[item.id] || 0;

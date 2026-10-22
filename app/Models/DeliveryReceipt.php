@@ -14,6 +14,7 @@ class DeliveryReceipt extends Model
     protected $fillable = [
         'customer_id',
         'sales_order_id',
+        'split_from_delivery_receipt_id',
         'dr_no',
         'transaction_type',
         'status',
@@ -81,6 +82,17 @@ class DeliveryReceipt extends Model
     public function salesOrder(): BelongsTo
     {
         return $this->belongsTo(SalesOrder::class);
+    }
+
+    /** The Advance Order DR this one was split off from when part of it was linked to a Sales Order. */
+    public function splitFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'split_from_delivery_receipt_id')->withTrashed();
+    }
+
+    public function splitChildren(): HasMany
+    {
+        return $this->hasMany(self::class, 'split_from_delivery_receipt_id');
     }
 
     public function preparedBy(): BelongsTo

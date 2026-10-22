@@ -403,16 +403,19 @@ class DeliveryReceiptService
      * Purchase Order DR, so invoicing it afterwards uses the Sales Order's price.
      *
      * Not every line has to be linked, and a line can be linked for less than its
-     * full qty (e.g. 5 of 20 pcs belong to the order): the DR line is then split
-     * in two — the linked part and the untouched remainder, same batch, so the
-     * total delivered and the stock are unchanged.
+     * full qty (e.g. 5 of 20 pcs belong to the order). When anything is left
+     * over, the linked part moves to a NEW Purchase Order DR (same date, same
+     * batches, so stock and the total delivered are unchanged) and the rest stays
+     * on this Advance Order DR, still free to be linked to another order. When
+     * everything is linked, this DR itself simply becomes the Purchase Order DR.
+     * Returns whichever DR now carries the link.
      *
      * @param array<int,int|string|null> $lineMap DR item id => Sales Order item id (blank = leave unlinked)
      * @param array<int,int|string|null> $qtyMap  DR item id => qty to link (blank = the line's full qty)
      */
-    public function linkToSalesOrder(DeliveryReceipt $deliveryReceipt, SalesOrder $salesOrder, array $lineMap, ?int $userId = null, array $qtyMap = []): void
+    public function linkToSalesOrder(DeliveryReceipt $deliveryReceipt, SalesOrder $salesOrder, array $lineMap, ?int $userId = null, array $qtyMap = []): DeliveryReceipt
     {
-        DB::transaction(function () use ($deliveryReceipt, $salesOrder, $lineMap, $qtyMap) {
+        return DB::transaction(function () use ($deliveryReceipt, $salesOrder, $lineMap, $qtyMap) {
             $deliveryReceipt = DeliveryReceipt::lockForUpdate()->findOrFail($deliveryReceipt->id);
 
             if ($deliveryReceipt->isDraft() || $deliveryReceipt->isCancelled()
@@ -465,26 +468,49 @@ class DeliveryReceiptService
                 throw ValidationException::withMessages(['link' => 'Link at least one Delivery Receipt line to a Sales Order line.']);
             }
 
+            $hasLeftover = $lines->contains(fn ($line) => ! isset($links[$line->id]) || $links[$line->id][1] < $line->qty);
+
+            $target = $deliveryReceipt;
+            if ($hasLeftover) {
+                $target = DeliveryReceipt::create([
+                    'customer_id' => $deliveryReceipt->customer_id,
+                    'sales_order_id' => $salesOrder->id,
+                    'split_from_delivery_receipt_id' => $deliveryReceipt->id,
+                    'dr_no' => $this->generateDrNo(),
+                    'transaction_type' => 'purchase_order',
+                    'status' => $deliveryReceipt->status,
+                    'is_draft' => false,
+                    'description' => $deliveryReceipt->description,
+                    'receipt_date' => $deliveryReceipt->receipt_date,
+                    'prepared_by' => $deliveryReceipt->prepared_by,
+                ]);
+            }
+
             foreach ($links as $lineId => [$soItemId, $qty]) {
                 $line = $lines->firstWhere('id', $lineId);
 
                 if ($qty < $line->qty) {
                     $linkedPart = $line->replicate();
+                    $linkedPart->delivery_receipt_id = $target->id;
                     $linkedPart->qty = $qty;
                     $linkedPart->invoiced_qty = 0;
                     $linkedPart->sales_order_item_id = $soItemId;
                     $linkedPart->save();
                     $line->update(['qty' => $line->qty - $qty]);
                 } else {
-                    $line->update(['sales_order_item_id' => $soItemId]);
+                    $line->update(['delivery_receipt_id' => $target->id, 'sales_order_item_id' => $soItemId]);
                 }
             }
             foreach ($linkedQty as $soItemId => $qty) {
                 $salesOrderItems->get($soItemId)->increment('delivered_qty', $qty);
             }
 
-            $deliveryReceipt->update(['sales_order_id' => $salesOrder->id, 'transaction_type' => 'purchase_order']);
+            if (! $hasLeftover) {
+                $deliveryReceipt->update(['sales_order_id' => $salesOrder->id, 'transaction_type' => 'purchase_order']);
+            }
             $this->refreshSalesOrderStatus($salesOrder->fresh());
+
+            return $target;
         });
     }
 
