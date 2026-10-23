@@ -150,7 +150,7 @@
                         {{ $deliveryReceipt->items->groupBy('product_batch_id')->map(function ($rows, $batchId) use ($parentLeft, $parent) {
                             $here = $rows->sum('qty');
                             $left = $parentLeft[$batchId] ?? 0;
-                            return $rows->first()->productBatch->product->item_name . ': ' . ($here + $left)
+                            return $rows->first()->productBatch->product->display_description . ': ' . ($here + $left)
                                 . ' (' . $here . ' here' . ($left ? ', ' . $left . ' left on ' . $parent->dr_no : '') . ')';
                         })->implode('; ') }}.
                     </div>
@@ -161,7 +161,7 @@
                         <strong>Part of this receipt was split off</strong> — the quantities below are what remains here.
                         @foreach($deliveryReceipt->splitChildren as $child)
                             Moved to {{ $child->dr_no }} ({{ $child->salesOrder->so_no ?? '—' }}, {{ $child->created_at->format('M d, Y') }}):
-                            {{ $child->items->groupBy('product_batch_id')->map(fn ($rows) => $rows->first()->productBatch->product->item_name . ' ' . $rows->sum('qty'))->implode(', ') }}{{ ! $loop->last ? ';' : '.' }}
+                            {{ $child->items->groupBy('product_batch_id')->map(fn ($rows) => $rows->first()->productBatch->product->display_description . ' ' . $rows->sum('qty'))->implode(', ') }}{{ ! $loop->last ? ';' : '.' }}
                         @endforeach
                     </div>
                 @endif
@@ -211,7 +211,7 @@
                                     @endif
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $line->productBatch->product->genericName->generic_name ?? '—' }}</td>
-                                    <td>{{ $line->productBatch->product->item_name }}</td>
+                                    <td>{{ $line->productBatch->product->display_description }}</td>
                                     <td>{{ $line->batch_no ?? '—' }}</td>
                                     <td>{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
                                     <td style="white-space: pre-line;">{{ $line->remarks ?? '—' }}</td>
@@ -370,7 +370,7 @@
                         @foreach ($deliveryReceipt->items as $line)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
-                                <td>{{ $line->productBatch->product->item_name }}</td>
+                                <td>{{ $line->productBatch->product->display_description }}</td>
                                 <td class="text-center">{{ $line->productBatch->product->genericName->unit ?? '—' }}</td>
                                 <td class="text-center">{{ $line->batch_no ?? '—' }}</td>
                                 <td class="text-center">{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
@@ -479,7 +479,7 @@
     $linkDrLines = $deliveryReceipt->items->map(function ($line) {
         return [
             'id' => $line->id,
-            'label' => $line->productBatch->product->item_name . ($line->batch_no ? ' — Lot ' . $line->batch_no : ''),
+            'label' => $line->productBatch->product->display_description . ($line->batch_no ? ' — Lot ' . $line->batch_no : ''),
             'generic_name_id' => $line->productBatch->product->generic_name_id,
             'qty' => $line->qty,
             'invoiced' => $line->invoiced_qty,

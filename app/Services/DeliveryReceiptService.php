@@ -322,7 +322,7 @@ class DeliveryReceiptService
                 $saleRows[] = [
                     'delivery_receipt_item_id' => $line->id,
                     'product_batch_id' => $line->product_batch_id,
-                    'desc' => $product->item_name,
+                    'desc' => $product->display_description,
                     'qty' => $qty,
                     'unit' => $product->genericName->unit ?? null,
                     'batch_no' => $line->batch_no,

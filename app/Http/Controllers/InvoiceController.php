@@ -346,7 +346,7 @@ class InvoiceController extends Controller
                     $saleLines[] = [
                         'product' => $product,
                         'qty' => $qty,
-                        'desc' => $line['desc'] ?? $product->item_name,
+                        'desc' => $line['desc'] ?? $product->display_description,
                         'unit' => $line['unit'] ?? null,
                         'price' => $price,
                         'vat' => $lineVat,
