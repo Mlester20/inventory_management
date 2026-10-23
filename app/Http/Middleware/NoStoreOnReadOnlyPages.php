@@ -22,7 +22,7 @@ class NoStoreOnReadOnlyPages
 
         if ($request->isMethod('GET')
             && $request->user()
-            && preg_match('/\.(show|index)$/', $routeName)
+            && preg_match('/\.(show|index|dashboard)$/', $routeName)
             && ! $response->headers->has('Content-Disposition')) {
             $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         }
