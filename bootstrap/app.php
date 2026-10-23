@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminOnly::class,
         ]);
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsureUserIsActive::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\NoStoreOnReadOnlyPages::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
