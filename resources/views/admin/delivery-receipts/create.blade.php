@@ -379,7 +379,7 @@
         }
         let html = '<option value="">-- Select Item --</option>';
         items.forEach(item => {
-            const label = `${item.item_name} — Batch ${item.batch_no || 'N/A'} (Stock: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})`;
+            const label = `${item.item_description || item.item_name} — Batch ${item.batch_no || 'N/A'} (Stock: ${item.quantity}${item.expiration_date ? ', Exp: ' + item.expiration_date : ''})`;
             html += `<option value="${item.id}" data-max="${item.quantity}" data-batch="${item.batch_no || ''}" data-exp="${item.expiration_date || ''}">${label}</option>`;
         });
         return html;

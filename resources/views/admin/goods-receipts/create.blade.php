@@ -24,6 +24,8 @@
             border-bottom: 1px solid #f1f1f1;
             padding: .375rem .75rem;
             cursor: pointer;
+            white-space: normal;
+            word-break: break-word;
         }
         .item-suggestions button:last-child { border-bottom: 0; }
         .item-suggestions button:hover { background-color: #f8f9fa; }
@@ -662,10 +664,13 @@
             <div class="row g-2">
                 <div class="col-md-6">
                     <label class="form-label small mb-1">Brand</label>
-                    <input type="text" class="form-control po-brand-input${initialItem ? '' : ' is-invalid'}" list="po-brand-list-${index}"
-                        value="${escapeAttr(initialItem ? initialItem.name : line.description)}" autocomplete="off"
-                        placeholder="${initialItem ? '' : 'Select the brand actually received'}">
-                    <datalist id="po-brand-list-${index}">${brandSiblings.map(i => `<option value="${escapeAttr(i.name)}"></option>`).join('')}</datalist>
+                    <div class="position-relative">
+                        <input type="text" class="form-control po-brand-input${initialItem ? '' : ' is-invalid'}"
+                            value="${escapeAttr(initialItem ? initialItem.name : line.description)}" autocomplete="off"
+                            placeholder="${initialItem ? '' : 'Select the brand actually received'}">
+                        <div class="item-suggestions position-absolute w-100 po-brand-suggestions"
+                            style="z-index: 1050; max-height: 260px; overflow-y: auto; display: none;"></div>
+                    </div>
                     ${initialItem ? '' : '<div class="invalid-feedback d-block">Pick the brand received for this item before saving.</div>'}
                 </div>
                 <div class="col-6 col-md-3">
@@ -752,6 +757,38 @@
                 poExpiryInput.value = match.expiration_date || '';
             }
         });
+        // Brand suggestions are a custom dropdown (not a native <datalist>) so the browser can't clip a
+        // long item description. Focusing shows every brand of this generic; typing filters them.
+        const brandSuggestions = card.querySelector('.po-brand-suggestions');
+        function showBrandSuggestions(filter) {
+            const q = (filter || '').trim().toLowerCase();
+            const matches = brandSiblings.filter(i => !q || i.name.toLowerCase().includes(q));
+            brandSuggestions.replaceChildren(...matches.map(i => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'small';
+                button.dataset.itemId = i.id;
+                button.textContent = i.name;
+                return button;
+            }));
+            brandSuggestions.style.display = matches.length ? 'block' : 'none';
+        }
+        brandInput.addEventListener('focus', () => showBrandSuggestions(''));
+        brandInput.addEventListener('input', () => showBrandSuggestions(brandInput.value));
+        brandInput.addEventListener('blur', () => {
+            setTimeout(() => { brandSuggestions.style.display = 'none'; }, 150);
+        });
+        brandSuggestions.addEventListener('mousedown', function (e) {
+            const button = e.target.closest('[data-item-id]');
+            if (!button) return;
+            e.preventDefault();
+            const picked = brandSiblings.find(i => String(i.id) === button.dataset.itemId);
+            if (!picked) return;
+            brandInput.value = picked.name;
+            brandInput.dispatchEvent(new Event('input'));
+            brandSuggestions.style.display = 'none';
+        });
+
         brandInput.addEventListener('input', function () {
             // Only re-match against this generic's siblings — a
             // half-typed or unmatched brand leaves product_id untouched

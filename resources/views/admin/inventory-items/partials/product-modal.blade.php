@@ -36,13 +36,38 @@
 
                     <div class="mb-3">
                         <label class="form-label">Generic Description</label>
-                        <input type="text" class="form-control generic-name-search" id="{{ $prefix }}generic_name_search"
-                            list="{{ $prefix }}generic-name-datalist" placeholder="Search generic name..." autocomplete="off" required>
-                        <datalist id="{{ $prefix }}generic-name-datalist">
-                            @foreach ($genericNames as $genericName)
-                                <option value="{{ $genericName->generic_name }} ({{ $genericName->unit }}) — {{ $genericName->category->category_name }}"></option>
-                            @endforeach
-                        </datalist>
+                        @once
+                            <style>
+                                .generic-suggestions {
+                                    background-color: #fff;
+                                    border: 1px solid rgba(0, 0, 0, .15);
+                                    border-radius: .375rem;
+                                    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+                                }
+                                .generic-suggestions button {
+                                    display: block;
+                                    width: 100%;
+                                    text-align: left;
+                                    background-color: #fff;
+                                    border: 0;
+                                    border-bottom: 1px solid #f1f1f1;
+                                    padding: .375rem .75rem;
+                                    cursor: pointer;
+                                    white-space: normal;
+                                    word-break: break-word;
+                                }
+                                .generic-suggestions button:last-child { border-bottom: 0; }
+                                .generic-suggestions button:hover { background-color: #f8f9fa; }
+                            </style>
+                        @endonce
+                        {{-- A custom dropdown rather than a native <datalist>: the browser's own popup clips long
+                             generic descriptions to its internal width, so the whole name never showed. --}}
+                        <div class="position-relative">
+                            <input type="text" class="form-control generic-name-search" id="{{ $prefix }}generic_name_search"
+                                placeholder="Search generic name..." autocomplete="off" required>
+                            <div class="generic-suggestions position-absolute w-100" id="{{ $prefix }}generic_suggestions"
+                                style="z-index: 1060; max-height: 280px; overflow-y: auto; display: none;"></div>
+                        </div>
                         <input type="hidden" name="generic_name_id" id="{{ $prefix }}generic_name_id">
                     </div>
 
@@ -225,9 +250,46 @@
         unitDisplay.value = generic ? generic.unit : '';
     }
 
+    const genericSuggestions = document.getElementById(prefix + 'generic_suggestions');
+
+    // Up to 100 matching generics as wrapped rows; a field already holding an exact label
+    // browses the whole list instead of filtering down to that single entry.
+    function showGenericSuggestions() {
+        const typed = genericSearchInput.value.trim().toLowerCase();
+        const browsing = !typed || !!findProductGenericByLabel(genericSearchInput.value);
+        const matches = PRODUCT_GENERIC_NAMES
+            .filter(g => browsing || productGenericLabel(g).toLowerCase().includes(typed))
+            .slice(0, 100);
+
+        genericSuggestions.replaceChildren(...matches.map(g => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'small';
+            button.dataset.id = g.id;
+            button.textContent = productGenericLabel(g);
+            return button;
+        }));
+        genericSuggestions.style.display = matches.length ? 'block' : 'none';
+    }
+
     if (genericSearchInput) {
         genericSearchInput.addEventListener('input', function () {
             applyGeneric(findProductGenericByLabel(this.value));
+            showGenericSuggestions();
+        });
+        genericSearchInput.addEventListener('focus', showGenericSuggestions);
+        genericSearchInput.addEventListener('blur', () => {
+            setTimeout(() => { genericSuggestions.style.display = 'none'; }, 150);
+        });
+        genericSuggestions.addEventListener('mousedown', function (e) {
+            const button = e.target.closest('[data-id]');
+            if (!button) return;
+            e.preventDefault();
+            const generic = findProductGenericById(button.dataset.id);
+            if (!generic) return;
+            genericSearchInput.value = productGenericLabel(generic);
+            applyGeneric(generic);
+            genericSuggestions.style.display = 'none';
         });
     }
 

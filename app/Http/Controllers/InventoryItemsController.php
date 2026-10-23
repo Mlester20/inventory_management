@@ -131,13 +131,19 @@ class InventoryItemsController extends Controller
             // Batches fully depleted (disposed of, sold out, etc.) are
             // hidden by default to keep this tab focused on active stock —
             // the toggle exposes the full history including zero-qty rows.
+            // The box searches the item (name/brand/code) AND the lot itself — a lot/batch
+            // number is how stock is usually looked up on this tab.
             $batchQuery = fn () => ProductBatch::query()
-                ->whereHas('product', function ($q) use ($search) {
-                    if ($search) {
-                        $q->where('item_name', 'like', "%{$search}%")
-                            ->orWhere('brand_name', 'like', "%{$search}%")
-                            ->orWhere('code', 'like', "%{$search}%");
-                    }
+                ->whereHas('product')
+                ->when($search, function ($q) use ($search) {
+                    $q->where(function ($outer) use ($search) {
+                        $outer->where('batch_no', 'like', "%{$search}%")
+                            ->orWhereHas('product', function ($product) use ($search) {
+                                $product->where('item_name', 'like', "%{$search}%")
+                                    ->orWhere('brand_name', 'like', "%{$search}%")
+                                    ->orWhere('code', 'like', "%{$search}%");
+                            });
+                    });
                 })
                 ->when(! $showZero, function ($q) {
                     $q->whereHas('locationStocks', fn ($q2) => $q2->where('qty', '>', 0));

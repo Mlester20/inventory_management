@@ -29,6 +29,9 @@ class GenericNameController extends Controller
                 return [
                     'id' => $batch->id,
                     'item_name' => $batch->product->item_name,
+                    // The Item Description as entered in Product Details (what users read on the Product
+                    // record), falling back to the generated "Generic (Brand)" name when none was entered.
+                    'item_description' => $batch->product->description ?: $batch->product->item_name,
                     'brand_name' => $batch->product->brand_name,
                     'quantity' => $batch->locationStocks->sum('qty'),
                     'batch_no' => $batch->batch_no,

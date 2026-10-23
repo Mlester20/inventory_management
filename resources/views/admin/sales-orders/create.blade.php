@@ -252,6 +252,11 @@
     // 30 matches as clickable rows, or the first 30 entries when the query is
     // empty (clicking into a blank field browses, same as <datalist> used to
     // list everything on focus).
+    // Items that actually have stock come first (each group keeps its existing order).
+    function stockedFirst(items) {
+        return [...items.filter(i => i.quantity > 0), ...items.filter(i => !(i.quantity > 0))];
+    }
+
     function renderSuggestions(box, items, query, labelFn, idFn) {
         const q = query.trim().toLowerCase();
         const matches = (q ? items.filter(i => labelFn(i).toLowerCase().includes(q)) : items).slice(0, 30);
@@ -474,14 +479,14 @@
 
         itemDescriptionSearchInput.addEventListener('input', function () {
             if (document.activeElement === this) {
-                renderSuggestions(itemDescriptionSuggestions, currentProducts, this.value, productDisplayLabel, productId);
+                renderSuggestions(itemDescriptionSuggestions, stockedFirst(currentProducts), this.value, productDisplayLabel, productId);
             }
             const product = currentProducts.find(p => p.item_description === this.value);
             applyItemDescription(product || null);
         });
 
         itemDescriptionSearchInput.addEventListener('focus', function () {
-            renderSuggestions(itemDescriptionSuggestions, currentProducts, this.value, productDisplayLabel, productId);
+            renderSuggestions(itemDescriptionSuggestions, stockedFirst(currentProducts), this.value, productDisplayLabel, productId);
         });
 
         itemDescriptionSearchInput.addEventListener('blur', function () {
