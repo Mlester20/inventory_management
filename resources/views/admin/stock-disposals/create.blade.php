@@ -114,7 +114,7 @@
         }
 
         document.querySelectorAll('#lineItemsBody .product-search-input').forEach(input => {
-            const datalist = document.getElementById(input.getAttribute('list'));
+            const datalist = document.getElementById(input.getAttribute('list') || input.dataset.dlList);
             if (datalist) {
                 datalist.innerHTML = productDatalistOptions();
             }
@@ -246,12 +246,15 @@
         });
 
         batchInput.addEventListener('input', function () {
+            const typed = this.value;
             const product = findProductByLabel(productSearchInput.value);
             resetBatch();
+            // resetBatch() empties the box — keep what was typed/picked, or the Lot could never be entered.
+            this.value = typed;
             if (!product) {
                 return;
             }
-            const batch = product.batches.find(b => b.batch_no === this.value);
+            const batch = product.batches.find(b => b.batch_no === typed);
             if (batch) {
                 applyBatch(product, batch);
             }

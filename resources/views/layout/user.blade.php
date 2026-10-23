@@ -305,6 +305,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     {{-- yield scripts --}}
+    <script src="{{ asset('js/datalist-dropdown.js') }}?v={{ filemtime(public_path('js/datalist-dropdown.js')) }}"></script>
     @yield('scripts')
     <script async defer src="https://buttons.github.io/buttons.js"></script>
 </body>
