@@ -102,13 +102,12 @@
 
                     <div class="mb-3">
                         <label class="form-label">Supplier</label>
-                        <input type="text" class="form-control" id="{{ $prefix }}supplier_search"
-                            list="{{ $prefix }}supplier-datalist" placeholder="Search supplier..." autocomplete="off">
-                        <datalist id="{{ $prefix }}supplier-datalist">
-                            @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->supplier_name }}"></option>
-                            @endforeach
-                        </datalist>
+                        <div class="position-relative">
+                            <input type="text" class="form-control" id="{{ $prefix }}supplier_search"
+                                placeholder="Search supplier..." autocomplete="off">
+                            <div class="generic-suggestions position-absolute w-100" id="{{ $prefix }}supplier_suggestions"
+                                style="z-index: 1060; max-height: 280px; overflow-y: auto; display: none;"></div>
+                        </div>
                         <input type="hidden" name="supplier_id" id="{{ $prefix }}supplier_id">
                     </div>
 
@@ -295,10 +294,47 @@
 
     const supplierSearchInput = document.getElementById(prefix + 'supplier_search');
     const supplierIdInput = document.getElementById(prefix + 'supplier_id');
+    const supplierSuggestions = document.getElementById(prefix + 'supplier_suggestions');
+
+    // Same custom dropdown as the Generic Description above — the browser's own datalist popup
+    // clipped long supplier names. A field already holding an exact name browses the full list.
+    function showSupplierSuggestions() {
+        const typed = supplierSearchInput.value.trim().toLowerCase();
+        const browsing = !typed || !!findProductSupplierByName(supplierSearchInput.value);
+        const matches = PRODUCT_SUPPLIERS
+            .filter(s => browsing || s.name.toLowerCase().includes(typed))
+            .slice(0, 100);
+
+        supplierSuggestions.replaceChildren(...matches.map(s => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'small';
+            button.dataset.id = s.id;
+            button.textContent = s.name;
+            return button;
+        }));
+        supplierSuggestions.style.display = matches.length ? 'block' : 'none';
+    }
+
     if (supplierSearchInput) {
         supplierSearchInput.addEventListener('input', function () {
             const match = findProductSupplierByName(this.value);
             supplierIdInput.value = match ? match.id : '';
+            showSupplierSuggestions();
+        });
+        supplierSearchInput.addEventListener('focus', showSupplierSuggestions);
+        supplierSearchInput.addEventListener('blur', () => {
+            setTimeout(() => { supplierSuggestions.style.display = 'none'; }, 150);
+        });
+        supplierSuggestions.addEventListener('mousedown', function (e) {
+            const button = e.target.closest('[data-id]');
+            if (!button) return;
+            e.preventDefault();
+            const supplier = findProductSupplierById(button.dataset.id);
+            if (!supplier) return;
+            supplierSearchInput.value = supplier.name;
+            supplierIdInput.value = supplier.id;
+            supplierSuggestions.style.display = 'none';
         });
     }
 
