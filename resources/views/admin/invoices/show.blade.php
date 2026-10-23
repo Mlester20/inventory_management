@@ -73,7 +73,7 @@
                         @foreach ($invoice->sales as $sale)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
-                                <td>{{ $sale->productBatch->product->item_name ?? $sale->desc }}</td>
+                                <td>{{ $sale->productBatch?->product?->display_description ?? $sale->desc }}</td>
                                 <td class="text-center">{{ $sale->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $sale->qty }}</td>
                                 <td class="text-end">{{ number_format($sale->price, 2) }}</td>

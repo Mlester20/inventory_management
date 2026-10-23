@@ -9,7 +9,7 @@
             <a href="{{ route('stock-disposals.create') }}" class="btn btn-primary">New Stock Disposal</a>
         </div>
         <div class="card-body">
-            <form method="GET" class="mb-3" style="max-width: 400px;">
+            <form method="GET" class="mb-3" style="max-width: 900px;">
                 <div class="input-group">
                     <input type="search" name="search" autocomplete="off" class="form-control" placeholder="Search by reference..." value="{{ $search }}">
                     <button type="submit" class="btn btn-outline-secondary">Search</button>

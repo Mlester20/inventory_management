@@ -75,7 +75,7 @@
                 <tbody>
                     @foreach ($stockTransfer->lines as $line)
                         <tr>
-                            <td>{{ $line->productBatch->product->item_name }}</td>
+                            <td>{{ $line->productBatch->product->display_description }}</td>
                             <td>{{ $line->productBatch->batch_no ?? '—' }}</td>
                             <td>{{ $line->productBatch->expiration_date?->format('M d, Y') ?? '—' }}</td>
                             <td class="text-end">{{ $line->qty }}</td>

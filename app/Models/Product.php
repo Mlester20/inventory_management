@@ -66,6 +66,16 @@ class Product extends Model
         });
     }
 
+    /**
+     * The "Item Description" the user entered in Product Details. item_name is only the generated
+     * "Generic (Brand)" label (it loses things like ", 5CM" or ", 9X7\""), so documents show this
+     * instead, falling back to item_name for products with no Item Description yet.
+     */
+    public function getDisplayDescriptionAttribute(): string
+    {
+        return trim((string) $this->description) !== '' ? $this->description : (string) $this->item_name;
+    }
+
     public function genericName(): BelongsTo
     {
         return $this->belongsTo(GenericName::class);

@@ -99,7 +99,7 @@
                 <tbody>
                     @foreach ($goodsReceipt->items as $line)
                         <tr>
-                            <td>{{ $line->productBatch->product->item_name ?? $line->product->item_name ?? '—' }}</td>
+                            <td>{{ $line->productBatch?->product?->display_description ?? $line->product?->display_description ?? '—' }}</td>
                             <td class="text-end">{{ $line->qty ?? '—' }}</td>
                             <td>{{ $line->unit ?? '—' }}</td>
                             <td class="text-end">{{ $line->unit_cost !== null ? number_format($line->unit_cost, 2) : '—' }}</td>
@@ -148,7 +148,7 @@
                         @foreach ($goodsReceipt->items as $line)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
-                                <td>{{ $line->productBatch->product->item_name ?? $line->product->item_name ?? '—' }}</td>
+                                <td>{{ $line->productBatch?->product?->display_description ?? $line->product?->display_description ?? '—' }}</td>
                                 <td class="text-center">{{ $line->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $line->qty ?? '—' }}</td>
                                 <td class="text-center">{{ $line->batch_no ?? '—' }}</td>

@@ -106,7 +106,7 @@
                 <tbody>
                     @foreach ($inventoryAdjustment->lines as $line)
                         <tr>
-                            <td>{{ $line->product->item_name }}</td>
+                            <td>{{ $line->product->display_description }}</td>
                             <td>{{ $line->batch_no ?? '—' }}</td>
                             <td>{{ $line->expiration_date?->format('Y-m-d') ?? '—' }}</td>
                             <td>{{ $line->location->name ?? '—' }}</td>
@@ -193,7 +193,7 @@
                         <tbody>
                             @foreach ($inventoryAdjustment->lines as $line)
                                 <tr>
-                                    <td>{{ $line->product->item_name }}</td>
+                                    <td>{{ $line->product->display_description }}</td>
                                     <td class="text-center">{{ $line->batch_no ?? '—' }}</td>
                                     <td class="text-center">{{ $line->expiration_date?->format('Y-m-d') ?? '—' }}</td>
                                     <td class="text-center">{{ $line->location->name ?? '—' }}</td>

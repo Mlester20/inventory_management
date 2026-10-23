@@ -105,10 +105,10 @@
                 <tbody>
                     @foreach ($repack->lines as $line)
                         <tr>
-                            <td>{{ $line->sourceBatch->product->item_name }}</td>
+                            <td>{{ $line->sourceBatch->product->display_description }}</td>
                             <td>{{ $line->sourceBatch->batch_no ?? '—' }}</td>
                             <td class="text-end">{{ $line->source_qty }}</td>
-                            <td>{{ $line->destinationProduct->item_name }}</td>
+                            <td>{{ $line->destinationProduct->display_description }}</td>
                             <td>{{ $line->destinationBatch->batch_no ?? '—' }}</td>
                             <td class="text-end">{{ $line->destination_qty }}</td>
                             <td class="text-end">
