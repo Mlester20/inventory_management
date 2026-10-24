@@ -213,7 +213,7 @@
                                     <td>{{ $line->productBatch->product->genericName->generic_name ?? '—' }}</td>
                                     <td>{{ $line->productBatch->product->display_description }}</td>
                                     <td>{{ $line->batch_no ?? '—' }}</td>
-                                    <td>{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
+                                    <td>{{ $line->expiration_date ? $line->expiration_date->format('Y-m-d') : '—' }}</td>
                                     <td style="white-space: pre-line;">{{ $line->remarks ?? '—' }}</td>
                                     <td class="text-end">{{ $line->qty ?? '—' }}</td>
                                     <td>{{ $line->productBatch->product->genericName->unit ?? '—' }}</td>
@@ -373,7 +373,7 @@
                                 <td>{{ $line->productBatch->product->display_description }}</td>
                                 <td class="text-center">{{ $line->productBatch->product->genericName->unit ?? '—' }}</td>
                                 <td class="text-center">{{ $line->batch_no ?? '—' }}</td>
-                                <td class="text-center">{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
+                                <td class="text-center">{{ $line->expiration_date ? $line->expiration_date->format('Y-m-d') : '—' }}</td>
                                 <td class="text-end">{{ $line->qty ?? '—' }}</td>
                             </tr>
                         @endforeach

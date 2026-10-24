@@ -77,7 +77,7 @@
                         <tr>
                             <td>{{ $line->productBatch->product->display_description }}</td>
                             <td>{{ $line->productBatch->batch_no ?? '—' }}</td>
-                            <td>{{ $line->productBatch->expiration_date?->format('M d, Y') ?? '—' }}</td>
+                            <td>{{ $line->productBatch->expiration_date?->format('Y-m-d') ?? '—' }}</td>
                             <td class="text-end">{{ $line->qty }}</td>
                         </tr>
                     @endforeach

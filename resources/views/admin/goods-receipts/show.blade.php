@@ -104,7 +104,7 @@
                             <td>{{ $line->unit ?? '—' }}</td>
                             <td class="text-end">{{ $line->unit_cost !== null ? number_format($line->unit_cost, 2) : '—' }}</td>
                             <td>{{ $line->batch_no ?? '—' }}</td>
-                            <td>{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
+                            <td>{{ $line->expiration_date ? $line->expiration_date->format('Y-m-d') : '—' }}</td>
                             <td>{{ $line->remarks ?? '—' }}</td>
                         </tr>
                     @endforeach
@@ -152,7 +152,7 @@
                                 <td class="text-center">{{ $line->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $line->qty ?? '—' }}</td>
                                 <td class="text-center">{{ $line->batch_no ?? '—' }}</td>
-                                <td class="text-center">{{ $line->expiration_date ? $line->expiration_date->format('M d, Y') : '—' }}</td>
+                                <td class="text-center">{{ $line->expiration_date ? $line->expiration_date->format('Y-m-d') : '—' }}</td>
                                 <td>{{ $line->remarks ?? '—' }}</td>
                             </tr>
                         @endforeach

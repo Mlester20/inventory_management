@@ -101,7 +101,7 @@
                                 <td>{{ $generic->generic_name }}</td>
                                 <td>{{ $product->description ?: $product->item_name }}</td>
                                 <td>{{ $line->batch_no ?? '—' }}</td>
-                                <td>{{ $line->expiration_date?->format('M d, Y') ?? '—' }}</td>
+                                <td>{{ $line->expiration_date?->format('Y-m-d') ?? '—' }}</td>
                                 <td>{{ $line->remarks ?? '—' }}</td>
                                 <td class="text-end">
                                     <a href="{{ route('delivery-receipts.show', $line->delivery_receipt_id) }}" title="View the Delivery Receipt this line came from">

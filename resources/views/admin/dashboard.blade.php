@@ -330,7 +330,7 @@
                                 <div class="fw-semibold">{{ $batch->product->item_name ?? 'N/A' }}</div>
                                 <div class="text-muted small">Batch {{ $batch->batch_no ?? '—' }} · Qty {{ $batch->total_qty }}</div>
                             </div>
-                            <span class="badge bg-danger">{{ $batch->expiration_date->format('M d, Y') }}</span>
+                            <span class="badge bg-danger">{{ $batch->expiration_date->format('Y-m-d') }}</span>
                         </div>
                     @empty
                         <p class="text-muted mb-0">No expired batches in stock.</p>

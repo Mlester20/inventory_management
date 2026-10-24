@@ -62,7 +62,7 @@
                                 <td>{{ $line->productBatch->product->display_description }}</td>
                                 <td>{{ $line->productBatch->product->supplier->supplier_name ?? '—' }}</td>
                                 <td>{{ $line->productBatch->batch_no ?? '—' }}</td>
-                                <td>{{ $line->productBatch->expiration_date?->format('M d, Y') ?? '—' }}</td>
+                                <td>{{ $line->productBatch->expiration_date?->format('Y-m-d') ?? '—' }}</td>
                                 <td>{{ $line->location->name }}</td>
                                 <td class="text-end">{{ $line->qty }}</td>
                             </tr>
@@ -152,7 +152,7 @@
                                 <td>{{ $line->productBatch->product->display_description }}</td>
                                 <td>{{ $line->productBatch->product->supplier->supplier_name ?? '—' }}</td>
                                 <td>{{ $line->productBatch->batch_no ?? '—' }}</td>
-                                <td>{{ $line->productBatch->expiration_date?->format('M d, Y') ?? '—' }}</td>
+                                <td>{{ $line->productBatch->expiration_date?->format('Y-m-d') ?? '—' }}</td>
                                 <td>{{ $line->location->name }}</td>
                                 <td class="text-end">{{ $line->qty }}</td>
                             </tr>

@@ -165,7 +165,7 @@
                                 <td>{{ $item->product->supplier->supplier_name ?? 'N/A' }}</td>
                                 <td>{{ $item->batch_no ?? '-' }}</td>
                                 <td class="text-end">{{ $item->total_qty }}</td>
-                                <td>{{ $item->expiration_date->format('M d, Y') }}</td>
+                                <td>{{ $item->expiration_date->format('Y-m-d') }}</td>
                                 <td>
                                     @if ($item->days_remaining < 0)
                                         {{ abs($item->days_remaining) }} day(s) overdue
