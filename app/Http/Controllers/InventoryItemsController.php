@@ -140,6 +140,7 @@ class InventoryItemsController extends Controller
                         $outer->where('batch_no', 'like', "%{$search}%")
                             ->orWhereHas('product', function ($product) use ($search) {
                                 $product->where('item_name', 'like', "%{$search}%")
+                                    ->orWhere('description', 'like', "%{$search}%")
                                     ->orWhere('brand_name', 'like', "%{$search}%")
                                     ->orWhere('code', 'like', "%{$search}%");
                             });
@@ -150,7 +151,7 @@ class InventoryItemsController extends Controller
                 });
 
             $batches = $batchQuery()
-                ->with(['product.category', 'locationStocks'])
+                ->with(['product.category', 'product.genericName', 'locationStocks'])
                 ->orderBy('product_id')
                 ->orderBy('expiration_date')
                 ->paginate(self::PER_PAGE)
