@@ -7,20 +7,11 @@
         <a href="{{ route('delivery-receipts.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Delivery Receipts
         </a>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
             @if($deliveryReceipt->isDraft())
                 <a href="{{ route('delivery-receipts.edit', $deliveryReceipt) }}" class="btn btn-primary">
                     <i class="bx bx-edit-alt"></i> Continue Editing
                 </a>
-                @if(Auth::user()->role === 'admin')
-                    <form action="{{ route('delivery-receipts.destroy', $deliveryReceipt) }}" method="POST" onsubmit="return confirmSubmit(this, 'Delete draft {{ $deliveryReceipt->dr_no }}? This can be restored from the trash later.');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-outline-danger">
-                            <i class="bx bx-trash"></i> Delete Draft
-                        </button>
-                    </form>
-                @endif
             @else
                 @if($deliveryReceipt->status !== 'delivered' && ! $deliveryReceipt->isCancelled())
                     <form action="{{ route('delivery-receipts.mark-delivered', $deliveryReceipt) }}" method="POST">
@@ -30,42 +21,66 @@
                         </button>
                     </form>
                 @endif
-                @if($canRevise)
-                    <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#reviseModal">
-                        <i class="bx bx-edit"></i> Revise
-                    </button>
-                @endif
-                @if($canLink)
-                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#linkSalesOrderModal">
-                        <i class="bx bx-link"></i> Link to Sales Order
-                    </button>
-                @endif
                 <button type="button" class="btn btn-outline-primary" onclick="window.print()">
                     <i class="bx bx-printer"></i> Print
                 </button>
-                @if($deliveryReceipt->isArchived())
-                    <form action="{{ route('delivery-receipts.unarchive', $deliveryReceipt) }}" method="POST">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-secondary">
-                            <i class="bx bx-undo"></i> Unarchive
-                        </button>
-                    </form>
-                @else
-                    <form action="{{ route('delivery-receipts.archive', $deliveryReceipt) }}" method="POST">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-secondary">
-                            <i class="bx bx-archive"></i> Archive
-                        </button>
-                    </form>
-                @endif
-                @if(Auth::user()->role === 'admin' && ! $deliveryReceipt->isCancelled())
-                    <form action="{{ route('delivery-receipts.cancel', $deliveryReceipt) }}" method="POST" onsubmit="return confirmSubmit(this, 'Cancel/void this Delivery Receipt? The record and its stock history stay, only the status changes.');">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-danger">
-                            <i class="bx bx-block"></i> Cancel/Void
-                        </button>
-                    </form>
-                @endif
+            @endif
+            @php
+                $isAdmin = Auth::user()->role === 'admin';
+                $hasMoreActions = $deliveryReceipt->isDraft() ? $isAdmin : true;
+            @endphp
+            @if($hasMoreActions)
+                <div class="dropdown">
+                    <button type="button" class="btn btn-outline-secondary btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions">
+                        <i class="bx bx-dots-vertical-rounded"></i>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        @if($deliveryReceipt->isDraft())
+                            <form action="{{ route('delivery-receipts.destroy', $deliveryReceipt) }}" method="POST" class="m-0" onsubmit="return confirmSubmit(this, 'Delete draft {{ $deliveryReceipt->dr_no }}? This can be restored from the trash later.');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bx bx-trash me-1"></i> Delete Draft
+                                </button>
+                            </form>
+                        @else
+                            @if($canRevise)
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#reviseModal">
+                                    <i class="bx bx-edit me-1"></i> Revise
+                                </button>
+                            @endif
+                            @if($canLink)
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#linkSalesOrderModal">
+                                    <i class="bx bx-link me-1"></i> Link to Sales Order
+                                </button>
+                            @endif
+                            @if($deliveryReceipt->isArchived())
+                                <form action="{{ route('delivery-receipts.unarchive', $deliveryReceipt) }}" method="POST" class="m-0">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bx bx-undo me-1"></i> Unarchive
+                                    </button>
+                                </form>
+                            @else
+                                <form action="{{ route('delivery-receipts.archive', $deliveryReceipt) }}" method="POST" class="m-0">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bx bx-archive me-1"></i> Archive
+                                    </button>
+                                </form>
+                            @endif
+                            @if($isAdmin && ! $deliveryReceipt->isCancelled())
+                                <div class="dropdown-divider"></div>
+                                <form action="{{ route('delivery-receipts.cancel', $deliveryReceipt) }}" method="POST" class="m-0" onsubmit="return confirmSubmit(this, 'Cancel/void this Delivery Receipt? The record and its stock history stay, only the status changes.');">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bx bx-block me-1"></i> Cancel/Void
+                                    </button>
+                                </form>
+                            @endif
+                        @endif
+                    </div>
+                </div>
             @endif
         </div>
     </div>
