@@ -259,7 +259,55 @@ class DeliveryReceiptController extends Controller
         $canLink = $this->canLinkSalesOrder($deliveryReceipt);
         $linkCandidates = $canLink ? $this->linkCandidates($deliveryReceipt) : [];
 
-        return view('admin.delivery-receipts.show', compact('deliveryReceipt', 'canLink', 'linkCandidates'));
+        $canRevise = $this->canReviseDeliveryReceipt($deliveryReceipt);
+        $revisions = ActivityLog::with('user')
+            ->where('module', 'DeliveryReceipt')
+            ->where('action', 'revised')
+            ->where('loggable_type', $deliveryReceipt->getMorphClass())
+            ->where('loggable_id', $deliveryReceipt->id)
+            ->orderBy('id')
+            ->get();
+
+        return view('admin.delivery-receipts.show', compact('deliveryReceipt', 'canLink', 'linkCandidates', 'canRevise', 'revisions'));
+    }
+
+    protected function canReviseDeliveryReceipt(DeliveryReceipt $deliveryReceipt): bool
+    {
+        return auth()->user()->role === 'admin' && ! $deliveryReceipt->isDraft() && ! $deliveryReceipt->isCancelled()
+            && $deliveryReceipt->status === 'for_delivery';
+    }
+
+    /**
+     * Fix a receipt that was posted before the goods were picked — see
+     * DeliveryReceiptService::reviseDeliveryReceipt. Admin only.
+     */
+    public function revise(Request $request, DeliveryReceipt $deliveryReceipt)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Revising a Delivery Receipt is restricted to full admin accounts.');
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:255',
+            'new_qty' => 'required|array',
+            'new_qty.*' => 'nullable|integer|min:0',
+        ]);
+
+        $changes = $this->deliveryReceiptService->reviseDeliveryReceipt($deliveryReceipt, $validated['new_qty'], auth()->id());
+
+        $returned = array_sum(array_map(fn ($c) => $c['from'] - $c['to'], $changes));
+
+        ActivityLog::record(
+            module: 'DeliveryReceipt',
+            action: 'revised',
+            loggable: $deliveryReceipt,
+            description: "Revised Delivery Receipt {$deliveryReceipt->dr_no}: {$returned} unit(s) returned to the Warehouse — {$validated['reason']}",
+            metadata: ['reason' => $validated['reason'], 'changes' => $changes],
+        );
+
+        Alert::success('Revised', "{$deliveryReceipt->dr_no} updated. {$returned} unit(s) went back to the Warehouse.");
+        return redirect()->route('delivery-receipts.show', $deliveryReceipt);
     }
 
     protected function canLinkSalesOrder(DeliveryReceipt $deliveryReceipt): bool

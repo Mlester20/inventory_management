@@ -394,6 +394,100 @@ class DeliveryReceiptService
     }
 
     /**
+     * Correct a posted Delivery Receipt that was saved before the goods were actually picked
+     * (an item turned out to be missing, or short): lower a line's quantity, or take the line off
+     * (new qty 0). What comes off goes straight back to the Warehouse batch it was deducted from,
+     * and — where the line fulfils a Sales Order line — the Sales Order's delivered qty goes down by
+     * the same amount, so the order is open for the shortfall again.
+     *
+     * Only a receipt that is still For Delivery can be revised (anything already delivered is a
+     * Return Item), a line can never go below what is already invoiced, and the receipt must keep at
+     * least one line (use Cancel/Void for the whole thing).
+     *
+     * @param array<int,int|string|null> $newQtys DR item id => new qty (blank = unchanged)
+     * @return array<int,array{item:string,batch:?string,from:int,to:int}> the lines that changed
+     */
+    public function reviseDeliveryReceipt(DeliveryReceipt $deliveryReceipt, array $newQtys, ?int $userId = null): array
+    {
+        return DB::transaction(function () use ($deliveryReceipt, $newQtys, $userId) {
+            $dr = DeliveryReceipt::lockForUpdate()->findOrFail($deliveryReceipt->id);
+
+            if ($dr->isDraft() || $dr->isCancelled()) {
+                throw ValidationException::withMessages(['revise' => 'Only a posted Delivery Receipt can be revised.']);
+            }
+
+            if ($dr->status !== 'for_delivery') {
+                throw ValidationException::withMessages(['revise' => 'Only a Delivery Receipt that is still For Delivery can be revised. Goods already delivered go through Return Items.']);
+            }
+
+            $lines = $dr->items()->with('productBatch.product')->lockForUpdate()->get();
+            $warehouse = Location::warehouse();
+            $changes = [];
+            $salesOrderDecrements = [];
+            $keepsALine = false;
+
+            foreach ($lines as $line) {
+                $raw = $newQtys[$line->id] ?? null;
+                $new = ($raw === null || $raw === '') ? (int) $line->qty : (int) $raw;
+                $name = $line->productBatch->product->display_description;
+
+                if ($new < 0 || $new > $line->qty) {
+                    throw ValidationException::withMessages(['revise' => "{$name}: the new quantity must be between 0 and {$line->qty}."]);
+                }
+
+                if ($new < $line->invoiced_qty) {
+                    throw ValidationException::withMessages(['revise' => "{$name}: {$line->invoiced_qty} is already invoiced, so it can't go below that."]);
+                }
+
+                if ($new > 0) {
+                    $keepsALine = true;
+                }
+
+                if ($new === (int) $line->qty) {
+                    continue;
+                }
+
+                $removed = (int) $line->qty - $new;
+                $changes[] = ['item' => $name, 'batch' => $line->batch_no, 'from' => (int) $line->qty, 'to' => $new];
+
+                $this->stockService->restock($line->productBatch, $removed, $warehouse, "Delivery Receipt {$dr->dr_no} revised", $userId, $dr);
+
+                if ($line->sales_order_item_id) {
+                    $salesOrderDecrements[$line->sales_order_item_id] = ($salesOrderDecrements[$line->sales_order_item_id] ?? 0) + $removed;
+                }
+
+                if ($new === 0) {
+                    $line->delete();
+                } else {
+                    $line->update(['qty' => $new]);
+                }
+            }
+
+            if (empty($changes)) {
+                throw ValidationException::withMessages(['revise' => 'Nothing to revise — change at least one quantity.']);
+            }
+
+            if (! $keepsALine) {
+                throw ValidationException::withMessages(['revise' => 'A Delivery Receipt has to keep at least one line. To void the whole receipt, use Cancel/Void.']);
+            }
+
+            $affectedOrders = [];
+            foreach ($salesOrderDecrements as $soItemId => $removed) {
+                $soItem = SalesOrderItem::lockForUpdate()->find($soItemId);
+                if ($soItem) {
+                    $soItem->update(['delivered_qty' => max(0, (int) $soItem->delivered_qty - $removed)]);
+                    $affectedOrders[$soItem->sales_order_id] = true;
+                }
+            }
+            foreach (array_keys($affectedOrders) as $salesOrderId) {
+                $this->refreshSalesOrderStatus(SalesOrder::findOrFail($salesOrderId));
+            }
+
+            return $changes;
+        });
+    }
+
+    /**
      * Attach an already-posted Advance Order Delivery Receipt to a Sales Order
      * of the same customer — the DR was created without one (e.g. as a workaround
      * when a Sales Order line couldn't be split across batches). Stock was already

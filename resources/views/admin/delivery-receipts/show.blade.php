@@ -30,6 +30,11 @@
                         </button>
                     </form>
                 @endif
+                @if($canRevise)
+                    <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#reviseModal">
+                        <i class="bx bx-edit"></i> Revise
+                    </button>
+                @endif
                 @if($canLink)
                     <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#linkSalesOrderModal">
                         <i class="bx bx-link"></i> Link to Sales Order
@@ -138,6 +143,19 @@
                         <p class="mb-0">{{ $deliveryReceipt->description ?? '—' }}</p>
                     </div>
                 </div>
+
+                @if($revisions->isNotEmpty())
+                    <div class="border rounded p-2 mb-3 small">
+                        <strong>Revised after posting</strong> — the quantities below are the corrected ones.
+                        @foreach($revisions as $revision)
+                            <div>
+                                {{ $revision->created_at->format('Y-m-d') }}{{ $revision->user ? ' by ' . $revision->user->name : '' }}:
+                                {{ collect($revision->metadata['changes'] ?? [])->map(fn ($c) => $c['item'] . ' ' . $c['from'] . ' → ' . $c['to'])->implode('; ') }}.
+                                @if(! empty($revision->metadata['reason']))Reason: {{ $revision->metadata['reason'] }}.@endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
 
                 @if($deliveryReceipt->splitFrom)
                     @php
@@ -277,6 +295,64 @@
             </div>
         </div>
     </form>
+
+    @if($canRevise)
+        <div class="modal fade no-print" id="reviseModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <form action="{{ route('delivery-receipts.revise', $deliveryReceipt) }}" method="POST" id="reviseForm">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Revise {{ $deliveryReceipt->dr_no }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">
+                                For a receipt that was posted before the goods were picked — an item is missing, or short. Lower the quantity
+                                (or set it to 0 to take the line off). What comes off goes back to the Warehouse stock it was taken from, and
+                                if the line belongs to a Sales Order, that order's delivered quantity goes down too, so the order is open for it again.
+                                A line can't go below what is already invoiced.
+                            </p>
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr class="table-header-bg">
+                                        <th>Item Description</th>
+                                        <th class="text-end">Qty now</th>
+                                        <th class="text-end">Invoiced</th>
+                                        <th style="width: 120px;">New qty</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($deliveryReceipt->items as $line)
+                                        <tr>
+                                            <td>
+                                                {{ $line->productBatch->product->display_description }}
+                                                @if($line->batch_no)<span class="text-muted small d-block">Lot {{ $line->batch_no }}</span>@endif
+                                            </td>
+                                            <td class="text-end">{{ $line->qty }}</td>
+                                            <td class="text-end">{{ $line->invoiced_qty }}</td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm text-end revise-qty" name="new_qty[{{ $line->id }}]"
+                                                    value="{{ $line->qty }}" min="{{ $line->invoiced_qty }}" max="{{ $line->qty }}" data-current="{{ $line->qty }}">
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            <div id="reviseSummary" class="small mb-3 text-muted">No change yet.</div>
+                            <label for="reviseReason" class="form-label">Reason</label>
+                            <textarea name="reason" id="reviseReason" class="form-control" rows="2" maxlength="255"
+                                placeholder="e.g. Item not available at picking" required></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-warning" id="reviseSubmit" disabled>Revise Delivery Receipt</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 
     @if($canLink)
         <div class="modal fade no-print" id="linkSalesOrderModal" tabindex="-1" aria-hidden="true">
@@ -474,6 +550,55 @@
 
 @section('scripts')
 @include('admin.partials.withholding-tax-script')
+@if($canRevise)
+<script>
+    (function () {
+        const inputs = [...document.querySelectorAll('.revise-qty')];
+        const reason = document.getElementById('reviseReason');
+        const summary = document.getElementById('reviseSummary');
+        const submit = document.getElementById('reviseSubmit');
+
+        function refresh() {
+            let returned = 0;
+            let changed = 0;
+            let kept = 0;
+            let valid = true;
+
+            inputs.forEach(input => {
+                const current = parseInt(input.dataset.current, 10);
+                const min = parseInt(input.min, 10) || 0;
+                const value = input.value === '' ? current : parseInt(input.value, 10);
+                const bad = isNaN(value) || value < min || value > current;
+                input.classList.toggle('is-invalid', bad);
+                if (bad) { valid = false; return; }
+                if (value > 0) kept++;
+                if (value !== current) { changed++; returned += current - value; }
+            });
+
+            if (!valid) {
+                summary.className = 'small mb-3 text-danger';
+                summary.textContent = 'A quantity is out of range (it can only go down, and not below what is already invoiced).';
+            } else if (changed === 0) {
+                summary.className = 'small mb-3 text-muted';
+                summary.textContent = 'No change yet.';
+            } else if (kept === 0) {
+                valid = false;
+                summary.className = 'small mb-3 text-danger';
+                summary.textContent = 'The receipt must keep at least one line. To void the whole receipt, use Cancel/Void.';
+            } else {
+                summary.className = 'small mb-3 text-success';
+                summary.textContent = changed + ' line(s) changed — ' + returned + ' unit(s) go back to the Warehouse.';
+            }
+
+            submit.disabled = !(valid && changed > 0 && reason.value.trim() !== '');
+        }
+
+        inputs.forEach(input => input.addEventListener('input', refresh));
+        reason.addEventListener('input', refresh);
+        refresh();
+    })();
+</script>
+@endif
 @if($canLink && ! empty($linkCandidates))
 @php
     $linkDrLines = $deliveryReceipt->items->map(function ($line) {
