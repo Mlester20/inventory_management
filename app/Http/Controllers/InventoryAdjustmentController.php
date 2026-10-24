@@ -45,7 +45,7 @@ class InventoryAdjustmentController extends Controller
 
         $productsForJs = $products->map(fn (Product $p) => [
             'id' => $p->id,
-            'name' => $p->description ?: $p->item_name,
+            'name' => $p->display_description,
             'code' => $p->code,
             'unit' => $p->genericName->unit ?? '',
             'batches' => $p->batches->map(fn ($b) => [
@@ -68,7 +68,7 @@ class InventoryAdjustmentController extends Controller
             if ($reverseOf) {
                 $prefillLines = $reverseOf->lines->map(fn (InventoryAdjustmentLine $line) => [
                     'product_id' => $line->product_id,
-                    'product_name' => $line->product->description ?: $line->product->item_name,
+                    'product_name' => $line->product->display_description,
                     'batch_no' => $line->batch_no,
                     'location_id' => $line->location_id,
                     'qty' => $line->qty,
@@ -88,7 +88,7 @@ class InventoryAdjustmentController extends Controller
 
                     return [
                         'product_id' => $line['product_id'],
-                        'product_name' => $product ? ($product->description ?: $product->item_name) : null,
+                        'product_name' => $product ? ($product->display_description) : null,
                         'batch_no' => $line['batch_no'] ?? null,
                         'location_id' => $line['location_id'] ?? null,
                         'qty' => $line['qty'] ?? null,
@@ -219,7 +219,7 @@ class InventoryAdjustmentController extends Controller
 
         $productsForJs = $products->map(fn (Product $p) => [
             'id' => $p->id,
-            'name' => $p->description ?: $p->item_name,
+            'name' => $p->display_description,
             'code' => $p->code,
             'unit' => $p->genericName->unit ?? '',
             'batches' => $p->batches->map(fn ($b) => [
@@ -231,7 +231,7 @@ class InventoryAdjustmentController extends Controller
 
         $prefillLines = $inventoryAdjustment->lines->map(fn (InventoryAdjustmentLine $line) => [
             'product_id' => $line->product_id,
-            'product_name' => $line->product?->description ?: $line->product?->item_name,
+            'product_name' => $line->product?->display_description,
             'batch_no' => $line->batch_no,
             'location_id' => $line->location_id,
             'qty' => $line->qty,
@@ -250,7 +250,7 @@ class InventoryAdjustmentController extends Controller
 
                     return [
                         'product_id' => $line['product_id'],
-                        'product_name' => $product ? ($product->description ?: $product->item_name) : null,
+                        'product_name' => $product ? ($product->display_description) : null,
                         'batch_no' => $line['batch_no'] ?? null,
                         'location_id' => $line['location_id'] ?? null,
                         'qty' => $line['qty'] ?? null,

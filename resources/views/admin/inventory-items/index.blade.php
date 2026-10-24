@@ -660,6 +660,7 @@
                                 <th>Code</th>
                                 <th>Category</th>
                                 <th>Item Description</th>
+                                <th>Unit</th>
                                 <th>Lot/Batch/Serial</th>
                                 <th>Expiry</th>
                                 <th>Warehouse</th>
@@ -674,7 +675,8 @@
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $batch->product->code }}</td>
                                     <td>{{ $batch->product->category->category_name ?? 'N/A' }}</td>
-                                    <td>{{ $batch->product->item_name }}</td>
+                                    <td>{{ $batch->product->display_description }}</td>
+                                    <td>{{ $batch->product->genericName->unit ?? '—' }}</td>
                                     <td>{{ $batch->batch_no ?? '—' }}</td>
                                     <td>{{ $batch->expiration_date?->format('Y-m-d') ?? '—' }}</td>
                                     <td>{{ $batch->qtyAtLocation($warehouseId) }}</td>
@@ -695,13 +697,13 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="10" class="text-center text-muted py-4">No batches found. Try a different search.</td></tr>
+                                <tr><td colspan="11" class="text-center text-muted py-4">No batches found. Try a different search.</td></tr>
                             @endforelse
                         </tbody>
                         @if($batchTotals)
                             <tfoot>
                                 <tr class="fw-bold">
-                                    <td colspan="6" class="text-end">Grand Total</td>
+                                    <td colspan="7" class="text-end">Grand Total</td>
                                     <td>{{ $batchTotals->warehouse_qty }}</td>
                                     <td>{{ $batchTotals->pos_qty }}</td>
                                     <td>{{ $batchTotals->total_qty }}</td>
