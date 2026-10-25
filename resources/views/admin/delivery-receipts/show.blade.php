@@ -134,7 +134,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small">Customer</label>
-                        <p class="fw-bold mb-0">{{ $deliveryReceipt->customer->customer_name ?? '—' }}</p>
+                        <p class="fw-bold mb-0">{{ $deliveryReceipt->deliverTo()?->customer_name ?? '—' }}</p>
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small">Sales Order Number</label>
@@ -151,7 +151,7 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label class="text-muted small">Delivery Address</label>
-                        <p class="mb-0" style="white-space: pre-line;">{{ $deliveryReceipt->customer->delivery_address ?? '—' }}</p>
+                        <p class="mb-0" style="white-space: pre-line;">{{ $deliveryReceipt->deliverTo()?->delivery_address ?? '—' }}</p>
                     </div>
                     <div class="col-md-6">
                         <label class="text-muted small">Description</label>
@@ -443,8 +443,8 @@
                 'docDate' => $deliveryReceipt->receipt_date->format('m/d/Y'),
                 'toHeader' => 'Deliver to',
                 'toRows' => [
-                    'Name' => $deliveryReceipt->customer->customer_name ?? '',
-                    'Address' => $deliveryReceipt->customer->delivery_address ?? '',
+                    'Name' => $deliveryReceipt->deliverTo()?->customer_name ?? '',
+                    'Address' => $deliveryReceipt->deliverTo()?->delivery_address ?? '',
                 ],
             ])
 

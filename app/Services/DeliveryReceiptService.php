@@ -80,8 +80,15 @@ class DeliveryReceiptService
                 'dr_no' => $this->generateDrNo(),
             ]);
 
+            // A draft picked from a Sales Order belongs to that order's customer, even if the form
+            // did not send one — otherwise the printed review copy has a blank "Deliver to".
+            $customerId = $data['customer_id'] ?? null;
+            if (! $customerId && ! empty($data['sales_order_id'])) {
+                $customerId = SalesOrder::whereKey($data['sales_order_id'])->value('customer_id');
+            }
+
             $deliveryReceipt->fill([
-                'customer_id' => $data['customer_id'] ?? null,
+                'customer_id' => $customerId,
                 'sales_order_id' => $data['sales_order_id'] ?? null,
                 'transaction_type' => $data['transaction_type'] ?? null,
                 'description' => $data['description'] ?? null,

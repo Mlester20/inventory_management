@@ -84,6 +84,16 @@ class DeliveryReceipt extends Model
         return $this->belongsTo(SalesOrder::class);
     }
 
+    /**
+     * Who the goods go to. A draft saved from a Sales Order can have no customer of its own yet,
+     * so it falls back to the Sales Order's customer — a Delivery Receipt is printed for review
+     * long before it is posted.
+     */
+    public function deliverTo(): ?Customer
+    {
+        return $this->customer ?? $this->salesOrder?->customer;
+    }
+
     /** The Advance Order DR this one was split off from when part of it was linked to a Sales Order. */
     public function splitFrom(): BelongsTo
     {
