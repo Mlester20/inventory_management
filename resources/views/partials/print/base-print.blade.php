@@ -290,3 +290,25 @@
         print-color-adjust: exact;
     }
 }
+
+/* Letterhead in the header group of an outer table: when the items run past one page, the printer
+   repeats the logo / company / document numbers / "to" box at the top of every page. */
+.print-repeat-wrap {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.print-repeat-wrap > thead,
+.print-repeat-wrap > tbody {
+    border: 0;
+}
+
+.print-repeat-wrap > thead > tr > td,
+.print-repeat-wrap > tbody > tr > td {
+    padding: 0;
+    border: 0;
+}
+
+.print-repeat-wrap > thead {
+    display: table-header-group;
+}

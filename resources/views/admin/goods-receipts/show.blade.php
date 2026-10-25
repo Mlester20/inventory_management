@@ -117,6 +117,9 @@
     <div class="card gr-print-only" id="printableGoodsReceiptSheet">
         <div class="card-body p-4 gr-sheet">
 
+            {{-- Letterhead in the header group of an outer table: the printer repeats it on every page. --}}
+            <table class="print-repeat-wrap">
+            <thead><tr><td>
             @include('partials.print.letterhead', [
                 'docTitle' => 'GOODS RECEIPT',
                 'docNoLabel' => 'G.R No.',
@@ -130,6 +133,8 @@
                     'Address' => $goodsReceipt->supplier->delivery_address ?? '—',
                 ],
             ])
+            </td></tr></thead>
+            <tbody><tr><td>
 
             <div class="table-responsive">
                 <table class="table table-bordered table-sm print-items-table mb-0">
@@ -164,6 +169,8 @@
                 'columns' => 1,
                 'label1' => 'Prepared By', 'value1' => $goodsReceipt->preparedBy->name ?? '—',
             ])
+            </td></tr></tbody>
+            </table>
         </div>
     </div>
 

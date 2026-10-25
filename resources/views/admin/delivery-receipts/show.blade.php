@@ -434,6 +434,10 @@
     <div class="card dr-print-only" id="printableDeliveryNote">
         <div class="card-body p-4 dr-sheet">
 
+            {{-- The letterhead sits in a header group of an outer table, so the printer repeats it
+                 (logo, company, DR no., Deliver to) at the top of every page the items run onto. --}}
+            <table class="print-repeat-wrap">
+            <thead><tr><td>
             @include('partials.print.letterhead', [
                 'docTitle' => 'DELIVERY RECEIPT',
                 'docNoLabel' => 'D.R No.',
@@ -447,6 +451,8 @@
                     'Address' => $deliveryReceipt->deliverTo()?->delivery_address ?? '',
                 ],
             ])
+            </td></tr></thead>
+            <tbody><tr><td>
 
             <div class="table-responsive">
                 <table class="table table-bordered table-sm print-items-table mb-0">
@@ -480,6 +486,8 @@
                 'label2' => 'Inspected By',
                 'label3' => 'Received By',
             ])
+            </td></tr></tbody>
+            </table>
         </div>
     </div>
 

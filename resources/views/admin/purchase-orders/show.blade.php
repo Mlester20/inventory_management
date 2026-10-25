@@ -189,6 +189,9 @@
     <div class="card po-print-only" id="printablePurchaseOrderSheet">
         <div class="card-body p-4 po-sheet">
 
+            {{-- Letterhead in the header group of an outer table: the printer repeats it on every page. --}}
+            <table class="print-repeat-wrap">
+            <thead><tr><td>
             @include('partials.print.letterhead', [
                 'docTitle' => 'PURCHASE ORDER',
                 'docNoLabel' => 'S.P.O No.',
@@ -200,6 +203,8 @@
                     'Address' => $purchaseOrder->supplier->delivery_address ?? '—',
                 ],
             ])
+            </td></tr></thead>
+            <tbody><tr><td>
 
             <div class="table-responsive">
                 <table class="table table-bordered table-sm print-items-table mb-0">
@@ -245,6 +250,8 @@
                 'label2' => 'Approved By',
                 'columns' => 2,
             ])
+            </td></tr></tbody>
+            </table>
         </div>
     </div>
 
