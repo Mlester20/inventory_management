@@ -43,7 +43,7 @@ class EncoderPreparedByTest extends TestCase
     public function test_admin_adds_an_encoder_who_cannot_log_in(): void
     {
         $this->actingAs($this->admin)->post(route('users.encoders.store'), ['name' => 'Maria Santos'])
-            ->assertRedirect(route('users.index'));
+            ->assertRedirect(route('users.index', ['tab' => 'encoders']));
 
         $encoder = User::where('name', 'Maria Santos')->firstOrFail();
         $this->assertTrue($encoder->is_encoder);
@@ -108,14 +108,18 @@ class EncoderPreparedByTest extends TestCase
         $this->assertTrue($encoder->fresh()->is_active);
     }
 
-    public function test_users_page_lists_login_accounts_and_encoders_separately(): void
+    public function test_users_page_lists_login_accounts_and_encoders_in_separate_tabs(): void
     {
         $this->encoder('Maria Encoder');
 
         $this->actingAs($this->admin)->get(route('users.index'))
             ->assertOk()
-            ->assertSee('Maria Encoder')
-            ->assertSee('Add Encoder');
+            ->assertSee('Add Encoder')
+            ->assertDontSee('Maria Encoder');
+
+        $this->actingAs($this->admin)->get(route('users.index', ['tab' => 'encoders']))
+            ->assertOk()
+            ->assertSee('Maria Encoder');
     }
 
     public function test_customer_payment_records_the_chosen_preparer(): void

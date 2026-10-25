@@ -4,10 +4,66 @@ namespace App\Services;
 
 use App\Models\Invoice;
 use App\Models\SalesOrder;
+use App\Models\SalesOrderItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SalesOrderService
 {
+    /**
+     * Close an issued Sales Order whose remaining items will never be delivered. Nothing is
+     * deleted or reversed — the order just becomes CLOSED, so it drops out of "open" and no
+     * Delivery Receipt can be made against it. Returns the lines that were still undelivered,
+     * for the audit trail.
+     *
+     * @return array<int,array{item:string,ordered:int,advance:int,delivered:int,undelivered:int}>
+     */
+    public function closeOrder(SalesOrder $salesOrder): array
+    {
+        return DB::transaction(function () use ($salesOrder) {
+            $order = SalesOrder::with(['items.product', 'items.genericName'])->lockForUpdate()->findOrFail($salesOrder->id);
+
+            if ($order->isDraft() || ! in_array($order->status, ['open', 'partially_delivered'], true)) {
+                throw ValidationException::withMessages(['close' => 'Only an open or partially delivered Sales Order can be closed.']);
+            }
+
+            $undelivered = $order->items
+                ->filter(fn (SalesOrderItem $item) => $item->remaining_qty > 0)
+                ->map(fn (SalesOrderItem $item) => [
+                    'item' => $item->product->item_name ?? $item->genericName->generic_name ?? '—',
+                    'ordered' => (int) $item->qty,
+                    'advance' => (int) $item->advance_order_qty,
+                    'delivered' => (int) $item->delivered_qty,
+                    'undelivered' => (int) $item->remaining_qty,
+                ])
+                ->values()
+                ->all();
+
+            $order->update(['status' => 'closed']);
+
+            return $undelivered;
+        });
+    }
+
+    /**
+     * Undo a Close: the order goes back to whatever its delivered quantities say
+     * (open / partially delivered / completed).
+     */
+    public function reopenOrder(SalesOrder $salesOrder): SalesOrder
+    {
+        return DB::transaction(function () use ($salesOrder) {
+            $order = SalesOrder::lockForUpdate()->findOrFail($salesOrder->id);
+
+            if (! $order->isClosed()) {
+                throw ValidationException::withMessages(['close' => 'Only a closed Sales Order can be reopened.']);
+            }
+
+            $order->update(['status' => $order->deliveryStatus()]);
+
+            return $order;
+        });
+    }
+
     /**
      * Cancel/void a Sales Order — the alternative to delete() when it
      * already has delivery history and can't just be removed. Per Sir's

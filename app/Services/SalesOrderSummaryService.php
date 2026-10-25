@@ -46,7 +46,8 @@ class SalesOrderSummaryService
                 COUNT(*) as so_count,
                 SUM(sales_orders.archived_at IS NOT NULL) as archived,
                 SUM(sales_orders.archived_at IS NULL AND sales_orders.status = 'cancelled') as cancelled,
-                SUM(sales_orders.archived_at IS NULL AND sales_orders.status = 'completed') as completed")
+                SUM(sales_orders.archived_at IS NULL AND sales_orders.status = 'completed') as completed,
+                SUM(sales_orders.archived_at IS NULL AND sales_orders.status = 'closed') as closed")
             ->get();
 
         $qty = SalesOrderItem::query()
@@ -68,6 +69,7 @@ class SalesOrderSummaryService
             $archived = (int) $row->archived;
             $cancelled = (int) $row->cancelled;
             $completed = (int) $row->completed;
+            $closed = (int) $row->closed;
 
             return [
                 'customer_id' => (int) $row->customer_id,
@@ -75,7 +77,8 @@ class SalesOrderSummaryService
                 'so_count' => $soCount,
                 'completed' => $completed,
                 // Whatever is left after the other buckets, so the four always add up to the count.
-                'open' => $soCount - $archived - $cancelled - $completed,
+                'open' => $soCount - $archived - $cancelled - $completed - $closed,
+                'closed' => $closed,
                 'cancelled' => $cancelled,
                 'archived' => $archived,
                 'qty_ordered' => (int) ($qty[$row->customer_id]->qty_ordered ?? 0),
@@ -108,6 +111,7 @@ class SalesOrderSummaryService
             $order->archived_at !== null => 'ARCHIVED',
             $order->status === 'cancelled' => 'CANCELLED',
             $order->status === 'completed' => 'COMPLETED',
+            $order->status === 'closed' => 'CLOSED',
             default => 'OPEN',
         };
     }

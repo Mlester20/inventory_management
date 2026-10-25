@@ -75,6 +75,7 @@
                         <th class="text-center">S.O Count</th>
                         <th class="text-center">Invoiced / Completed</th>
                         <th class="text-center">Open</th>
+                        <th class="text-center">Closed</th>
                         <th class="text-center">Cancelled</th>
                         <th class="text-center">Archived</th>
                         <th class="text-center">Qty Ordered</th>
@@ -90,6 +91,7 @@
                             </td>
                             <td class="text-center">{{ number_format($row['completed']) }}</td>
                             <td class="text-center">{{ number_format($row['open']) }}</td>
+                            <td class="text-center">{{ number_format($row['closed']) }}</td>
                             <td class="text-center">{{ number_format($row['cancelled']) }}</td>
                             <td class="text-center">{{ number_format($row['archived']) }}</td>
                             <td class="text-center">
@@ -108,7 +110,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted py-4">No Sales Orders{{ $search !== '' ? ' for this search' : '' }}.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-4">No Sales Orders{{ $search !== '' ? ' for this search' : '' }}.</td></tr>
                     @endforelse
                 </tbody>
                 @if($customers->isNotEmpty())
@@ -118,6 +120,7 @@
                             <td class="text-center">{{ number_format($customers->sum('so_count')) }}</td>
                             <td class="text-center">{{ number_format($customers->sum('completed')) }}</td>
                             <td class="text-center">{{ number_format($customers->sum('open')) }}</td>
+                            <td class="text-center">{{ number_format($customers->sum('closed')) }}</td>
                             <td class="text-center">{{ number_format($customers->sum('cancelled')) }}</td>
                             <td class="text-center">{{ number_format($customers->sum('archived')) }}</td>
                             <td class="text-center">{{ number_format($customers->sum('qty_ordered')) }}</td>

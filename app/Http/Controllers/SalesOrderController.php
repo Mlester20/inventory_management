@@ -518,6 +518,52 @@ class SalesOrderController extends Controller
     }
 
     /**
+     * Close an issued Sales Order whose remaining items will never be delivered (the same
+     * kind of manual decision as Close PO on a Purchase Order).
+     */
+    public function close(SalesOrder $salesOrder)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Closing Sales Orders is restricted to full admin accounts.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        $undelivered = $this->salesOrderService->closeOrder($salesOrder);
+        $total = array_sum(array_column($undelivered, 'undelivered'));
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'closed',
+            loggable: $salesOrder,
+            description: "Closed Sales Order {$salesOrder->so_no} with {$total} unit(s) never delivered",
+            metadata: ['undelivered' => $undelivered],
+        );
+
+        Alert::success('Closed', "{$salesOrder->so_no} is now closed.");
+        return redirect()->route('sales-orders.show', $salesOrder);
+    }
+
+    public function reopen(SalesOrder $salesOrder)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Reopening Sales Orders is restricted to full admin accounts.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        $order = $this->salesOrderService->reopenOrder($salesOrder);
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'reopened',
+            loggable: $salesOrder,
+            description: "Reopened Sales Order {$salesOrder->so_no} (now {$order->status})",
+        );
+
+        Alert::success('Reopened', "{$salesOrder->so_no} is open for delivery again.");
+        return redirect()->route('sales-orders.show', $salesOrder);
+    }
+
+    /**
      * Void a Sales Order — for the case delete() rejects (delivered items
      * already exist and can't just disappear). The record and its
      * delivery/stock history stay exactly as-is; only status changes to

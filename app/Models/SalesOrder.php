@@ -35,6 +35,23 @@ class SalesOrder extends Model
         return (bool) $this->is_draft;
     }
 
+    public function isClosed(): bool
+    {
+        return $this->status === 'closed';
+    }
+
+    /** completed / partially_delivered / open, as the delivered and advance quantities say. */
+    public function deliveryStatus(): string
+    {
+        $items = $this->items()->get();
+
+        return match (true) {
+            $items->isNotEmpty() && $items->every(fn (SalesOrderItem $item) => $item->remaining_qty <= 0) => 'completed',
+            $items->contains(fn (SalesOrderItem $item) => $item->delivered_qty > 0) => 'partially_delivered',
+            default => 'open',
+        };
+    }
+
     public function isArchived(): bool
     {
         return $this->archived_at !== null;

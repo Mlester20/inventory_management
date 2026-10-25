@@ -197,7 +197,13 @@ class DeliveryReceiptService
 
             $salesOrderItem = null;
             if (! empty($line['sales_order_item_id'])) {
-                $salesOrderItem = SalesOrderItem::findOrFail($line['sales_order_item_id']);
+                $salesOrderItem = SalesOrderItem::with('salesOrder')->findOrFail($line['sales_order_item_id']);
+
+                if ($salesOrderItem->salesOrder?->isClosed()) {
+                    throw ValidationException::withMessages([
+                        'items' => "Sales Order {$salesOrderItem->salesOrder->so_no} is closed — reopen it before delivering against it.",
+                    ]);
+                }
 
                 if ($qty > $salesOrderItem->remaining_qty) {
                     throw ValidationException::withMessages([
@@ -517,8 +523,8 @@ class DeliveryReceiptService
                 throw ValidationException::withMessages(['link' => 'Only a posted Advance Order Delivery Receipt with no Sales Order can be linked.']);
             }
 
-            if ($salesOrder->isDraft() || $salesOrder->isArchived() || (int) $salesOrder->customer_id !== (int) $deliveryReceipt->customer_id) {
-                throw ValidationException::withMessages(['link' => 'Pick an active Sales Order of the same customer as this Delivery Receipt.']);
+            if ($salesOrder->isDraft() || $salesOrder->isArchived() || $salesOrder->isClosed() || (int) $salesOrder->customer_id !== (int) $deliveryReceipt->customer_id) {
+                throw ValidationException::withMessages(['link' => 'Pick an active, open Sales Order of the same customer as this Delivery Receipt.']);
             }
 
             $salesOrderItems = $salesOrder->items()->lockForUpdate()->get()->keyBy('id');
@@ -613,15 +619,12 @@ class DeliveryReceiptService
      */
     protected function refreshSalesOrderStatus(SalesOrder $salesOrder): void
     {
-        $items = $salesOrder->items;
+        // A closed order stays closed — only Reopen changes that.
+        if ($salesOrder->isClosed()) {
+            return;
+        }
 
-        $status = match (true) {
-            $items->every(fn (SalesOrderItem $item) => $item->remaining_qty <= 0) => 'completed',
-            $items->contains(fn (SalesOrderItem $item) => $item->delivered_qty > 0) => 'partially_delivered',
-            default => 'open',
-        };
-
-        $salesOrder->update(['status' => $status]);
+        $salesOrder->update(['status' => $salesOrder->deliveryStatus()]);
     }
 
     /**

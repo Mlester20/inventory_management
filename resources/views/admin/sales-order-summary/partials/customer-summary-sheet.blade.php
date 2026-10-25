@@ -23,6 +23,7 @@
                     <th class="text-end">S.O COUNT</th>
                     <th class="text-end">INVOICED /<br>COMPLETED</th>
                     <th class="text-end">OPEN</th>
+                    <th class="text-end">CLOSED</th>
                     <th class="text-end">CANCELLED</th>
                     <th class="text-end">ARCHIVED</th>
                     <th class="text-end">QTY ORDERED</th>
@@ -36,6 +37,7 @@
                         <td class="text-end">{{ number_format($row['so_count']) }}</td>
                         <td class="text-end">{{ number_format($row['completed']) }}</td>
                         <td class="text-end">{{ number_format($row['open']) }}</td>
+                        <td class="text-end">{{ number_format($row['closed']) }}</td>
                         <td class="text-end">{{ number_format($row['cancelled']) }}</td>
                         <td class="text-end">{{ number_format($row['archived']) }}</td>
                         <td class="text-end">{{ number_format($row['qty_ordered']) }}</td>
@@ -49,6 +51,7 @@
                     <td class="text-end">{{ number_format($customers->sum('so_count')) }}</td>
                     <td class="text-end">{{ number_format($customers->sum('completed')) }}</td>
                     <td class="text-end">{{ number_format($customers->sum('open')) }}</td>
+                    <td class="text-end">{{ number_format($customers->sum('closed')) }}</td>
                     <td class="text-end">{{ number_format($customers->sum('cancelled')) }}</td>
                     <td class="text-end">{{ number_format($customers->sum('archived')) }}</td>
                     <td class="text-end">{{ number_format($customers->sum('qty_ordered')) }}</td>

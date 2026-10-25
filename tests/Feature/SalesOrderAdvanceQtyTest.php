@@ -163,4 +163,101 @@ class SalesOrderAdvanceQtyTest extends TestCase
         $this->assertSame(1, $lines->flatMap(fn ($c) => $c['items'])->count(), 'only the normal line is still undelivered');
         $this->assertNotNull($so);
     }
+
+    public function test_close_so_stops_further_delivery_and_reopen_restores_the_status(): void
+    {
+        [$so, $pC] = $this->sirsOrder();
+        $service = app(SalesOrderService::class);
+
+        $undelivered = $service->closeOrder($so);
+        $this->assertSame([4], array_column($undelivered, 'undelivered'), 'only the line that was really short is reported');
+        $this->assertSame('closed', $so->fresh()->status);
+
+        try {
+            app(DeliveryReceiptService::class)->createDeliveryReceipt([
+                'customer_id' => $this->customer->id, 'sales_order_id' => $so->id, 'transaction_type' => 'purchase_order',
+                'receipt_date' => now()->toDateString(), 'prepared_by' => $this->admin->id,
+                'items' => [['product_batch_id' => $pC->batches()->first()->id, 'qty' => 1, 'sales_order_item_id' => $so->items[2]->id]],
+            ], $this->admin->id);
+            $this->fail('delivered against a closed Sales Order');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('closed', $e->errors()['items'][0]);
+        }
+
+        $service->reopenOrder($so);
+        $this->assertSame('open', $so->fresh()->status);
+    }
+
+    public function test_only_open_orders_close_and_only_closed_orders_reopen(): void
+    {
+        [$so] = $this->sirsOrder();
+        $service = app(SalesOrderService::class);
+
+        try {
+            $service->reopenOrder($so);
+            $this->fail('reopened an order that is not closed');
+        } catch (ValidationException) {
+        }
+
+        $service->closeOrder($so);
+        try {
+            $service->closeOrder($so);
+            $this->fail('closed an order twice');
+        } catch (ValidationException) {
+        }
+
+        $done = app(SalesOrderService::class)->createSalesOrder([
+            'customer_id' => $this->customer->id, 'order_date' => now()->toDateString(), 'prepared_by' => $this->admin->id,
+            'items' => [['generic_name_id' => $this->stockedItem('DONE')[0]->id, 'qty' => 2, 'price' => 100, 'advance_order_qty' => 2]],
+        ]);
+        $this->assertSame('completed', $done->fresh()->status);
+        try {
+            $service->closeOrder($done);
+            $this->fail('closed a completed order');
+        } catch (ValidationException) {
+        }
+    }
+
+    public function test_revising_a_dr_does_not_reopen_a_closed_order(): void
+    {
+        [$so, $pC] = $this->sirsOrder();
+        $dr = app(DeliveryReceiptService::class)->createDeliveryReceipt([
+            'customer_id' => $this->customer->id, 'sales_order_id' => $so->id, 'transaction_type' => 'purchase_order',
+            'receipt_date' => now()->toDateString(), 'prepared_by' => $this->admin->id,
+            'items' => [['product_batch_id' => $pC->batches()->first()->id, 'qty' => 3, 'sales_order_item_id' => $so->items[2]->id]],
+        ], $this->admin->id);
+        app(SalesOrderService::class)->closeOrder($so->fresh());
+
+        app(DeliveryReceiptService::class)->reviseDeliveryReceipt($dr->fresh('items'), [$dr->items[0]->id => 1], $this->admin->id);
+
+        $this->assertSame('closed', $so->fresh()->status);
+    }
+
+    public function test_a_closed_order_is_counted_apart_in_the_summary(): void
+    {
+        [$so] = $this->sirsOrder();
+        app(SalesOrderService::class)->closeOrder($so);
+
+        $summary = app(SalesOrderSummaryService::class)->customerSummary()->firstWhere('customer_id', $this->customer->id);
+        $this->assertSame(1, $summary['closed']);
+        $this->assertSame(0, $summary['open']);
+        $this->assertSame(0, $summary['undelivered'], 'a closed order owes nothing');
+        $this->assertSame('CLOSED', SalesOrderSummaryService::statusLabel($so->fresh()));
+    }
+
+    public function test_only_a_full_admin_can_close_over_http(): void
+    {
+        [$so] = $this->sirsOrder();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin_staff', 'is_active' => true]))
+            ->post(route('sales-orders.close', $so));
+        $this->assertSame('open', $so->fresh()->status);
+
+        $this->actingAs($this->admin)->post(route('sales-orders.close', $so))->assertRedirect(route('sales-orders.show', $so));
+        $this->assertSame('closed', $so->fresh()->status);
+        $this->assertDatabaseHas('activity_logs', ['module' => 'SalesOrder', 'action' => 'closed', 'loggable_id' => $so->id]);
+
+        $this->actingAs($this->admin)->post(route('sales-orders.reopen', $so));
+        $this->assertSame('open', $so->fresh()->status);
+    }
 }

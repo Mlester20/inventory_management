@@ -30,7 +30,7 @@
                         <i class="bx bx-user"></i> Edit Customer
                     </button>
                 @endif
-                @if($salesOrder->status !== 'completed' && $salesOrder->status !== 'cancelled')
+                @if(! in_array($salesOrder->status, ['completed', 'cancelled', 'closed'], true))
                     <a href="{{ route('delivery-receipts.create', ['sales_order_id' => $salesOrder->id]) }}" class="btn btn-primary">
                         <i class="bx bx-plus"></i> Create Delivery Receipt
                     </a>
@@ -70,6 +70,23 @@
                                 </button>
                             </form>
                         @endif
+                        @if(Auth::user()->role === 'admin' && in_array($salesOrder->status, ['open', 'partially_delivered'], true))
+                            @php $undeliveredUnits = $salesOrder->items->sum(fn ($item) => $item->remaining_qty); @endphp
+                            <form action="{{ route('sales-orders.close', $salesOrder) }}" method="POST" onsubmit="return confirmSubmit(this, 'Close {{ $salesOrder->so_no }}? The {{ $undeliveredUnits }} unit(s) still undelivered will no longer be expected, and no more Delivery Receipts can be made against it. What was already delivered stays. You can reopen it later.');">
+                                @csrf
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bx bx-lock-alt"></i> Close SO
+                                </button>
+                            </form>
+                        @endif
+                        @if(Auth::user()->role === 'admin' && $salesOrder->isClosed())
+                            <form action="{{ route('sales-orders.reopen', $salesOrder) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bx bx-lock-open-alt"></i> Reopen
+                                </button>
+                            </form>
+                        @endif
                         @if(Auth::user()->role === 'admin' && ! $salesOrder->isCancelled())
                             <form action="{{ route('sales-orders.cancel', $salesOrder) }}" method="POST" onsubmit="return confirmSubmit(this, 'Cancel/void this Sales Order? The record and its delivery history stay, only the status changes.');">
                                 @csrf
@@ -83,6 +100,13 @@
             @endif
         </div>
     </div>
+
+    @if($salesOrder->isClosed())
+        <div class="alert alert-warning no-print">
+            <i class="bx bx-lock-alt me-1"></i>
+            This Sales Order was closed — {{ $salesOrder->items->sum(fn ($item) => $item->remaining_qty) }} unit(s) will not be delivered.
+        </div>
+    @endif
 
     <div id="printableSalesOrder">
     <div class="card mb-4">
@@ -106,7 +130,7 @@
                         @if($salesOrder->isDraft())
                             <span class="badge bg-secondary">DRAFT</span>
                         @else
-                            <span class="badge bg-{{ ['open' => 'warning', 'partially_delivered' => 'info', 'completed' => 'success', 'cancelled' => 'danger'][$salesOrder->status] ?? 'secondary' }}">
+                            <span class="badge bg-{{ ['open' => 'warning', 'partially_delivered' => 'info', 'completed' => 'success', 'closed' => 'dark', 'cancelled' => 'danger'][$salesOrder->status] ?? 'secondary' }}">
                                 {{ ucfirst(str_replace('_', ' ', $salesOrder->status)) }}
                             </span>
                         @endif

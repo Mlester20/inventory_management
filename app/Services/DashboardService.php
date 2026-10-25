@@ -206,7 +206,7 @@ class DashboardService
                 'items',
                 fn ($query) => $query->whereColumn('invoiced_qty', '<', 'qty')
             )->count(),
-            'so_in_progress' => SalesOrder::whereNotIn('status', ['completed', 'cancelled'])->count(),
+            'so_in_progress' => SalesOrder::whereNotIn('status', ['completed', 'cancelled', 'closed'])->count(),
             'po_awaiting_receipt' => PurchaseOrder::whereIn('status', ['open', 'partially_received'])->count(),
         ];
     }
