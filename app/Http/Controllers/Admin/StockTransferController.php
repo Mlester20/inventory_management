@@ -79,7 +79,7 @@ class StockTransferController extends Controller
     protected function formData(?StockTransfer $editing = null): array
     {
         $locations = Location::orderBy('name')->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($editing?->prepared_by)->get();
         $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
 
         $genericNamesForJs = $genericNames->map(fn (GenericName $g) => [

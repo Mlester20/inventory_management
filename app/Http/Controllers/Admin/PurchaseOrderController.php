@@ -85,7 +85,7 @@ class PurchaseOrderController extends Controller
         // brand isn't decided until Goods Receipt time (same as the
         // existing GR "Against PO" Brand field already works).
         $genericNames = GenericName::with('category')->orderBy('generic_name')->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($editing?->prepared_by)->get();
 
         $genericNamesForJs = $genericNames->map(fn (GenericName $g) => [
             'id' => $g->id,

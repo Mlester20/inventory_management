@@ -28,13 +28,14 @@ class InventoryImportController extends Controller
 
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv|max:20480',
+            'prepared_by' => 'nullable|exists:users,id',
         ]);
 
         // Thousands of lots are posted one by one through the stock ledger.
         set_time_limit(0);
 
         $file = $request->file('file');
-        $import = new InventoryOpeningImport($adjustments, auth()->id(), $file->getClientOriginalName());
+        $import = new InventoryOpeningImport($adjustments, auth()->id(), $file->getClientOriginalName(), $request->integer('prepared_by') ?: null);
         Excel::import(new NamedSheetImport($import, SheetPicker::key($file, 'INVENTORY')), $file);
 
         if ($import->headingsMissing) {
@@ -91,12 +92,13 @@ class InventoryImportController extends Controller
 
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv|max:20480',
+            'prepared_by' => 'nullable|exists:users,id',
         ]);
 
         set_time_limit(0);
 
         $file = $request->file('file');
-        $import = new StockCountImport($adjustments, auth()->id(), $file->getClientOriginalName());
+        $import = new StockCountImport($adjustments, auth()->id(), $file->getClientOriginalName(), $request->integer('prepared_by') ?: null);
 
         try {
             Excel::import(new NamedSheetImport($import, SheetPicker::key($file, 'COUNT')), $file);

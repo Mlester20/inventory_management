@@ -26,6 +26,7 @@ class User extends Authenticatable
         'role',
         'profile_picture',
         'is_active',
+        'is_encoder',
     ];
 
     /**
@@ -49,7 +50,31 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'is_encoder' => 'boolean',
         ];
+    }
+
+    /** Accounts that can actually sign in — everything except Encoders. */
+    public function scopeLoginAccounts($query)
+    {
+        return $query->where('is_encoder', false);
+    }
+
+    /**
+     * The names offered under "Prepared By": every login account, plus the Encoders that are still
+     * listed. $keep (an id or a list of ids) keeps a document's current preparer selectable even if
+     * that Encoder was removed from the list since.
+     */
+    public function scopePreparers($query, int|array|null $keep = null)
+    {
+        $keep = array_filter((array) $keep);
+
+        return $query->where(function ($q) use ($keep) {
+            $q->where('is_encoder', false)->orWhere('is_active', true);
+            if ($keep !== []) {
+                $q->orWhereIn('id', $keep);
+            }
+        })->orderBy('name');
     }
 
     /**

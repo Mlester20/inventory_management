@@ -19,6 +19,9 @@
                         <label for="count_import_file" class="form-label">File</label>
                         <input type="file" name="file" id="count_import_file" class="form-control" accept=".xlsx,.xls,.csv" required>
                     </div>
+                    <div class="mb-3">
+                        @include('admin.partials.prepared-by-select', ['id' => 'count_import_file_prepared_by'])
+                    </div>
                     <div class="alert alert-info small mb-0">
                         Each lot's Warehouse quantity is set to the Counted Qty. The difference is posted as
                         Inventory Adjustments ("Correction - Increase" / "Correction - Decrease"), so it appears

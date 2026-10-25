@@ -44,7 +44,7 @@ class StockDisposalController extends Controller
      */
     public function create(Request $request)
     {
-        $users = User::orderBy('name')->get();
+        $users = User::preparers()->get();
 
         $products = Product::with(['genericName', 'batches.locationStocks.location'])
             ->orderBy('item_name')

@@ -18,7 +18,7 @@ class ExpenseController extends Controller
     {
         $expenses = Expense::with('category', 'preparedBy')->latest('expense_date')->paginate(15);
         $expenseCategories = ExpenseCategory::orderBy('name')->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($expenses->pluck('prepared_by')->filter()->all())->get();
 
         return view('admin.expenses', compact('expenses', 'expenseCategories', 'users'));
     }

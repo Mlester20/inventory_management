@@ -13,6 +13,7 @@ class ReturnItem extends Model
     protected $fillable = [
         'product_batch_id',
         'user_id',
+        'prepared_by',
         'customer_id',
         'quantity',
         'return_date',

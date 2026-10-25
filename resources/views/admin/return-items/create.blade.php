@@ -40,6 +40,12 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
+                        @include('admin.partials.prepared-by-select', ['selected' => $editingReturnItem?->prepared_by ?? auth()->id()])
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
                         <label for="return_date" class="form-label">Return Date</label>
                         <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', $editingReturnItem?->return_date ?? now()->toDateString()) }}">
                     </div>

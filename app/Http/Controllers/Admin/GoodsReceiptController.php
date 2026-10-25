@@ -72,7 +72,7 @@ class GoodsReceiptController extends Controller
             ->whereIn('status', ['open', 'partially_received'])
             ->latest()
             ->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($editing?->prepared_by)->get();
 
         $itemsForJs = $items->map(fn (Product $item) => [
             'id' => $item->id,

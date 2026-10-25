@@ -70,7 +70,7 @@ class StockCountImport implements ToCollection, WithHeadingRow
     protected array $decreaseLines = [];
     protected int $currentRow = 1;
 
-    public function __construct(protected InventoryAdjustmentService $adjustments, protected ?int $userId = null, protected string $fileName = '')
+    public function __construct(protected InventoryAdjustmentService $adjustments, protected ?int $userId = null, protected string $fileName = '', protected ?int $preparedBy = null)
     {
         $this->batchId = (string) Str::uuid();
 
@@ -142,7 +142,7 @@ class StockCountImport implements ToCollection, WithHeadingRow
             'adjustment_date' => now()->toDateString(),
             'adjustment_type' => $type,
             'description' => 'Stock count imported from Excel' . ($this->fileName !== '' ? " ({$this->fileName})" : ''),
-            'prepared_by' => $this->userId,
+            'prepared_by' => $this->preparedBy ?? $this->userId,
             'lines' => $lines,
         ], $this->userId);
     }

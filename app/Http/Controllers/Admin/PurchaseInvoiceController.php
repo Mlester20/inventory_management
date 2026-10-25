@@ -75,7 +75,7 @@ class PurchaseInvoiceController extends Controller
     protected function formData(): array
     {
         $suppliers = Supplier::orderBy('supplier_name')->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers()->get();
 
         $goodsReceipts = GoodsReceipt::with('items')
             ->orderByDesc('receipt_date')

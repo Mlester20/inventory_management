@@ -113,7 +113,7 @@ class InvoiceController extends Controller
             ->orderBy('item_name')->get();
         $salesNo = $editing?->sales_no ?? $this->generateSalesNo();
         $activeVatRate = Taxes::activeRate();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($editing?->prepared_by)->get();
         $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name', 'withholding_vat_rate', 'customer_type']);
 
         // The customers' Withholding VAT % rides along so the form can suggest the

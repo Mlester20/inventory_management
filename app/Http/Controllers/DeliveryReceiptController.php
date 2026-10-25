@@ -80,7 +80,7 @@ class DeliveryReceiptController extends Controller
             ->whereIn('status', ['open', 'partially_delivered'])
             ->latest()
             ->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($editing?->prepared_by)->get();
 
         $genericNamesForJs = $genericNames->map(fn (GenericName $g) => [
             'id' => $g->id,
@@ -400,6 +400,7 @@ class DeliveryReceiptController extends Controller
             'po_no' => 'nullable|string|max:255',
             'less_wt' => 'nullable|numeric|min:0',
             'personal_use' => 'nullable|boolean',
+            'prepared_by' => 'nullable|exists:users,id',
         ]);
 
         try {
@@ -410,7 +411,8 @@ class DeliveryReceiptController extends Controller
                 array_filter($validated['qty'] ?? []),
                 $validated['po_no'] ?? null,
                 (float) ($validated['less_wt'] ?? 0),
-                (bool) ($validated['personal_use'] ?? false)
+                (bool) ($validated['personal_use'] ?? false),
+                isset($validated['prepared_by']) ? (int) $validated['prepared_by'] : null
             );
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());

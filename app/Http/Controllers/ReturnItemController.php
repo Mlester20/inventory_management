@@ -91,6 +91,7 @@ class ReturnItemController extends Controller
         return [
             'product_batch_id' => 'nullable|exists:product_batches,id',
             'customer_id' => 'nullable|exists:customers,id',
+            'prepared_by' => 'nullable|exists:users,id',
             'quantity' => 'nullable|integer|min:1',
             'return_date' => 'nullable|date',
             'reason' => 'nullable|string|max:255',
@@ -108,6 +109,7 @@ class ReturnItemController extends Controller
         return [
             'product_batch_id' => 'required|exists:product_batches,id',
             'customer_id' => 'nullable|exists:customers,id',
+            'prepared_by' => 'nullable|exists:users,id',
             'quantity' => 'required|integer|min:1',
             'return_date' => 'required|date',
             'reason' => 'required|string|max:255',

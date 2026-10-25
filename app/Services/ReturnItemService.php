@@ -72,7 +72,7 @@ class ReturnItemService
                     'date' => now()->toDateString(),
                     'reason' => 'Customer Return: ' . $returnItem->reason,
                     'remarks' => "Written off from Return Item #{$returnItem->id} — not sellable.",
-                    'prepared_by' => $userId,
+                    'prepared_by' => $returnItem->prepared_by ?? $userId,
                     'lines' => [[
                         'product_batch_id' => $returnItem->product_batch_id,
                         'location_id' => $posLocation->id,
@@ -104,7 +104,7 @@ class ReturnItemService
                     'amount' => $refundAmount,
                     'payment_date' => now()->toDateString(),
                     'remarks' => "Credit for approved Return Item #{$returnItem->id}",
-                    'prepared_by' => $userId,
+                    'prepared_by' => $returnItem->prepared_by ?? $userId,
                 ]);
             }
 

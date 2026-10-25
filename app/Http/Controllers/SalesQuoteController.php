@@ -67,7 +67,7 @@ class SalesQuoteController extends Controller
         $genericNames = GenericName::with(['category', 'products' => function ($query) {
             $query->withSum('locationStocks', 'qty');
         }])->orderBy('generic_name')->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($editing?->prepared_by)->get();
 
         $genericNamesForJs = $genericNames->map(function ($genericName) {
             // Pricing is suggested from whichever brand under this generic
@@ -256,7 +256,7 @@ class SalesQuoteController extends Controller
     public function show(SalesQuote $salesQuote)
     {
         $salesQuote->load('customer', 'preparedBy', 'items.genericName', 'items.product', 'salesOrder');
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($salesQuote->prepared_by)->get();
 
         $vatPreview = $this->buildVatPreview($salesQuote->items);
 

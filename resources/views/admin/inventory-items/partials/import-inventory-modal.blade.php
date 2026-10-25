@@ -18,6 +18,9 @@
                         <label for="inventory_import_file" class="form-label">File</label>
                         <input type="file" name="file" id="inventory_import_file" class="form-control" accept=".xlsx,.xls,.csv" required>
                     </div>
+                    <div class="mb-3">
+                        @include('admin.partials.prepared-by-select', ['id' => 'inventory_import_file_prepared_by'])
+                    </div>
                     <div class="alert alert-info small mb-0">
                         Products must already exist — a row whose Category, Generic Description and Brand
                         match no product is skipped and reported, never created. Add <strong>Unit</strong> if

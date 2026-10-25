@@ -222,6 +222,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('admin/inventory-adjustments/{inventoryAdjustment}/write-off', [InventoryAdjustmentController::class, 'writeOff'])->name('inventory-adjustments.write-off');
 
     Route::resource('admin/users', UserController::class);
+    Route::post('admin/users/encoders', [UserController::class, 'storeEncoder'])->name('users.encoders.store');
+    Route::post('admin/users/{user}/toggle-encoder', [UserController::class, 'toggleEncoder'])->name('users.encoders.toggle');
     Route::post('admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::resource('admin/purchases', PurchaseController::class);    
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');

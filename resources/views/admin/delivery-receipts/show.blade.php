@@ -290,6 +290,9 @@
                                 value="{{ $deliveryReceipt->salesOrder?->po_no }}" placeholder="Optional">
                         </div>
                         <div class="col-md-3 no-print">
+                            @include('admin.partials.prepared-by-select', ['id' => 'dr_invoice_prepared_by', 'selected' => $deliveryReceipt->prepared_by ?? auth()->id()])
+                        </div>
+                        <div class="col-md-3 no-print">
                             <label for="dr_less_wt" class="form-label small mb-1">Withholding Tax (₱)</label>
                             <input type="number" name="less_wt" id="dr_less_wt" class="form-control form-control-sm"
                                 step="0.01" min="0" value="{{ old('less_wt') }}" placeholder="Optional">

@@ -19,7 +19,7 @@ class EnsureUserIsActive
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Auth::check() && ! Auth::user()->is_active) {
+        if (Auth::check() && (! Auth::user()->is_active || Auth::user()->is_encoder)) {
             $user = Auth::user();
 
             Auth::guard('web')->logout();

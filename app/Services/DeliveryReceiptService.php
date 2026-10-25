@@ -242,9 +242,9 @@ class DeliveryReceiptService
      * same resolution Sales Order already uses — a Delivery Receipt line
      * carries no price of its own.
      */
-    public function createInvoiceFromLines(DeliveryReceipt $deliveryReceipt, array $deliveryReceiptItemIds, ?int $userId = null, array $qtyOverrides = [], ?string $poNo = null, float $lessWt = 0, bool $personalUse = false): Invoice
+    public function createInvoiceFromLines(DeliveryReceipt $deliveryReceipt, array $deliveryReceiptItemIds, ?int $userId = null, array $qtyOverrides = [], ?string $poNo = null, float $lessWt = 0, bool $personalUse = false, ?int $preparedBy = null): Invoice
     {
-        return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId, $qtyOverrides, $poNo, $lessWt, $personalUse) {
+        return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId, $qtyOverrides, $poNo, $lessWt, $personalUse, $preparedBy) {
             $customer = $deliveryReceipt->customer;
             $activeVatRate = Taxes::activeRate();
 
@@ -359,7 +359,7 @@ class DeliveryReceiptService
                 'customer_id' => $customer->id,
                 'po_no' => $poNo,
                 'sales_no' => $this->generateSalesNo(),
-                'prepared_by' => $userId,
+                'prepared_by' => $preparedBy ?? $deliveryReceipt->prepared_by ?? $userId,
                 'vat_sales' => round($vatSales, 2),
                 'vatex_sales' => round($vatexSales, 2),
                 'zero_sales' => round($zeroSales, 2),

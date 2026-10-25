@@ -85,6 +85,7 @@ class CustomerController extends Controller
             'payment_date' => 'required|date',
             'payment_method' => 'nullable|in:' . implode(',', array_keys(CustomerPayment::PAYMENT_METHODS)),
             'remarks' => 'nullable|string|max:255',
+            'prepared_by' => 'nullable|exists:users,id',
         ]);
 
         $payment = $customerPaymentService->recordPayment($customer, $validated, auth()->id());

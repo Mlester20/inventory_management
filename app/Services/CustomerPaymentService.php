@@ -63,7 +63,7 @@ class CustomerPaymentService
                 'payment_date' => $data['payment_date'],
                 'payment_method' => $data['payment_method'] ?? null,
                 'remarks' => $data['remarks'] ?? null,
-                'prepared_by' => $userId,
+                'prepared_by' => $data['prepared_by'] ?? $userId,
             ]);
 
             if ($data['type'] === 'collection') {

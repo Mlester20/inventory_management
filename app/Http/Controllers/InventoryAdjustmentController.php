@@ -39,7 +39,7 @@ class InventoryAdjustmentController extends Controller
     public function create(Request $request)
     {
         $products = Product::with(['genericName', 'batches'])->orderBy('item_name')->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers()->get();
         $locations = Location::orderBy('name')->get();
         $preselectedProductId = $request->query('product_id');
 
@@ -213,7 +213,7 @@ class InventoryAdjustmentController extends Controller
         $inventoryAdjustment->load('lines.product');
 
         $products = Product::with(['genericName', 'batches'])->orderBy('item_name')->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($inventoryAdjustment->prepared_by)->get();
         $locations = Location::orderBy('name')->get();
         $preselectedProductId = null;
 

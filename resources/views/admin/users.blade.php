@@ -9,6 +9,14 @@
         <div class="text-end">
             <button
                 type="button"
+                class="btn btn-outline-primary me-1"
+                data-bs-toggle="modal"
+                data-bs-target="#encoderModal"
+            >
+                Add Encoder
+            </button>
+            <button
+                type="button"
                 class="btn btn-primary"
                 data-bs-toggle="modal"
                 data-bs-target="#userModal"
@@ -17,6 +25,33 @@
             </button>
         </div>
         @endif
+
+        <!-- Add Encoder Modal -->
+        <div class="modal fade" id="encoderModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form action="{{ route('users.encoders.store') }}" method="POST">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add Encoder</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">
+                                An Encoder is a name that can be picked under <strong>Prepared By</strong> on every document.
+                                It cannot sign in, so several people can use one login and still put their own name on what they encode.
+                            </p>
+                            <label for="encoder_name" class="form-label">Name</label>
+                            <input type="text" name="name" id="encoder_name" class="form-control" placeholder="e.g., Maria Santos" maxlength="255" required>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <!-- Add User Modal -->
         <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
@@ -221,6 +256,49 @@
                 {{ $users->links() }}
             </div>
         @endif
+    </div>
+
+    <div class="card mt-4">
+        <h5 class="card-header">Encoders <small class="text-muted fw-normal">— names for Prepared By (no login)</small></h5>
+        <div class="table-responsive nowrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($encoders as $encoder)
+                        <tr>
+                            <td>{{ $encoder->name }}</td>
+                            <td>
+                                <span class="badge {{ $encoder->is_active ? 'bg-success' : 'bg-secondary' }}">
+                                    {{ $encoder->is_active ? 'On the list' : 'Removed' }}
+                                </span>
+                            </td>
+                            <td>
+                                @if(Auth::user()->role === 'admin')
+                                    <form action="{{ route('users.encoders.toggle', $encoder) }}" method="POST" class="m-0">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                            {{ $encoder->is_active ? 'Remove from list' : 'Put back' }}
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">No Encoders yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 @endsection
 

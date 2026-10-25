@@ -95,6 +95,7 @@ class SupplierController extends Controller
             'payment_date' => 'required|date',
             'payment_method' => 'nullable|in:' . implode(',', array_keys(SupplierPayment::PAYMENT_METHODS)),
             'remarks' => 'nullable|string|max:255',
+            'prepared_by' => 'nullable|exists:users,id',
         ]);
 
         $payment = $supplier->payments()->create([
@@ -103,7 +104,7 @@ class SupplierController extends Controller
             'payment_date' => $validated['payment_date'],
             'payment_method' => $validated['payment_method'] ?? null,
             'remarks' => $validated['remarks'] ?? null,
-            'prepared_by' => auth()->id(),
+            'prepared_by' => $validated['prepared_by'] ?? auth()->id(),
         ]);
 
         ActivityLog::record(

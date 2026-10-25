@@ -69,7 +69,7 @@ class SalesOrderController extends Controller
         $genericNames = GenericName::with(['category', 'products' => function ($query) {
             $query->withSum('locationStocks', 'qty');
         }])->orderBy('generic_name')->get();
-        $users = User::orderBy('name')->get();
+        $users = User::preparers($editing?->prepared_by)->get();
 
         $genericNamesForJs = $genericNames->map(function ($genericName) {
             // Pricing is suggested from whichever brand under this generic

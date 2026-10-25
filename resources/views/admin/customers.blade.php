@@ -447,6 +447,9 @@
                                 <label for="payment_remarks" class="form-label">Remarks</label>
                                 <input type="text" name="remarks" id="payment_remarks" class="form-control" placeholder="e.g., OR #00123">
                             </div>
+                            <div class="mb-3">
+                                @include('admin.partials.prepared-by-select', ['id' => 'payment_prepared_by'])
+                            </div>
                         </div>
 
                         <div class="modal-footer">

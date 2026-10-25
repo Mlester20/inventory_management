@@ -45,6 +45,14 @@ class AuthenticatedSessionController extends Controller
             return back()->withInput($request->only('email'));
         }
 
+        // An Encoder is only a name for Prepared By — it can never sign in.
+        if (Auth::user()->is_encoder) {
+            Auth::guard('web')->logout();
+
+            Alert::error('Login Failed', 'Invalid email or password');
+            return back()->withInput($request->only('email'));
+        }
+
         if (! Auth::user()->is_active) {
             $suspendedUser = Auth::user();
             Auth::guard('web')->logout();
