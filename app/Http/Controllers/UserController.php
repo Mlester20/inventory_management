@@ -13,7 +13,7 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'User Management is restricted to full admin accounts.');
@@ -23,7 +23,9 @@ class UserController extends Controller
         $users = User::loginAccounts()->orderBy('name')->paginate(15);
         $encoders = User::where('is_encoder', true)->orderBy('name')->get();
 
-        return view('admin.users', compact('users', 'encoders'));
+        $tab = $request->query('tab') === 'encoders' ? 'encoders' : 'users';
+
+        return view('admin.users', compact('users', 'encoders', 'tab'));
     }
 
     /**
@@ -71,7 +73,7 @@ class UserController extends Controller
     {
         if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Managing Encoders is restricted to full admin accounts.');
-            return redirect()->route('users.index');
+            return redirect()->route('users.index', ['tab' => 'encoders']);
         }
 
         $validated = $request->validate(['name' => 'required|string|max:255']);
@@ -79,7 +81,7 @@ class UserController extends Controller
 
         if (User::where('is_encoder', true)->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->exists()) {
             Alert::error('Already listed', "An Encoder named {$name} already exists.");
-            return redirect()->route('users.index');
+            return redirect()->route('users.index', ['tab' => 'encoders']);
         }
 
         $encoder = User::create([
@@ -99,7 +101,7 @@ class UserController extends Controller
         );
 
         Alert::success('Success', "Encoder {$encoder->name} added.");
-        return redirect()->route('users.index');
+        return redirect()->route('users.index', ['tab' => 'encoders']);
     }
 
     /**
@@ -110,7 +112,7 @@ class UserController extends Controller
     {
         if (auth()->user()->role !== 'admin') {
             Alert::error('Not allowed', 'Managing Encoders is restricted to full admin accounts.');
-            return redirect()->route('users.index');
+            return redirect()->route('users.index', ['tab' => 'encoders']);
         }
 
         abort_unless($user->is_encoder, 404);
@@ -125,7 +127,7 @@ class UserController extends Controller
         );
 
         Alert::success('Success', $user->is_active ? 'Encoder is back on the list.' : 'Encoder removed from the list. Past documents keep their name.');
-        return redirect()->route('users.index');
+        return redirect()->route('users.index', ['tab' => 'encoders']);
     }
 
     public function destroy(string $id)
@@ -139,7 +141,7 @@ class UserController extends Controller
 
         if ($user->is_encoder) {
             Alert::error('Cannot delete', 'Encoders are removed from the list, not deleted, so past documents keep their name.');
-            return redirect()->route('users.index');
+            return redirect()->route('users.index', ['tab' => 'encoders']);
         }
 
         if ($user->role === 'admin') {

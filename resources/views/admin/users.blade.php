@@ -153,7 +153,17 @@
 
     </div>
 
-    <div class="card mt-4">
+    <ul class="nav nav-tabs mt-4 mb-3">
+        <li class="nav-item">
+            <a class="nav-link {{ $tab === 'users' ? 'active' : '' }}" href="{{ route('users.index') }}">Users</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ $tab === 'encoders' ? 'active' : '' }}" href="{{ route('users.index', ['tab' => 'encoders']) }}">Encoders</a>
+        </li>
+    </ul>
+
+    @if($tab === 'users')
+    <div class="card">
         <h5 class="card-header">Users</h5>
         <div class="table-responsive nowrap">
             <table class="table">
@@ -258,7 +268,8 @@
         @endif
     </div>
 
-    <div class="card mt-4">
+    @else
+    <div class="card">
         <h5 class="card-header">Encoders <small class="text-muted fw-normal">— names for Prepared By (no login)</small></h5>
         <div class="table-responsive nowrap">
             <table class="table">
@@ -300,6 +311,7 @@
             </table>
         </div>
     </div>
+    @endif
 @endsection
 
 @section('scripts')
