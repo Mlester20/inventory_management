@@ -335,6 +335,9 @@
     <div class="card so-print-only" id="printableSalesOrderSheet">
         <div class="card-body p-4 so-sheet">
 
+            {{-- Letterhead in the header group of an outer table: the printer repeats it on every page. --}}
+            <table class="print-repeat-wrap">
+            <thead><tr><td>
             @include('partials.print.letterhead', [
                 'docTitle' => 'SALES ORDER',
                 'docNoLabel' => 'S.O No.',
@@ -348,6 +351,8 @@
                     'Address' => $salesOrder->customer?->delivery_address ?? '',
                 ],
             ])
+            </td></tr></thead>
+            <tbody><tr><td>
 
             <div class="table-responsive">
                 <table class="table table-bordered table-sm print-items-table mb-0">
@@ -392,6 +397,8 @@
                 'preparedByValue' => $salesOrder->preparedBy->name ?? '',
                 'notes' => $salesOrder->notes,
             ], $vatPreview ?? []))
+            </td></tr></tbody>
+            </table>
         </div>
     </div>
 

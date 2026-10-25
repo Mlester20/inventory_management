@@ -153,6 +153,9 @@
     <div class="card sq-print-only" id="printableSalesQuoteSheet">
         <div class="card-body p-4 sq-sheet">
 
+            {{-- Letterhead in the header group of an outer table: the printer repeats it on every page. --}}
+            <table class="print-repeat-wrap">
+            <thead><tr><td>
             @include('partials.print.letterhead', [
                 'docTitle' => 'QUOTATION',
                 'docNoLabel' => 'R.F.Q No.',
@@ -164,6 +167,8 @@
                     'Address' => $salesQuote->customer->delivery_address ?? '',
                 ],
             ])
+            </td></tr></thead>
+            <tbody><tr><td>
 
             <div class="table-responsive">
                 <table class="table table-bordered table-sm print-items-table mb-0">
@@ -207,6 +212,8 @@
                 'totalAmountDue' => number_format($salesQuote->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2),
                 'preparedByValue' => $salesQuote->preparedBy->name ?? '',
             ], $vatPreview ?? []))
+            </td></tr></tbody>
+            </table>
         </div>
     </div>
 

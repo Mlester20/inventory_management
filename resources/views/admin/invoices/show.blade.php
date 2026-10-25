@@ -43,6 +43,9 @@
     <div class="card" id="printableInvoice">
         <div class="card-body p-4 invoice-sheet">
 
+            {{-- Letterhead in the header group of an outer table: the printer repeats it on every page. --}}
+            <table class="print-repeat-wrap">
+            <thead><tr><td>
             @include('partials.print.letterhead', [
                 'docTitle' => 'SALES INVOICE',
                 'docNoLabel' => 'S.I No.',
@@ -56,6 +59,8 @@
                     'Address' => $invoice->customer?->delivery_address ?? '—',
                 ],
             ])
+            </td></tr></thead>
+            <tbody><tr><td>
 
             <div class="table-responsive">
                 <table class="table table-bordered table-sm print-items-table mb-0">
@@ -99,6 +104,8 @@
                 'addVat' => $invoice->vat_amount,
                 'lessWithholdingTax' => $invoice->less_wt,
             ])
+            </td></tr></tbody>
+            </table>
         </div>
     </div>
 @endsection
