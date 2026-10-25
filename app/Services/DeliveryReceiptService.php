@@ -616,7 +616,7 @@ class DeliveryReceiptService
         $items = $salesOrder->items;
 
         $status = match (true) {
-            $items->every(fn (SalesOrderItem $item) => $item->delivered_qty >= $item->qty) => 'completed',
+            $items->every(fn (SalesOrderItem $item) => $item->remaining_qty <= 0) => 'completed',
             $items->contains(fn (SalesOrderItem $item) => $item->delivered_qty > 0) => 'partially_delivered',
             default => 'open',
         };

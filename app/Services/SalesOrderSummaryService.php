@@ -58,8 +58,8 @@ class SalesOrderSummaryService
             ->groupBy('sales_orders.customer_id')
             ->selectRaw("sales_orders.customer_id,
                 SUM(sales_order_items.qty) as qty_ordered,
-                SUM(CASE WHEN sales_orders.status IN ('open', 'partially_delivered') AND sales_order_items.qty > sales_order_items.delivered_qty
-                         THEN sales_order_items.qty - sales_order_items.delivered_qty ELSE 0 END) as undelivered")
+                SUM(CASE WHEN sales_orders.status IN ('open', 'partially_delivered') AND sales_order_items.qty > sales_order_items.delivered_qty + sales_order_items.advance_order_qty
+                         THEN sales_order_items.qty - sales_order_items.delivered_qty - sales_order_items.advance_order_qty ELSE 0 END) as undelivered")
             ->get()
             ->keyBy('customer_id');
 
@@ -133,7 +133,7 @@ class SalesOrderSummaryService
             ->where('sales_orders.status', '!=', 'cancelled')
             ->when($scope === self::SCOPE_UNDELIVERED, fn ($q) => $q
                 ->whereIn('sales_orders.status', self::OPEN_STATUSES)
-                ->whereColumn('sales_order_items.qty', '>', 'sales_order_items.delivered_qty'))
+                ->whereRaw('sales_order_items.qty > sales_order_items.delivered_qty + sales_order_items.advance_order_qty'))
             ->when($customerId, fn ($q) => $q->where('sales_orders.customer_id', $customerId))
             ->when($from, fn ($q) => $q->whereDate('sales_orders.order_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('sales_orders.order_date', '<=', $to))
@@ -167,7 +167,8 @@ class SalesOrderSummaryService
                 'products.brand_name as product_brand',
                 'sales_order_items.price',
                 'sales_order_items.qty',
-                'sales_order_items.delivered_qty',
+                // Advance Qty was delivered in advance, so it counts as delivered here.
+                DB::raw('(sales_order_items.delivered_qty + sales_order_items.advance_order_qty) as delivered_qty'),
             ]);
 
         [$onHandByProduct, $onHandByGeneric] = $this->onHand();
@@ -326,7 +327,8 @@ class SalesOrderSummaryService
                 'products.description as product_description',
                 'products.brand_name as product_brand',
                 'sales_order_items.qty',
-                'sales_order_items.delivered_qty',
+                // Advance Qty was delivered in advance, so it counts as delivered here.
+                DB::raw('(sales_order_items.delivered_qty + sales_order_items.advance_order_qty) as delivered_qty'),
                 'sales_order_items.remarks',
             ]);
 

@@ -58,8 +58,13 @@ class SalesOrderItem extends Model
         return $this->hasMany(DeliveryReceiptItem::class);
     }
 
+    /**
+     * What a Delivery Receipt can still deliver. Advance Qty was already handed over in advance
+     * (it will never get a DR from this order — a DR would deduct that stock a second time), so
+     * it counts as covered, the same as a delivered quantity.
+     */
     public function getRemainingQtyAttribute(): int
     {
-        return $this->qty - $this->delivered_qty;
+        return max(0, (int) $this->qty - (int) $this->advance_order_qty - (int) $this->delivered_qty);
     }
 }

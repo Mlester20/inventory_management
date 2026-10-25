@@ -174,6 +174,12 @@ class SalesOrderService
                 'remarks' => $line['remarks'] ?? null,
             ]);
         }
+
+        // Every line already delivered in advance — nothing is left for a Delivery Receipt.
+        $lines = $salesOrder->items()->get();
+        if ($lines->isNotEmpty() && $lines->every(fn ($item) => $item->remaining_qty <= 0)) {
+            $salesOrder->update(['status' => 'completed']);
+        }
     }
 
     /**
