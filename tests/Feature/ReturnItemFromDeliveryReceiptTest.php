@@ -323,4 +323,28 @@ class ReturnItemFromDeliveryReceiptTest extends TestCase
         $this->actingAs($this->admin)->get(route('return-items.from-dr', ['delivery_receipt_id' => $this->dr->id]))
             ->assertOk()->assertSee('New Product Return')->assertSee('SAGADA LOCAL GOVERNMENT UNIT');
     }
+
+    public function test_approving_a_single_item_return_shows_a_success_notice_on_the_list(): void
+    {
+        $this->submitReturn(['delivery_receipt_id' => '']);
+        $return = ReturnItem::firstOrFail();
+
+        $this->actingAs($this->admin)->from(route('return-items.index'))
+            ->post(route('return-items.approve', $return), ['refund_method' => 'cash', 'stock_disposition' => 'sellable'])
+            ->assertRedirect(route('return-items.index'));
+
+        $this->actingAs($this->admin)->get(route('return-items.index'))->assertOk()->assertSee('approved successfully');
+    }
+
+    public function test_a_refused_approval_shows_the_reason_on_the_list(): void
+    {
+        $this->submitReturn(['delivery_receipt_id' => '']);
+        $return = ReturnItem::firstOrFail();
+        $return->update(['status' => 'approved']);
+
+        $this->actingAs($this->admin)->from(route('return-items.index'))
+            ->post(route('return-items.approve', $return), ['refund_method' => 'cash', 'stock_disposition' => 'sellable']);
+
+        $this->actingAs($this->admin)->get(route('return-items.index'))->assertOk()->assertSee('Only pending');
+    }
 }

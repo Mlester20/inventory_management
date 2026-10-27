@@ -15,6 +15,19 @@
             </a>
         </div>
     </div>
+    {{-- The approve / reject / create actions here answer with a plain flash message; show it. --}}
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible mx-4 mt-3 mb-0" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible mx-4 mt-3 mb-0" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
     <datalist id="customer_datalist">
         @foreach($customers as $customer)
             <option value="{{ $customer->customer_name }}"></option>
