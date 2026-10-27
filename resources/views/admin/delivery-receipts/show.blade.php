@@ -3,6 +3,7 @@
 @section('title', 'Delivery Receipt ' . $deliveryReceipt->dr_no)
 
 @section('content')
+    @php $returnedByProduct = $deliveryReceipt->returnedByProduct(); @endphp
     <div class="d-flex justify-content-between align-items-center mt-3 mb-3 no-print">
         <a href="{{ route('delivery-receipts.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Delivery Receipts
@@ -244,7 +245,7 @@
                                     @endif
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $line->productBatch->product->genericName->generic_name ?? '—' }}</td>
-                                    <td>{{ $line->productBatch->product->display_description }}</td>
+                                    <td>{{ $line->productBatch->product->display_description }}{{ isset($returnedByProduct[$line->productBatch->product_id]) ? ' *' : '' }}</td>
                                     <td>{{ $line->batch_no ?? '—' }}</td>
                                     <td>{{ $line->expiration_date ? $line->expiration_date->format('Y-m-d') : '—' }}</td>
                                     <td style="white-space: pre-line;">{{ $line->remarks ?? '—' }}</td>
@@ -273,6 +274,7 @@
                 @if(!$deliveryReceipt->isDraft())
                     <p class="text-muted small mb-3 no-print">
                         Check the lines to invoice, then click Create Invoice. A line's checkbox disables once it's fully invoiced.
+                        @include('partials.returned-note', ['returned' => $returnedByProduct])
                     </p>
                 @endif
 
@@ -507,7 +509,7 @@
                         @foreach ($deliveryReceipt->items as $line)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
-                                <td>{{ $line->productBatch->product->display_description }}</td>
+                                <td>{{ $line->productBatch->product->display_description }}{{ isset($returnedByProduct[$line->productBatch->product_id]) ? ' *' : '' }}</td>
                                 <td class="text-center">{{ $line->productBatch->product->genericName->unit ?? '—' }}</td>
                                 <td class="text-center">{{ $line->batch_no ?? '—' }}</td>
                                 <td class="text-center">{{ $line->expiration_date ? $line->expiration_date->format('Y-m-d') : '—' }}</td>
@@ -517,6 +519,8 @@
                     </tbody>
                 </table>
             </div>
+
+            @include('partials.returned-note', ['returned' => $returnedByProduct])
 
             @include('partials.print.signature-block', [
                 'label1' => 'Prepared By', 'value1' => $deliveryReceipt->preparedBy->name ?? '—',

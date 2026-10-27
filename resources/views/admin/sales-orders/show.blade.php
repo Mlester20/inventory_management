@@ -150,6 +150,14 @@
         </div>
     </div>
 
+    @php
+        $returnedBySoItem = $salesOrder->returnedByItem();
+        $returnedNote = collect($returnedBySoItem)->map(fn ($row, $itemId) => [
+            'name' => $salesOrder->items->firstWhere('id', $itemId)?->genericName?->generic_name ?? '—',
+            'qty' => $row['qty'],
+            'refs' => $row['refs'],
+        ])->values()->all();
+    @endphp
     <div class="card mb-4">
         <h5 class="card-header">Line Items</h5>
         <div class="table-responsive">
@@ -170,7 +178,7 @@
                     @foreach ($salesOrder->items as $item)
                         <tr>
                             <td>
-                                {{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }})
+                                {{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }}){{ isset($returnedBySoItem[$item->id]) ? ' *' : '' }}
                                 @if($item->remarks)
                                     <div class="text-muted small" style="white-space: pre-line;">{{ $item->remarks }}</div>
                                 @endif
@@ -202,6 +210,7 @@
                     </tr>
                 </tfoot>
             </table>
+            <div class="px-3 pb-3">@include('partials.returned-note', ['returned' => $returnedNote])</div>
         </div>
     </div>
 
@@ -377,7 +386,7 @@
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
                                 <td>
-                                    {{ $item->genericName->generic_name ?? '—' }}
+                                    {{ $item->genericName->generic_name ?? '—' }}{{ isset($returnedBySoItem[$item->id]) ? ' *' : '' }}
                                     @if($item->remarks)
                                         <div class="print-item-remarks" style="white-space: pre-line;">{{ $item->remarks }}</div>
                                     @endif
@@ -391,6 +400,8 @@
                     </tbody>
                 </table>
             </div>
+
+            @include('partials.returned-note', ['returned' => $returnedNote])
 
             @include('partials.print.sales-totals-footer', array_merge([
                 // Per Sir: line Prices are already VAT-inclusive, so the line

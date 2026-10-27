@@ -84,6 +84,45 @@ class DeliveryReceipt extends Model
         return $this->belongsTo(SalesOrder::class);
     }
 
+    /**
+     * Goods the customer sent back from this Delivery Receipt, by product: approved Return Items plus
+     * posted "Stock In - Returned by Customer" adjustments that point at it. Only a marker for the DR
+     * and SO screens — the delivered quantities themselves are not changed by a return.
+     *
+     * @return array<int,array{name:string,qty:int,refs:array<int,string>}>
+     */
+    public function returnedByProduct(): array
+    {
+        $out = [];
+        $add = function (?Product $product, int $qty, string $ref) use (&$out) {
+            if (! $product || $qty <= 0) {
+                return;
+            }
+
+            $out[$product->id] ??= ['name' => $product->display_description, 'qty' => 0, 'refs' => []];
+            $out[$product->id]['qty'] += $qty;
+            $out[$product->id]['refs'][] = $ref;
+        };
+
+        $returns = ReturnItem::where('delivery_receipt_id', $this->id)
+            ->where('is_draft', false)->where('status', 'approved')
+            ->with('productBatch.product')->get();
+        foreach ($returns as $return) {
+            $add($return->productBatch?->product, (int) $return->quantity, $return->reference);
+        }
+
+        $adjustments = InventoryAdjustment::where('delivery_receipt_id', $this->id)
+            ->where('adjustment_type', InventoryAdjustment::CUSTOMER_RETURN)->where('status', 'posted')
+            ->with('lines.product')->get();
+        foreach ($adjustments as $adjustment) {
+            foreach ($adjustment->lines as $line) {
+                $add($line->product, (int) $line->qty, $adjustment->adjustment_no);
+            }
+        }
+
+        return $out;
+    }
+
     /** Return Items recording goods a customer sent back from this Delivery Receipt. */
     public function returnItems(): HasMany
     {

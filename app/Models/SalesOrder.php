@@ -37,6 +37,40 @@ class SalesOrder extends Model
         return (bool) $this->is_draft;
     }
 
+    /**
+     * What came back from the Delivery Receipts of this order, by Sales Order line (each product on a DR
+     * counted once per line it was delivered against).
+     *
+     * @return array<int,array{qty:int,refs:array<int,string>}>
+     */
+    public function returnedByItem(): array
+    {
+        $out = [];
+
+        foreach (DeliveryReceipt::where('sales_order_id', $this->id)->with('items.productBatch')->get() as $deliveryReceipt) {
+            $returned = $deliveryReceipt->returnedByProduct();
+            if ($returned === []) {
+                continue;
+            }
+
+            $counted = [];
+            foreach ($deliveryReceipt->items as $line) {
+                $productId = $line->productBatch?->product_id;
+                $key = $line->sales_order_item_id . '|' . $productId;
+                if (! $line->sales_order_item_id || ! isset($returned[$productId]) || isset($counted[$key])) {
+                    continue;
+                }
+                $counted[$key] = true;
+
+                $out[$line->sales_order_item_id] ??= ['qty' => 0, 'refs' => []];
+                $out[$line->sales_order_item_id]['qty'] += $returned[$productId]['qty'];
+                $out[$line->sales_order_item_id]['refs'] = array_merge($out[$line->sales_order_item_id]['refs'], $returned[$productId]['refs']);
+            }
+        }
+
+        return $out;
+    }
+
     public function isClosed(): bool
     {
         return $this->status === 'closed';
