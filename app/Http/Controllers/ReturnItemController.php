@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\DeliveryReceipt;
+use App\Models\ProductBatch;
 use App\Models\Customer;
 use App\Models\Location;
 use App\Models\ReturnItem;
@@ -91,6 +93,7 @@ class ReturnItemController extends Controller
         return [
             'product_batch_id' => 'nullable|exists:product_batches,id',
             'customer_id' => 'nullable|exists:customers,id',
+            'delivery_receipt_id' => 'nullable|exists:delivery_receipts,id',
             'prepared_by' => 'nullable|exists:users,id',
             'quantity' => 'nullable|integer|min:1',
             'return_date' => 'nullable|date',
@@ -109,12 +112,65 @@ class ReturnItemController extends Controller
         return [
             'product_batch_id' => 'required|exists:product_batches,id',
             'customer_id' => 'nullable|exists:customers,id',
+            'delivery_receipt_id' => 'nullable|exists:delivery_receipts,id',
             'prepared_by' => 'nullable|exists:users,id',
             'quantity' => 'required|integer|min:1',
             'return_date' => 'required|date',
             'reason' => 'required|string|max:255',
             'notes' => 'nullable|string|max:500',
         ];
+    }
+
+    /**
+     * A return that names a Delivery Receipt has to be one that really delivered this item to this
+     * customer, and cannot give back more than that DR delivered minus what was already returned
+     * against it. A return with no DR (POS / direct invoice) is left exactly as before.
+     */
+    protected function resolveSource(array $validated, ?ReturnItem $existing = null): array
+    {
+        if (empty($validated['delivery_receipt_id'])) {
+            $validated['delivery_receipt_id'] = null;
+
+            return $validated;
+        }
+
+        $deliveryReceipt = DeliveryReceipt::with('items.productBatch')->findOrFail($validated['delivery_receipt_id']);
+        $batch = ProductBatch::find($validated['product_batch_id'] ?? null);
+
+        if ($deliveryReceipt->isDraft() || $deliveryReceipt->isCancelled()) {
+            throw ValidationException::withMessages(['delivery_receipt_id' => 'Pick a posted Delivery Receipt that was not cancelled.']);
+        }
+
+        if (! empty($validated['customer_id']) && (int) $deliveryReceipt->customer_id !== (int) $validated['customer_id']) {
+            throw ValidationException::withMessages(['delivery_receipt_id' => 'That Delivery Receipt belongs to another customer.']);
+        }
+
+        if ($batch) {
+            $delivered = (int) $deliveryReceipt->items
+                ->filter(fn ($line) => $line->productBatch?->product_id === $batch->product_id)
+                ->sum('qty');
+
+            if ($delivered === 0) {
+                throw ValidationException::withMessages(['delivery_receipt_id' => "{$deliveryReceipt->dr_no} did not deliver this item."]);
+            }
+
+            $alreadyReturned = (int) ReturnItem::where('delivery_receipt_id', $deliveryReceipt->id)
+                ->where('is_draft', false)
+                ->where('status', '!=', 'rejected')
+                ->when($existing, fn ($q) => $q->where('id', '!=', $existing->id))
+                ->whereHas('productBatch', fn ($q) => $q->where('product_id', $batch->product_id))
+                ->sum('quantity');
+
+            $available = $delivered - $alreadyReturned;
+            if ((int) $validated['quantity'] > $available) {
+                throw ValidationException::withMessages(['quantity' => "Only {$available} of this item can still be returned against {$deliveryReceipt->dr_no} ({$delivered} delivered, {$alreadyReturned} already returned)."]);
+            }
+        }
+
+        // No customer picked: the DR knows who it was delivered to.
+        $validated['customer_id'] = $validated['customer_id'] ?? $deliveryReceipt->customer_id;
+
+        return $validated;
     }
 
     /**
@@ -145,7 +201,7 @@ class ReturnItemController extends Controller
             return back()->withInput();
         }
 
-        $validated = $request->validate($this->postedValidationRules());
+        $validated = $this->resolveSource($request->validate($this->postedValidationRules()));
         $validated['user_id'] = auth()->id();
         $validated['status'] = 'pending';
         $validated['is_draft'] = false;
@@ -225,7 +281,7 @@ class ReturnItemController extends Controller
             return back()->withInput();
         }
 
-        $validated = $request->validate($this->postedValidationRules());
+        $validated = $this->resolveSource($request->validate($this->postedValidationRules()), $returnItem);
         $validated['status'] = 'pending';
         $validated['is_draft'] = false;
 
@@ -271,7 +327,7 @@ class ReturnItemController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
-            'refund_method' => 'required|in:credit,cash',
+            'refund_method' => 'required|in:credit,cash,none',
             'stock_disposition' => 'required|in:sellable,write_off',
         ]);
 
@@ -285,6 +341,13 @@ class ReturnItemController extends Controller
 
             if (!empty($validated['customer_id'])) {
                 $returnItem->customer_id = $validated['customer_id'];
+            }
+
+            // Goods from a Delivery Receipt that was never invoiced are not refunded, whatever was picked.
+            if (! $returnItem->isRefundable()) {
+                $validated['refund_method'] = 'none';
+            } elseif ($validated['refund_method'] === 'none') {
+                return back()->with('error', 'Choose Cash Refund or Store Credit for goods that were already invoiced.');
             }
 
             if ($validated['refund_method'] === 'credit' && !$returnItem->customer_id) {

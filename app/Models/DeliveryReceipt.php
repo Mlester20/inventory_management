@@ -84,6 +84,12 @@ class DeliveryReceipt extends Model
         return $this->belongsTo(SalesOrder::class);
     }
 
+    /** Return Items recording goods a customer sent back from this Delivery Receipt. */
+    public function returnItems(): HasMany
+    {
+        return $this->hasMany(ReturnItem::class);
+    }
+
     /** Stock-in adjustments recording goods a customer sent back from this Delivery Receipt. */
     public function customerReturns(): HasMany
     {

@@ -34,7 +34,7 @@
                             @endforeach
                         </datalist>
                         <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id', $editingReturnItem?->customer_id ?? '') }}">
-                        <div class="form-text" id="customerHint">Once a customer is selected, the Item field only offers what they've actually been invoiced for — so a return can't be recorded against something they never bought.</div>
+                        <div class="form-text" id="customerHint">Once a customer is selected, the Item field only offers what was delivered to them (Delivery Receipt) or invoiced — so a return can't be recorded against something they never received.</div>
                     </div>
                 </div>
 
@@ -62,7 +62,7 @@
 
                 <hr>
 
-                <div id="noPurchasesWarning" class="alert alert-warning d-none">This customer has no recorded purchases (invoiced sales) to return against.</div>
+                <div id="noPurchasesWarning" class="alert alert-warning d-none">Nothing has been delivered or invoiced to this customer yet, so there is nothing to return against.</div>
 
                 <div class="row g-2">
                     <div class="col-md-4">
@@ -78,13 +78,13 @@
                         <input type="hidden" name="product_batch_id" id="productBatchIdInput" value="{{ old('product_batch_id', $editingReturnItem?->product_batch_id ?? '') }}">
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label">Total Purchased</label>
+                        <label class="form-label">Delivered / Purchased</label>
                         <input type="text" class="form-control" id="totalPurchasedDisplay" readonly>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Lot/Batch No.</label>
                         <input type="text" class="form-control" id="batchInput" list="batchList" autocomplete="off"
-                            value="{{ $editingReturnItem?->productBatch?->batch_no ?? '' }}">
+                            value="{{ $editingReturnItem?->productBatch ? ($editingReturnItem->productBatch->batch_no ?? '(no lot)') : '' }}">
                         <datalist id="batchList"></datalist>
                     </div>
                     <div class="col-md-2">
@@ -95,6 +95,14 @@
                     <div class="col-md-2">
                         <label class="form-label">Quantity</label>
                         <input type="number" name="quantity" id="quantityInput" class="form-control" min="1" value="{{ old('quantity', $editingReturnItem?->quantity ?? 1) }}">
+                    </div>
+                </div>
+                <div class="row g-2 mt-1 d-none" id="drSourceRow">
+                    <div class="col-md-8">
+                        <label class="form-label" for="drSourceSelect">Returned from Delivery Receipt</label>
+                        <select name="delivery_receipt_id" id="drSourceSelect" class="form-select"
+                                data-selected="{{ old('delivery_receipt_id', $editingReturnItem?->delivery_receipt_id ?? '') }}"></select>
+                        <div class="form-text" id="drSourceHint"></div>
                     </div>
                 </div>
                 <div class="form-text mt-1" id="pickHint">Pick an item, then choose its batch — the batch is required before this return can be submitted (Save Draft works without it).</div>
@@ -156,6 +164,57 @@
     const batchList = document.getElementById('batchList');
     const expiryDisplay = document.getElementById('expiryDisplay');
     const totalPurchasedDisplay = document.getElementById('totalPurchasedDisplay');
+    const drSourceRow = document.getElementById('drSourceRow');
+    const drSourceSelect = document.getElementById('drSourceSelect');
+    const drSourceHint = document.getElementById('drSourceHint');
+
+    // The Delivery Receipts the picked item was delivered on. With one DR it is chosen for the
+    // encoder; with several they pick which one the goods came back from; none means it was a
+    // direct invoice / POS sale and the return needs no DR.
+    function fillDrSources(product, preselect) {
+        const sources = (product && product.sources) || [];
+        drSourceSelect.innerHTML = '';
+        drSourceRow.classList.toggle('d-none', sources.length === 0);
+        drSourceHint.textContent = '';
+        if (sources.length === 0) return;
+
+        if (sources.length > 1) {
+            drSourceSelect.add(new Option('— Select the Delivery Receipt —', ''));
+        }
+        sources.forEach(s => {
+            const text = `${s.dr_no}${s.so_no ? ' · ' + s.so_no : ''} — delivered ${s.qty}, invoiced ${s.invoiced}`;
+            drSourceSelect.add(new Option(text, s.id));
+        });
+        if (preselect && sources.some(s => String(s.id) === String(preselect))) {
+            drSourceSelect.value = preselect;
+        }
+        drSourceHint.textContent = 'No invoice yet means no refund: the stock goes back to the Warehouse and nothing is credited.';
+        useDrBatch(product);
+    }
+
+    // Once a DR is chosen, the lot that went out on it is the one that comes back.
+    function useDrBatch(product) {
+        const source = ((product && product.sources) || []).find(s => String(s.id) === String(drSourceSelect.value));
+        if (source && source.batches && source.batches.length === 1) {
+            pickBatch(source.batches[0]);
+        }
+    }
+
+    drSourceSelect.addEventListener('change', function () {
+        useDrBatch(findProductByLabel(itemSearchInput.value));
+    });
+
+    const NO_LOT = '(no lot)';
+
+    function batchLabel(b) {
+        return b.batch_no || NO_LOT;
+    }
+
+    function pickBatch(b) {
+        productBatchIdInput.value = b.id;
+        batchInput.value = batchLabel(b);
+        expiryDisplay.value = b.expiration_date || '';
+    }
 
     function clearItemSelection() {
         itemSearchInput.value = '';
@@ -164,6 +223,7 @@
         expiryDisplay.value = '';
         totalPurchasedDisplay.value = '';
         batchList.innerHTML = '';
+        fillDrSources(null);
     }
 
     itemSearchInput.addEventListener('input', function () {
@@ -173,13 +233,14 @@
         expiryDisplay.value = '';
         batchList.innerHTML = '';
         totalPurchasedDisplay.value = (product && product.total_purchased !== undefined)
-            ? `${product.total_purchased} ${product.unit || ''}`.trim()
+            ? `${product.total_purchased} ${product.unit || ''}${product.already_returned ? ' (' + product.already_returned + ' already returned)' : ''}`.trim()
             : '';
+        fillDrSources(product);
 
         if (product) {
             product.batches.forEach(b => {
                 const opt = document.createElement('option');
-                opt.value = b.batch_no || '';
+                opt.value = batchLabel(b);
                 batchList.appendChild(opt);
             });
         }
@@ -191,7 +252,7 @@
         expiryDisplay.value = '';
         if (!product) return;
 
-        const match = product.batches.find(b => b.batch_no === this.value);
+        const match = product.batches.find(b => batchLabel(b) === this.value);
         if (match) {
             productBatchIdInput.value = match.id;
             expiryDisplay.value = match.expiration_date || '';
@@ -241,6 +302,12 @@
         if (!isDraftSave && !productBatchIdInput.value) {
             e.preventDefault();
             alert('Select the item\'s specific lot/batch before saving.');
+            return;
+        }
+
+        if (!isDraftSave && !drSourceRow.classList.contains('d-none') && !drSourceSelect.value) {
+            e.preventDefault();
+            alert('Select the Delivery Receipt this item was returned from.');
         }
     });
 </script>

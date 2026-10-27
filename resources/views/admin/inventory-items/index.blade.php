@@ -777,6 +777,7 @@
                         <thead>
                             <tr>
                                 <th>Date</th>
+                                <th>Reference</th>
                                 <th>Transaction</th>
                                 <th>Customer</th>
                                 <th>Supplier</th>
@@ -790,9 +791,9 @@
                         </thead>
                         <tbody>
                             @if(!$historyProduct)
-                                <tr><td colspan="10" class="text-center text-muted py-4">Search for a product above to view its history.</td></tr>
+                                <tr><td colspan="11" class="text-center text-muted py-4">Search for a product above to view its history.</td></tr>
                             @elseif($history->isEmpty())
-                                <tr><td colspan="10" class="text-center text-muted py-4">No movement history for {{ $historyProduct->item_name }} yet.</td></tr>
+                                <tr><td colspan="11" class="text-center text-muted py-4">No movement history for {{ $historyProduct->item_name }} yet.</td></tr>
                             @else
                                 @foreach ($history as $movement)
                                     @php
@@ -801,6 +802,7 @@
                                             $source instanceof \App\Models\GoodsReceipt => 'Goods Receipt',
                                             $source instanceof \App\Models\DeliveryReceipt => 'Delivery Receipt',
                                             $source instanceof \App\Models\InventoryAdjustment => $source->isCustomerReturn() ? 'Inventory Adjustment (Returned by Customer)' : 'Inventory Adjustment',
+                                            $source instanceof \App\Models\ReturnItem => 'Return Item',
                                             $source instanceof \App\Models\Invoice => 'Invoice',
                                             $source instanceof \App\Models\StockTransfer => 'Stock Transfer',
                                             $source instanceof \App\Models\StockDisposal => 'Stock Disposal',
@@ -808,7 +810,19 @@
                                             default => $movement->type === 'in' ? 'Stock In' : 'Stock Out',
                                         };
                                         // A customer return points back at the Delivery Receipt the goods came from.
-                                        $linkedDr = $source instanceof \App\Models\InventoryAdjustment ? $source->deliveryReceipt : null;
+                                        $linkedDr = ($source instanceof \App\Models\InventoryAdjustment || $source instanceof \App\Models\ReturnItem) ? $source->deliveryReceipt : null;
+                                        // The document number of the movement, and where it can be opened.
+                                        [$reference, $referenceUrl] = match (true) {
+                                            $source instanceof \App\Models\GoodsReceipt => [$source->gr_no, route('goods-receipts.show', $source)],
+                                            $source instanceof \App\Models\DeliveryReceipt => [$source->dr_no, route('delivery-receipts.show', $source)],
+                                            $source instanceof \App\Models\InventoryAdjustment => [$source->adjustment_no, route('inventory-adjustments.show', $source)],
+                                            $source instanceof \App\Models\Invoice => [$source->sales_no, route('invoices.show', $source)],
+                                            $source instanceof \App\Models\StockTransfer => [$source->reference, route('stock-transfers.show', $source)],
+                                            $source instanceof \App\Models\StockDisposal => [$source->reference, route('stock-disposals.show', $source)],
+                                            $source instanceof \App\Models\Repack => [$source->reference, route('repacks.show', $source)],
+                                            $source instanceof \App\Models\ReturnItem => [$source->reference, route('return-items.index')],
+                                            default => [null, null],
+                                        };
                                         $customer = match (true) {
                                             $source instanceof \App\Models\DeliveryReceipt => $source->deliverTo()?->customer_name,
                                             $linkedDr !== null => $linkedDr->deliverTo()?->customer_name,
@@ -819,7 +833,11 @@
                                     <tr>
                                         <td>{{ $movement->created_at->format('m/d/Y') }}</td>
                                         <td>
-                                            {{ $transactionLabel }}
+                                            @if($reference)
+                                                <a href="{{ $referenceUrl }}">{{ $reference }}</a>
+                                            @else
+                                                —
+                                            @endif
                                             @if($linkedDr)
                                                 <div class="small">
                                                     <a href="{{ route('delivery-receipts.show', $linkedDr) }}">{{ $linkedDr->dr_no }}</a>
@@ -829,6 +847,7 @@
                                                 </div>
                                             @endif
                                         </td>
+                                        <td>{{ $transactionLabel }}</td>
                                         <td>{{ $customer ?? '—' }}</td>
                                         <td>{{ $supplier ?? '—' }}</td>
                                         <td>{{ $historyProduct->item_name }}</td>

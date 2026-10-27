@@ -20,6 +20,7 @@
             <thead>
                 <tr>
                     <th>Return ID</th>
+                    <th>Delivery Receipt</th>
                     <th>Item Name</th>
                     <th>Customer</th>
                     <th>Quantity</th>
@@ -35,6 +36,16 @@
                 @forelse($returnItems as $returnItem)
                 <tr>
                     <td>{{ $returnItem->id }}</td>
+                    <td>
+                        @if($returnItem->deliveryReceipt)
+                            <a href="{{ route('delivery-receipts.show', $returnItem->deliveryReceipt) }}">{{ $returnItem->deliveryReceipt->dr_no }}</a>
+                            @if($returnItem->deliveryReceipt->salesOrder)
+                                <div class="small"><a href="{{ route('sales-orders.show', $returnItem->deliveryReceipt->salesOrder) }}">{{ $returnItem->deliveryReceipt->salesOrder->so_no }}</a></div>
+                            @endif
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td>{{ $returnItem->productBatch->product->item_name ?? '—' }}</td>
                     <td>{{ $returnItem->customer->customer_name ?? '—' }}</td>
                     <td>{{ $returnItem->quantity ?? '—' }}</td>
@@ -110,6 +121,13 @@
                                                     <input type="hidden" class="customer-select" id="customer_id{{ $returnItem->id }}" name="customer_id"
                                                         value="{{ $returnItem->customer_id }}">
                                                 </div>
+                                                @if(! $returnItem->isRefundable())
+                                                    <div class="alert alert-info py-2">
+                                                        This item was delivered on {{ $returnItem->deliveryReceipt->dr_no }}, which has no invoice yet — <strong>no refund</strong>.
+                                                        The stock goes back to the Warehouse.
+                                                    </div>
+                                                    <input type="hidden" name="refund_method" value="none">
+                                                @else
                                                 <div class="mb-1">
                                                     <label class="form-label d-block">Refund Method</label>
                                                     <div class="form-check">
@@ -126,13 +144,14 @@
                                                     </div>
                                                 </div>
                                                 <div class="form-text credit-requires-customer-hint d-none text-danger mb-3">Select a customer above to store this as credit.</div>
+                                                @endif
 
                                                 <div class="mb-1">
                                                     <label class="form-label d-block">Stock Disposition</label>
                                                     <div class="form-check">
                                                         <input class="form-check-input" type="radio" name="stock_disposition" id="dispositionSellable{{ $returnItem->id }}" value="sellable" {{ $returnItem->suggestedStockDisposition() === 'sellable' ? 'checked' : '' }}>
                                                         <label class="form-check-label" for="dispositionSellable{{ $returnItem->id }}">
-                                                            Sellable — restock to POS as available inventory.
+                                                            Sellable — restock as available inventory ({{ $returnItem->delivery_receipt_id ? 'Warehouse' : 'POS' }}).
                                                         </label>
                                                     </div>
                                                     <div class="form-check">
@@ -240,7 +259,7 @@
         }
 
         function syncHint() {
-            const wantsCredit = creditRadio().checked;
+            const wantsCredit = creditRadio() && creditRadio().checked;
             hint.classList.toggle('d-none', !(wantsCredit && !customerSelect.value));
         }
 
@@ -250,7 +269,7 @@
         });
 
         form.addEventListener('submit', function (e) {
-            if (creditRadio().checked && !customerSelect.value) {
+            if (creditRadio() && creditRadio().checked && !customerSelect.value) {
                 e.preventDefault();
                 syncHint();
             }

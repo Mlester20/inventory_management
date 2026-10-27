@@ -55,14 +55,18 @@ class ReturnItemService
                 ]);
             }
 
-            $posLocation = Location::pos();
+            // Goods that came back from a Delivery Receipt left the Warehouse, so they go back there;
+            // a POS or direct-invoice sale returns to POS, as before. The Return Item is the stock
+            // movement's source, so Product History shows it (with its DR) instead of a bare "Stock In".
+            $posLocation = $returnItem->delivery_receipt_id ? Location::warehouse() : Location::pos();
 
             $this->stockService->restock(
                 $returnItem->productBatch,
                 $returnItem->quantity,
                 $posLocation,
                 "Return item approved - Return ID: {$returnItem->id}, Reason: {$returnItem->reason}",
-                $userId
+                $userId,
+                $returnItem
             );
 
             $stockDisposal = null;
@@ -86,7 +90,11 @@ class ReturnItemService
             $price = $customer
                 ? (float) ($product->{$customer->priceColumn()} ?? $product->unit_price)
                 : (float) $product->unit_price;
-            $refundAmount = round($returnItem->quantity * $price, 2);
+            // A return from a Delivery Receipt that was never invoiced has nothing to give back.
+            if (! $returnItem->isRefundable()) {
+                $refundMethod = 'none';
+            }
+            $refundAmount = $refundMethod === 'none' ? 0.0 : round($returnItem->quantity * $price, 2);
 
             $returnItem->update([
                 'status' => 'approved',

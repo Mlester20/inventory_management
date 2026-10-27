@@ -431,16 +431,27 @@
         </div>
     @endif
 
-    @php $customerReturns = $deliveryReceipt->customerReturns()->with('lines.product')->latest('id')->get(); @endphp
-    @if($customerReturns->isNotEmpty())
+    @php
+        $customerReturns = $deliveryReceipt->customerReturns()->with('lines.product')->latest('id')->get();
+        $returnItems = $deliveryReceipt->returnItems()->where('is_draft', false)->with('productBatch.product')->latest('id')->get();
+    @endphp
+    @if($customerReturns->isNotEmpty() || $returnItems->isNotEmpty())
         <div class="card mb-4 no-print">
             <h6 class="card-header">Returned by the customer</h6>
             <div class="table-responsive">
                 <table class="table table-sm mb-0">
                     <thead>
-                        <tr><th>Adjustment</th><th>Date</th><th>Item</th><th class="text-end">Qty</th></tr>
+                        <tr><th>Reference</th><th>Date</th><th>Item</th><th class="text-end">Qty</th></tr>
                     </thead>
                     <tbody>
+                        @foreach ($returnItems as $returnItem)
+                            <tr>
+                                <td><a href="{{ route('return-items.index') }}">{{ $returnItem->reference }}</a> <span class="badge bg-secondary">{{ ucfirst($returnItem->status) }}</span></td>
+                                <td>{{ $returnItem->return_date ? \Illuminate\Support\Carbon::parse($returnItem->return_date)->format('Y-m-d') : '—' }}</td>
+                                <td>{{ $returnItem->productBatch?->product?->display_description ?? '—' }}</td>
+                                <td class="text-end">{{ $returnItem->quantity }}</td>
+                            </tr>
+                        @endforeach
                         @foreach ($customerReturns as $return)
                             @foreach ($return->lines as $returnLine)
                                 <tr>
