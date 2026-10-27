@@ -72,9 +72,9 @@
                                     <th class="text-end">Delivered</th>
                                     <th class="text-end">Already returned</th>
                                     <th class="text-end">Can return</th>
-                                    <th style="width: 110px;">Return Qty</th>
-                                    <th style="width: 210px;">Reason</th>
-                                    <th style="width: 200px;">Notes</th>
+                                    <th style="width: 100px;">Return Qty</th>
+                                    <th style="min-width: 250px;">Reason</th>
+                                    <th style="min-width: 170px;">Notes</th>
                                 </tr>
                             </thead>
                             <tbody id="linesBody"></tbody>
