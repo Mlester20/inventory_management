@@ -349,7 +349,14 @@
         tax.tabIndex = -1;
         tax.classList.add('bg-light');
 
-        card.querySelector('.qty-input').min = Math.max(1, minimum);
+        // Our own message (below) instead of the browser's quick pop-up, which is easy to miss.
+        const qtyInput = card.querySelector('.qty-input');
+        qtyInput.dataset.floor = Math.max(1, minimum);
+        qtyInput.dataset.floorWhy = `${deliveredQty} already delivered` + (Number(advanceQty) ? ` and ${advanceQty} advance` : '');
+        const floorMsg = document.createElement('div');
+        floorMsg.className = 'invalid-feedback qty-floor-msg';
+        qtyInput.insertAdjacentElement('afterend', floorMsg);
+        qtyInput.addEventListener('input', () => checkFloor(card));
 
         const note = card.querySelector('.delivered-note');
         note.textContent = `Delivered ${deliveredQty}` + (Number(advanceQty) ? ` · Advance ${advanceQty}` : '') + ` — quantity cannot go below ${Math.max(1, minimum)}`;
@@ -358,6 +365,22 @@
         const remove = card.querySelector('.remove-row-btn');
         remove.disabled = true;
         remove.title = 'Already delivered — edit the Delivery Receipt first';
+    }
+
+    // true when a locked line's quantity is below what was delivered (+ advance); shows the red message under it
+    function checkFloor(card) {
+        const qtyInput = card.querySelector('.qty-input');
+        const floor = Number(qtyInput.dataset.floor || 0);
+        const below = card.dataset.locked === '1' && floor > 0 && (Number(qtyInput.value) || 0) < floor;
+
+        qtyInput.classList.toggle('is-invalid', below);
+        const msg = card.querySelector('.qty-floor-msg');
+        if (msg) {
+            msg.textContent = below ? `Cannot go below ${floor} (${qtyInput.dataset.floorWhy}). To go lower, edit the Delivery Receipt first.` : '';
+            msg.style.display = below ? 'block' : 'none';
+        }
+
+        return below;
     }
 
     function addRow(prefill = {}) {
@@ -654,6 +677,23 @@
         });
         computeTotals();
     });
+
+    document.getElementById('salesOrderForm').addEventListener('submit', function (e) {
+        const offending = [...document.querySelectorAll('#lineItemsBody .line-item-card')].filter(card => checkFloor(card));
+        if (offending.length > 0) {
+            e.preventDefault();
+            offending[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            offending[0].querySelector('.qty-input').focus();
+        }
+    });
+
+    // The server refused the edit: bring the red message into view instead of leaving it above the fold.
+    (function () {
+        const alertBox = document.querySelector('.alert.alert-danger');
+        if (alertBox) {
+            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    })();
 
     // Start with one row per line of a resumed draft, or a single blank
     // row for a brand new order.
