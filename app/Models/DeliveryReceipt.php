@@ -84,6 +84,12 @@ class DeliveryReceipt extends Model
         return $this->belongsTo(SalesOrder::class);
     }
 
+    /** Stock-in adjustments recording goods a customer sent back from this Delivery Receipt. */
+    public function customerReturns(): HasMany
+    {
+        return $this->hasMany(InventoryAdjustment::class)->where('adjustment_type', InventoryAdjustment::CUSTOMER_RETURN);
+    }
+
     /**
      * Who the goods go to. A draft saved from a Sales Order can have no customer of its own yet,
      * so it falls back to the Sales Order's customer — a Delivery Receipt is printed for review

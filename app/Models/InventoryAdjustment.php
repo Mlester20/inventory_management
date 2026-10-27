@@ -11,7 +11,7 @@ class InventoryAdjustment extends Model
 {
     protected $fillable = [
         'adjustment_no', 'adjustment_date', 'adjustment_type', 'description', 'note', 'prepared_by',
-        'reverses_adjustment_id', 'status',
+        'reverses_adjustment_id', 'status', 'delivery_receipt_id',
     ];
 
     protected $casts = [
@@ -36,6 +36,7 @@ class InventoryAdjustment extends Model
     public const TYPES = [
         'opening_balance' => 'Opening Balance',
         'stock_in_found' => 'Stock In - Found/Recount',
+        'stock_in_customer_return' => 'Stock In - Returned by Customer',
         'stock_out_damaged' => 'Stock Out - Damaged',
         'stock_out_lost' => 'Stock Out - Lost/Theft',
         'stock_out_expired' => 'Stock Out - Expired',
@@ -43,7 +44,15 @@ class InventoryAdjustment extends Model
         'correction_decrease' => 'Correction - Decrease',
     ];
 
-    public const STOCK_IN_TYPES = ['opening_balance', 'stock_in_found', 'correction_increase'];
+    public const STOCK_IN_TYPES = ['opening_balance', 'stock_in_found', 'stock_in_customer_return', 'correction_increase'];
+
+    /** The one type that records goods a customer sent back, and so points at the Delivery Receipt they came from. */
+    public const CUSTOMER_RETURN = 'stock_in_customer_return';
+
+    public function isCustomerReturn(): bool
+    {
+        return $this->adjustment_type === self::CUSTOMER_RETURN;
+    }
 
     public function direction(): string
     {
@@ -53,6 +62,11 @@ class InventoryAdjustment extends Model
     public function preparedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'prepared_by');
+    }
+
+    public function deliveryReceipt(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryReceipt::class);
     }
 
     public function lines(): HasMany

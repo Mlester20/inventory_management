@@ -92,6 +92,18 @@
                 </div>
             </div>
 
+            @if($inventoryAdjustment->deliveryReceipt)
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="fw-bold">Returned from Delivery Receipt</label>
+                        <p>
+                            <a href="{{ route('delivery-receipts.show', $inventoryAdjustment->deliveryReceipt) }}">{{ $inventoryAdjustment->deliveryReceipt->dr_no }}</a>
+                            — {{ $inventoryAdjustment->deliveryReceipt->deliverTo()?->customer_name ?? 'No customer' }}
+                        </p>
+                    </div>
+                </div>
+            @endif
+
             <table class="table table-sm">
                 <thead>
                     <tr>
@@ -169,6 +181,12 @@
                             <td class="label">Description</td>
                             <td>{{ $inventoryAdjustment->description ?? '—' }}</td>
                         </tr>
+                        @if($inventoryAdjustment->deliveryReceipt)
+                            <tr>
+                                <td class="label">Returned from</td>
+                                <td>{{ $inventoryAdjustment->deliveryReceipt->dr_no }} — {{ $inventoryAdjustment->deliveryReceipt->deliverTo()?->customer_name ?? 'No customer' }}</td>
+                            </tr>
+                        @endif
                         <tr>
                             <td class="label">Note</td>
                             <td>{{ $inventoryAdjustment->note ?? '—' }}</td>

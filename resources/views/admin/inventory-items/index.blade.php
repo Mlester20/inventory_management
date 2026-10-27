@@ -800,14 +800,20 @@
                                         $transactionLabel = match(true) {
                                             $source instanceof \App\Models\GoodsReceipt => 'Goods Receipt',
                                             $source instanceof \App\Models\DeliveryReceipt => 'Delivery Receipt',
-                                            $source instanceof \App\Models\InventoryAdjustment => 'Inventory Adjustment',
+                                            $source instanceof \App\Models\InventoryAdjustment => $source->isCustomerReturn() ? 'Inventory Adjustment (Returned by Customer)' : 'Inventory Adjustment',
                                             $source instanceof \App\Models\Invoice => 'Invoice',
                                             $source instanceof \App\Models\StockTransfer => 'Stock Transfer',
                                             $source instanceof \App\Models\StockDisposal => 'Stock Disposal',
                                             $source instanceof \App\Models\Repack => str_starts_with((string) $movement->remarks, 'Void ') ? 'Repack (Void)' : 'Repack',
                                             default => $movement->type === 'in' ? 'Stock In' : 'Stock Out',
                                         };
-                                        $customer = $source instanceof \App\Models\DeliveryReceipt ? $source->customer?->customer_name : null;
+                                        // A customer return points back at the Delivery Receipt the goods came from.
+                                        $linkedDr = $source instanceof \App\Models\InventoryAdjustment ? $source->deliveryReceipt : null;
+                                        $customer = match (true) {
+                                            $source instanceof \App\Models\DeliveryReceipt => $source->deliverTo()?->customer_name,
+                                            $linkedDr !== null => $linkedDr->deliverTo()?->customer_name,
+                                            default => null,
+                                        };
                                         $supplier = $source instanceof \App\Models\GoodsReceipt ? $source->supplier?->supplier_name : null;
                                     @endphp
                                     <tr>
@@ -819,7 +825,13 @@
                                         <td>{{ $movement->productBatch->batch_no ?? '—' }}</td>
                                         <td>{{ $movement->productBatch->expiration_date?->format('Y-m-d') ?? '—' }}</td>
                                         <td>{{ $movement->location->name ?? '—' }}</td>
-                                        <td>{{ $movement->quantity }}</td>
+                                        <td>
+                                            @if($linkedDr)
+                                                <a href="{{ route('delivery-receipts.show', $linkedDr) }}" title="Open {{ $linkedDr->dr_no }}">{{ $movement->quantity }}</a>
+                                            @else
+                                                {{ $movement->quantity }}
+                                            @endif
+                                        </td>
                                         <td>{{ $movement->running_balance }}</td>
                                     </tr>
                                 @endforeach

@@ -33,6 +33,7 @@ class InventoryAdjustmentService
                 'description' => $data['description'] ?? null,
                 'note' => $data['note'] ?? null,
                 'prepared_by' => $data['prepared_by'] ?? null,
+                'delivery_receipt_id' => $this->linkedDeliveryReceipt($data),
                 'status' => 'posted',
             ]);
 
@@ -63,6 +64,7 @@ class InventoryAdjustmentService
                 'description' => $data['description'] ?? null,
                 'note' => $data['note'] ?? null,
                 'prepared_by' => $data['prepared_by'] ?? $userId,
+                'delivery_receipt_id' => $this->linkedDeliveryReceipt($data),
                 'status' => 'draft',
             ]);
             $adjustment->save();
@@ -104,6 +106,7 @@ class InventoryAdjustmentService
                 'description' => $data['description'] ?? null,
                 'note' => $data['note'] ?? null,
                 'prepared_by' => $data['prepared_by'] ?? null,
+                'delivery_receipt_id' => $this->linkedDeliveryReceipt($data),
                 'status' => 'posted',
             ]);
             $draft->save();
@@ -148,6 +151,16 @@ class InventoryAdjustmentService
                 'remarks' => $line['remarks'] ?? null,
             ]);
         }
+    }
+
+    /** Only a customer return points at a Delivery Receipt; any other type ignores one that was sent. */
+    protected function linkedDeliveryReceipt(array $data): ?int
+    {
+        if (($data['adjustment_type'] ?? null) !== InventoryAdjustment::CUSTOMER_RETURN) {
+            return null;
+        }
+
+        return ! empty($data['delivery_receipt_id']) ? (int) $data['delivery_receipt_id'] : null;
     }
 
     /**

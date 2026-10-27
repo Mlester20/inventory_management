@@ -431,6 +431,32 @@
         </div>
     @endif
 
+    @php $customerReturns = $deliveryReceipt->customerReturns()->with('lines.product')->latest('id')->get(); @endphp
+    @if($customerReturns->isNotEmpty())
+        <div class="card mb-4 no-print">
+            <h6 class="card-header">Returned by the customer</h6>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr><th>Adjustment</th><th>Date</th><th>Item</th><th class="text-end">Qty</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($customerReturns as $return)
+                            @foreach ($return->lines as $returnLine)
+                                <tr>
+                                    <td><a href="{{ route('inventory-adjustments.show', $return) }}">{{ $return->adjustment_no }}</a></td>
+                                    <td>{{ $return->adjustment_date->format('Y-m-d') }}</td>
+                                    <td>{{ $returnLine->product->display_description ?? '—' }}</td>
+                                    <td class="text-end">{{ $returnLine->qty }}</td>
+                                </tr>
+                            @endforeach
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     <div class="card dr-print-only" id="printableDeliveryNote">
         <div class="card-body p-4 dr-sheet">
 

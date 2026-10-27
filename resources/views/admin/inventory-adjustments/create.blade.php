@@ -77,6 +77,26 @@
                     <input type="text" name="description" class="form-control" value="{{ old('description', $editingAdjustment?->description ?? '') }}">
                 </div>
 
+                @php
+                    $drChosenId = old('delivery_receipt_id', $editingAdjustment?->delivery_receipt_id);
+                    $drChosenLabel = collect($deliveryReceiptsForJs)->firstWhere('id', (int) $drChosenId)['label'] ?? '';
+                @endphp
+                <div class="mb-3 d-none" id="deliveryReceiptField">
+                    <label class="form-label">Linked Delivery Receipt</label>
+                    <input type="text" id="deliveryReceiptSearch" class="form-control @error('delivery_receipt_id') is-invalid @enderror"
+                           list="deliveryReceiptList" autocomplete="off" placeholder="Search the DR the goods were returned from..." value="{{ $drChosenLabel }}">
+                    <datalist id="deliveryReceiptList">
+                        @foreach ($deliveryReceiptsForJs as $dr)
+                            <option value="{{ $dr['label'] }}"></option>
+                        @endforeach
+                    </datalist>
+                    <input type="hidden" name="delivery_receipt_id" id="deliveryReceiptId" value="{{ $drChosenId }}">
+                    <div class="form-text">The stock goes back to the Warehouse. The DR this was returned from can be opened from here, from Product History and from the DR itself.</div>
+                    @error('delivery_receipt_id')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+
                 <hr>
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -119,6 +139,36 @@
 @section('scripts')
 <script>
     const PRODUCTS = @json($productsForJs);
+    const DELIVERY_RECEIPTS = @json($deliveryReceiptsForJs);
+    const CUSTOMER_RETURN_TYPE = @json(\App\Models\InventoryAdjustment::CUSTOMER_RETURN);
+
+    // "Stock In - Returned by Customer" points at the Delivery Receipt the goods came back from; the
+    // picker only shows for that type and keeps the DR's id in a hidden input.
+    (function () {
+        const typeSelect = document.querySelector('select[name="adjustment_type"]');
+        const field = document.getElementById('deliveryReceiptField');
+        const search = document.getElementById('deliveryReceiptSearch');
+        const hidden = document.getElementById('deliveryReceiptId');
+
+        function sync() {
+            const isReturn = typeSelect.value === CUSTOMER_RETURN_TYPE;
+            field.classList.toggle('d-none', ! isReturn);
+            if (! isReturn) {
+                hidden.value = '';
+                search.value = '';
+            }
+        }
+
+        function match() {
+            const found = DELIVERY_RECEIPTS.find(dr => dr.label === search.value.trim());
+            hidden.value = found ? found.id : '';
+        }
+
+        typeSelect.addEventListener('change', sync);
+        search.addEventListener('input', match);
+        search.addEventListener('change', match);
+        sync();
+    })();
     const LOCATIONS = @json($locations->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'is_default' => $l->is_default]));
 
     const preselectedProductId = @json($preselectedProductId);

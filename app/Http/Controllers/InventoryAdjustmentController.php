@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\DeliveryReceipt;
 use App\Models\InventoryAdjustment;
 use App\Models\InventoryAdjustmentLine;
 use App\Models\Location;
@@ -34,6 +35,26 @@ class InventoryAdjustmentController extends Controller
             ->withQueryString();
 
         return view('admin.inventory-adjustments.index', compact('adjustments', 'search', 'status'));
+    }
+
+    /**
+     * The Delivery Receipts a customer return can point at (posted, not cancelled), newest first,
+     * as the label the encoder picks "DR-2026-00004 — CUSTOMER" plus the id it stands for.
+     * $keepId keeps the one a draft already points at.
+     */
+    protected function deliveryReceiptsForJs(?int $keepId = null): array
+    {
+        return DeliveryReceipt::with('customer', 'salesOrder.customer')
+            ->where(fn ($q) => $q->where(fn ($x) => $x->where('is_draft', false)->where('status', '!=', 'cancelled'))->orWhere('id', $keepId))
+            ->latest('id')
+            ->limit(500)
+            ->get()
+            ->map(fn (DeliveryReceipt $dr) => [
+                'id' => $dr->id,
+                'label' => $dr->dr_no . ' — ' . ($dr->deliverTo()?->customer_name ?? 'No customer'),
+            ])
+            ->values()
+            ->all();
     }
 
     public function create(Request $request)
@@ -100,7 +121,7 @@ class InventoryAdjustmentController extends Controller
 
         return view('admin.inventory-adjustments.create', compact(
             'products', 'users', 'locations', 'preselectedProductId', 'productsForJs', 'prefillLines'
-        ) + ['editingAdjustment' => null]);
+        ) + ['editingAdjustment' => null, 'deliveryReceiptsForJs' => $this->deliveryReceiptsForJs()]);
     }
 
     public function store(Request $request)
@@ -150,6 +171,7 @@ class InventoryAdjustmentController extends Controller
         return [
             'adjustment_date' => 'nullable|date',
             'adjustment_type' => 'nullable|in:' . implode(',', array_keys(InventoryAdjustment::TYPES)),
+            'delivery_receipt_id' => 'nullable|exists:delivery_receipts,id',
             'description' => 'nullable|string|max:255',
             'note' => 'nullable|string',
             'prepared_by' => 'nullable|exists:users,id',
@@ -173,6 +195,7 @@ class InventoryAdjustmentController extends Controller
         return [
             'adjustment_date' => 'required|date',
             'adjustment_type' => 'required|in:' . implode(',', array_keys(InventoryAdjustment::TYPES)),
+            'delivery_receipt_id' => 'required_if:adjustment_type,' . InventoryAdjustment::CUSTOMER_RETURN . '|nullable|exists:delivery_receipts,id',
             'description' => 'nullable|string|max:255',
             'note' => 'nullable|string',
             'prepared_by' => 'nullable|exists:users,id',
@@ -190,7 +213,7 @@ class InventoryAdjustmentController extends Controller
     public function show(InventoryAdjustment $inventoryAdjustment)
     {
         $inventoryAdjustment->load(
-            'preparedBy', 'lines.product', 'lines.productBatch', 'lines.location', 'reverses', 'reversedBy'
+            'preparedBy', 'lines.product', 'lines.productBatch', 'lines.location', 'reverses', 'reversedBy', 'deliveryReceipt.customer'
         );
 
         return view('admin.inventory-adjustments.show', compact('inventoryAdjustment'));
@@ -262,7 +285,7 @@ class InventoryAdjustmentController extends Controller
 
         return view('admin.inventory-adjustments.create', compact(
             'products', 'users', 'locations', 'preselectedProductId', 'productsForJs', 'prefillLines'
-        ) + ['editingAdjustment' => $inventoryAdjustment]);
+        ) + ['editingAdjustment' => $inventoryAdjustment, 'deliveryReceiptsForJs' => $this->deliveryReceiptsForJs($inventoryAdjustment->delivery_receipt_id)]);
     }
 
     public function update(Request $request, InventoryAdjustment $inventoryAdjustment)
