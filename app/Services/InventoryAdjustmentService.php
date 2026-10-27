@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\DeliveryReceipt;
 use App\Models\InventoryAdjustment;
 use App\Models\InventoryAdjustmentLine;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\ProductBatch;
+use App\Models\ReturnItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -26,6 +28,8 @@ class InventoryAdjustmentService
     public function createAdjustment(array $data, ?int $userId = null): InventoryAdjustment
     {
         return DB::transaction(function () use ($data, $userId) {
+            $this->guardCustomerReturn($data);
+
             $adjustment = InventoryAdjustment::create([
                 'adjustment_no' => $this->generateAdjustmentNo(),
                 'adjustment_date' => $data['adjustment_date'],
@@ -100,6 +104,8 @@ class InventoryAdjustmentService
     public function finalizeDraft(InventoryAdjustment $draft, array $data, ?int $userId = null): InventoryAdjustment
     {
         return DB::transaction(function () use ($draft, $data, $userId) {
+            $this->guardCustomerReturn($data);
+
             $draft->fill([
                 'adjustment_date' => $data['adjustment_date'],
                 'adjustment_type' => $data['adjustment_type'],
@@ -150,6 +156,57 @@ class InventoryAdjustmentService
                 'qty' => $qty,
                 'remarks' => $line['remarks'] ?? null,
             ]);
+        }
+    }
+
+    /**
+     * Goods a customer sends back cannot be more than the Delivery Receipt delivered: for each item, what the receipt
+     * delivered minus what already came back against it (Return Items that were not rejected, and other posted
+     * "Returned by Customer" adjustments). Checked when the stock actually moves, so a draft can still be saved.
+     */
+    protected function guardCustomerReturn(array $data): void
+    {
+        if (($data['adjustment_type'] ?? null) !== InventoryAdjustment::CUSTOMER_RETURN || empty($data['delivery_receipt_id'])) {
+            return;
+        }
+
+        $deliveryReceipt = DeliveryReceipt::with('items.productBatch')->find($data['delivery_receipt_id']);
+
+        if (! $deliveryReceipt || $deliveryReceipt->isDraft() || $deliveryReceipt->isCancelled()) {
+            throw ValidationException::withMessages(['delivery_receipt_id' => 'Pick a posted Delivery Receipt that was not cancelled.']);
+        }
+
+        $asking = collect($data['lines'] ?? [])
+            ->filter(fn ($line) => ! empty($line['product_id']) && (int) ($line['qty'] ?? 0) > 0)
+            ->groupBy('product_id')
+            ->map(fn ($rows) => (int) $rows->sum('qty'));
+
+        foreach ($asking as $productId => $qty) {
+            $name = Product::find($productId)?->display_description ?? 'This item';
+            $delivered = (int) $deliveryReceipt->items
+                ->filter(fn ($line) => (int) $line->productBatch?->product_id === (int) $productId)
+                ->sum('qty');
+
+            if ($delivered === 0) {
+                throw ValidationException::withMessages(['delivery_receipt_id' => "{$deliveryReceipt->dr_no} did not deliver {$name}."]);
+            }
+
+            $returned = (int) ReturnItem::where('delivery_receipt_id', $deliveryReceipt->id)
+                ->where('is_draft', false)->where('status', '!=', 'rejected')
+                ->whereHas('productBatch', fn ($q) => $q->where('product_id', $productId))
+                ->sum('quantity');
+
+            $returned += (int) InventoryAdjustmentLine::where('product_id', $productId)
+                ->whereHas('inventoryAdjustment', fn ($q) => $q
+                    ->where('delivery_receipt_id', $deliveryReceipt->id)
+                    ->where('adjustment_type', InventoryAdjustment::CUSTOMER_RETURN)
+                    ->where('status', 'posted'))
+                ->sum('qty');
+
+            $available = $delivered - $returned;
+            if ($qty > $available) {
+                throw ValidationException::withMessages(['lines' => "Only {$available} of {$name} can still be returned against {$deliveryReceipt->dr_no} ({$delivered} delivered, {$returned} already returned)."]);
+            }
         }
     }
 

@@ -138,4 +138,76 @@ class CustomerReturnAdjustmentTest extends TestCase
 
         $this->assertSame(10, $this->warehouseQty());
     }
+
+    // ---- a return cannot be more than the Delivery Receipt delivered
+
+    public function test_it_cannot_return_more_than_the_dr_delivered(): void
+    {
+        $this->actingAs($this->admin)->post(route('inventory-adjustments.store'), $this->payload([
+            'lines' => [['product_id' => $this->product->id, 'product_batch_id' => $this->product->batches()->first()->id, 'qty' => 11]],
+        ]))->assertSessionHasErrors('lines');
+
+        $this->assertSame(0, InventoryAdjustment::where('adjustment_type', InventoryAdjustment::CUSTOMER_RETURN)->count());
+        $this->assertSame(10, $this->warehouseQty(), 'no stock moved');
+    }
+
+    public function test_what_is_left_after_earlier_returns_is_the_limit(): void
+    {
+        $line = fn (int $qty) => ['lines' => [['product_id' => $this->product->id, 'product_batch_id' => $this->product->batches()->first()->id, 'qty' => $qty]]];
+
+        $this->actingAs($this->admin)->post(route('inventory-adjustments.store'), $this->payload($line(7)))->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->post(route('inventory-adjustments.store'), $this->payload($line(4)))->assertSessionHasErrors('lines');   // 3 left
+        $this->actingAs($this->admin)->post(route('inventory-adjustments.store'), $this->payload($line(3)))->assertSessionHasNoErrors();
+
+        $this->assertSame(2, InventoryAdjustment::where('adjustment_type', InventoryAdjustment::CUSTOMER_RETURN)->count());
+        $this->assertSame(20, $this->warehouseQty());
+    }
+
+    public function test_a_return_item_against_the_same_dr_counts_too(): void
+    {
+        \App\Models\ReturnItem::create([
+            'product_batch_id' => $this->product->batches()->first()->id, 'user_id' => $this->admin->id, 'customer_id' => $this->customer->id,
+            'delivery_receipt_id' => $this->dr->id, 'quantity' => 9, 'return_date' => now()->toDateString(), 'reason' => 'Changed Mind',
+            'status' => 'pending', 'is_draft' => false,
+        ]);
+
+        $this->actingAs($this->admin)->post(route('inventory-adjustments.store'), $this->payload())->assertSessionHasErrors('lines');   // 2 asked, 1 left
+    }
+
+    public function test_an_item_the_dr_never_delivered_is_refused(): void
+    {
+        $generic = \App\Models\GenericName::factory()->create(['category_id' => \App\Models\Category::factory()->create()->id]);
+        $other = Product::factory()->create(['generic_name_id' => $generic->id]);
+        app(InventoryAdjustmentService::class)->createAdjustment([
+            'adjustment_date' => now()->toDateString(), 'adjustment_type' => 'opening_balance', 'prepared_by' => $this->admin->id,
+            'lines' => [['product_id' => $other->id, 'qty' => 5]],
+        ], $this->admin->id);
+
+        $this->actingAs($this->admin)->post(route('inventory-adjustments.store'), $this->payload([
+            'lines' => [['product_id' => $other->id, 'product_batch_id' => $other->batches()->first()->id, 'qty' => 1]],
+        ]))->assertSessionHasErrors('delivery_receipt_id');
+    }
+
+    public function test_a_draft_may_be_saved_over_the_limit_but_not_posted(): void
+    {
+        $over = ['lines' => [['product_id' => $this->product->id, 'product_batch_id' => $this->product->batches()->first()->id, 'qty' => 50]]];
+
+        $this->actingAs($this->admin)->post(route('inventory-adjustments.store'), $this->payload($over + ['save_action' => 'draft']))->assertSessionHasNoErrors();
+        $draft = InventoryAdjustment::latest('id')->firstOrFail();
+        $this->assertTrue($draft->isDraft());
+
+        $this->actingAs($this->admin)->put(route('inventory-adjustments.update', $draft), $this->payload($over))->assertSessionHasErrors('lines');
+        $this->assertTrue($draft->fresh()->isDraft());
+        $this->assertSame(10, $this->warehouseQty());
+    }
+
+    public function test_other_adjustment_types_are_not_limited_by_a_dr(): void
+    {
+        $this->actingAs($this->admin)->post(route('inventory-adjustments.store'), $this->payload([
+            'adjustment_type' => 'stock_in_found',
+            'lines' => [['product_id' => $this->product->id, 'product_batch_id' => $this->product->batches()->first()->id, 'qty' => 99]],
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame(109, $this->warehouseQty());
+    }
 }
