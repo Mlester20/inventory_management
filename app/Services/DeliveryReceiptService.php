@@ -258,6 +258,12 @@ class DeliveryReceiptService
     public function createInvoiceFromLines(DeliveryReceipt $deliveryReceipt, array $deliveryReceiptItemIds, ?int $userId = null, array $qtyOverrides = [], ?string $poNo = null, float $lessWt = 0, bool $personalUse = false, ?int $preparedBy = null): Invoice
     {
         return DB::transaction(function () use ($deliveryReceipt, $deliveryReceiptItemIds, $userId, $qtyOverrides, $poNo, $lessWt, $personalUse, $preparedBy) {
+            if ($deliveryReceipt->isCancelled()) {
+                throw ValidationException::withMessages([
+                    'line_ids' => "{$deliveryReceipt->dr_no} is cancelled, so it cannot be invoiced.",
+                ]);
+            }
+
             $customer = $deliveryReceipt->customer;
             $activeVatRate = Taxes::activeRate();
 

@@ -38,8 +38,10 @@ class AdvanceOrderController extends Controller
         // several DRs under a single customer.
         $allLines = DeliveryReceiptItem::query()
             ->whereHas('deliveryReceipt', function ($query) use ($customerId) {
+                // A cancelled Delivery Receipt is void — its lines are not something left to invoice.
                 $query->where('transaction_type', 'advance_order')
                     ->where('is_draft', false)
+                    ->where('status', '!=', 'cancelled')
                     ->when($customerId, fn ($q) => $q->where('customer_id', $customerId));
             })
             ->with(['deliveryReceipt.customer', 'productBatch.product.genericName', 'sales.invoice'])
