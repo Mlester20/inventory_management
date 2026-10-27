@@ -89,7 +89,7 @@ class ReturnedAsteriskTest extends TestCase
 
         $this->assertSame([], $this->dr->returnedByProduct());
         $this->assertSame([], $this->so->returnedByItem());
-        $this->actingAs($this->admin)->get(route('delivery-receipts.show', $this->dr))->assertOk()->assertDontSee('Returned by client');
+        $this->actingAs($this->admin)->get(route('delivery-receipts.show', $this->dr))->assertOk()->assertDontSee('Returned by Client');
     }
 
     public function test_an_approved_return_marks_the_dr_and_the_so(): void
@@ -105,14 +105,14 @@ class ReturnedAsteriskTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('delivery-receipts.show', $this->dr))
             ->assertOk()
-            ->assertSee('Returned by client')
+            ->assertSee('2 units Returned by Client')
             ->assertSee('WOODEN HEIGHT BOARD - FOLDABLE, 200CM *')
             ->assertSee($return->reference);
 
         $this->actingAs($this->admin)->get(route('sales-orders.show', $this->so))
             ->assertOk()
             ->assertSee('WOODEN HEIGHT BOARD (' . $this->so->items()->first()->genericName->unit . ') *', false)
-            ->assertSee('Returned by client')
+            ->assertSee('2 units Returned by Client')
             ->assertSee($return->reference);
     }
 

@@ -72,7 +72,7 @@
                             @endif
                             @if($isAdmin && ! $deliveryReceipt->isCancelled())
                                 <a href="{{ route('return-items.from-dr', ['delivery_receipt_id' => $deliveryReceipt->id]) }}" class="dropdown-item">
-                                    <i class="bx bx-undo me-1"></i> Return items
+                                    <i class="bx bx-undo me-1"></i> New Product Return
                                 </a>
                                 <div class="dropdown-divider"></div>
                                 <form action="{{ route('delivery-receipts.cancel', $deliveryReceipt) }}" method="POST" class="m-0" onsubmit="return confirmSubmit(this, 'Cancel/void this Delivery Receipt? The record and its stock history stay, only the status changes.');">
@@ -451,7 +451,7 @@
                     <tbody>
                         @foreach ($returnItems as $returnItem)
                             <tr>
-                                <td><a href="{{ route('return-items.index') }}">{{ $returnItem->reference }}</a> <span class="badge bg-secondary">{{ ucfirst($returnItem->status) }}</span></td>
+                                <td><a href="{{ $returnItem->productReturn ? route('product-returns.show', $returnItem->productReturn) : route('return-items.index') }}">{{ $returnItem->reference }}</a> <span class="badge bg-secondary">{{ ucfirst($returnItem->status) }}</span></td>
                                 <td>{{ $returnItem->return_date ? \Illuminate\Support\Carbon::parse($returnItem->return_date)->format('Y-m-d') : '—' }}</td>
                                 <td>{{ $returnItem->productBatch?->product?->display_description ?? '—' }}</td>
                                 <td class="text-end">{{ $returnItem->quantity }}</td>

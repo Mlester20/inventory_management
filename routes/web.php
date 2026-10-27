@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\InventoryReportController;
 use App\Http\Controllers\Admin\SalesReportController;
 use App\Http\Controllers\Admin\PurchaseReportController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\ProductReturnController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ImportResultsController;
 use App\Http\Controllers\InventoryImportController;
@@ -233,6 +234,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/return-items/from-delivery-receipt', [ReturnItemController::class, 'createFromDeliveryReceipt'])->name('return-items.from-dr');
     Route::post('admin/return-items/from-delivery-receipt', [ReturnItemController::class, 'storeFromDeliveryReceipt'])->name('return-items.store-from-dr');
     Route::resource('admin/return-items', ReturnItemController::class);
+    Route::get('admin/product-returns/{productReturn}', [ProductReturnController::class, 'show'])->name('product-returns.show');
+    Route::post('admin/product-returns/{productReturn}/approve', [ProductReturnController::class, 'approve'])->name('product-returns.approve');
+    Route::post('admin/product-returns/{productReturn}/reject', [ProductReturnController::class, 'reject'])->name('product-returns.reject');
     Route::resource('admin/taxes', TaxesController::class);
     Route::resource('admin/expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('admin/expense-categories', ExpenseCategoryController::class)->only(['store', 'destroy']);

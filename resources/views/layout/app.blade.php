@@ -173,12 +173,12 @@
             <li class="menu-item {{ request()->routeIs('return-items.*') ? 'active open' : '' }}">
               <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons bx bx-box"></i>
-                <div data-i18n="Return Items">Return Items</div>
+                <div data-i18n="Return Items">Product Return</div>
               </a>
               <ul class="menu-sub">
                 <li class="menu-item {{ request()->routeIs('return-items.*') ? 'active' : '' }}">
                   <a href="{{ route('return-items.index') }}" class="menu-link">
-                    <div data-i18n="Error">Return Items</div>
+                    <div data-i18n="Error">Product Returns</div>
                   </a>
                 </li>
               </ul>

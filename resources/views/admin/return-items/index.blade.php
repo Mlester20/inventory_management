@@ -1,17 +1,17 @@
 @extends('layout.app')
 
-@section('title', 'Return Items')
+@section('title', 'Product Returns')
 
 @section('content')
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Return Items</h5>
+        <h5 class="mb-0">Product Returns</h5>
         <div class="d-flex gap-2">
-            <a href="{{ route('return-items.from-dr') }}" class="btn btn-outline-primary">
-                <i class="bx bx-receipt"></i> Return from a Delivery Receipt
+            <a href="{{ route('return-items.create') }}" class="btn btn-outline-secondary" title="For a POS sale, a direct invoice, or no customer">
+                Other return (POS / direct invoice)
             </a>
-            <a href="{{ route('return-items.create') }}" class="btn btn-primary">
-                <i class="bx bx-plus"></i> New Return
+            <a href="{{ route('return-items.from-dr') }}" class="btn btn-primary">
+                <i class="bx bx-plus"></i> New Product Return
             </a>
         </div>
     </div>
@@ -24,7 +24,7 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th>Return ID</th>
+                    <th>Reference</th>
                     <th>Delivery Receipt</th>
                     <th>Item Name</th>
                     <th>Customer</th>
@@ -40,7 +40,13 @@
             <tbody>
                 @forelse($returnItems as $returnItem)
                 <tr>
-                    <td>{{ $returnItem->id }}</td>
+                    <td>
+                        @if($returnItem->productReturn)
+                            <a href="{{ route('product-returns.show', $returnItem->productReturn) }}">{{ $returnItem->productReturn->return_no }}</a>
+                        @else
+                            {{ $returnItem->reference }}
+                        @endif
+                    </td>
                     <td>
                         @if($returnItem->deliveryReceipt)
                             <a href="{{ route('delivery-receipts.show', $returnItem->deliveryReceipt) }}">{{ $returnItem->deliveryReceipt->dr_no }}</a>

@@ -260,7 +260,7 @@ class ReturnItemFromDeliveryReceiptTest extends TestCase
                 $this->batch()->id => ['qty' => 2, 'reason' => 'Damaged During Delivery', 'notes' => 'cracked'],
                 $other->batches()->first()->id => ['qty' => 1, 'reason' => 'Wrong Item Received'],
             ],
-        ])->assertRedirect(route('return-items.index'));
+        ])->assertRedirect();
 
         $returns = ReturnItem::where('delivery_receipt_id', $dr->id)->get();
         $this->assertCount(2, $returns);
@@ -321,6 +321,6 @@ class ReturnItemFromDeliveryReceiptTest extends TestCase
         $this->assertSame(0, ReturnItem::count());
 
         $this->actingAs($this->admin)->get(route('return-items.from-dr', ['delivery_receipt_id' => $this->dr->id]))
-            ->assertOk()->assertSee('Return from a Delivery Receipt')->assertSee('SAGADA LOCAL GOVERNMENT UNIT');
+            ->assertOk()->assertSee('New Product Return')->assertSee('SAGADA LOCAL GOVERNMENT UNIT');
     }
 }

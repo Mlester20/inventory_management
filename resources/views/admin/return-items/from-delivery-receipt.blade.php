@@ -1,12 +1,12 @@
 @extends('layout.app')
 
-@section('title', 'Return from a Delivery Receipt')
+@section('title', 'New Product Return')
 
 @section('content')
     <div class="card mt-3">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Return from a Delivery Receipt</h5>
-            <a href="{{ route('return-items.create') }}" class="small">Return a single item instead</a>
+            <h5 class="mb-0">New Product Return</h5>
+            <a href="{{ route('return-items.create') }}" class="small">Other return (POS / direct invoice)</a>
         </div>
         <div class="card-body">
             @if ($errors->any())
@@ -86,7 +86,7 @@
                     <button type="submit" class="btn btn-primary" id="saveBtn" disabled
                         @disabled(Auth::user()->role !== 'admin')
                         @if(Auth::user()->role !== 'admin') title="Submitting is restricted to full admin accounts." @endif>
-                        Save Return
+                        Save Product Return
                     </button>
                     <a href="{{ route('return-items.index') }}" class="btn btn-outline-secondary">Cancel</a>
                 </div>

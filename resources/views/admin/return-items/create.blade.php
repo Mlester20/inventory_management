@@ -8,8 +8,8 @@
         <div class="card-body">
             @unless(isset($editingReturnItem))
                 <div class="alert alert-light border small py-2">
-                    Returning several items that were delivered together? Use
-                    <a href="{{ route('return-items.from-dr') }}">Return from a Delivery Receipt</a> — every item of the receipt is listed, with a reason for each.
+                    This form is for a POS sale, a direct invoice, or a return with no customer. For goods delivered on a Delivery Receipt use
+                    <a href="{{ route('return-items.from-dr') }}">New Product Return</a> — every item of the receipt is listed, with a reason for each.
                 </div>
             @endunless
             @if ($errors->any())

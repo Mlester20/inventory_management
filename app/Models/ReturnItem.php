@@ -16,6 +16,7 @@ class ReturnItem extends Model
         'prepared_by',
         'customer_id',
         'delivery_receipt_id',
+        'product_return_id',
         'quantity',
         'return_date',
         'reason',
@@ -87,10 +88,16 @@ class ReturnItem extends Model
         return $this->belongsTo(DeliveryReceipt::class);
     }
 
-    /** What Product History and the lists call this return, e.g. RET-00012. */
+    /** The document this line belongs to (null for a single-item return). */
+    public function productReturn(): BelongsTo
+    {
+        return $this->belongsTo(ProductReturn::class);
+    }
+
+    /** What Product History and the lists call this return: its Product Return number, else RET-00012. */
     public function getReferenceAttribute(): string
     {
-        return 'RET-' . str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
+        return $this->productReturn?->return_no ?? 'RET-' . str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
     }
 
     /**

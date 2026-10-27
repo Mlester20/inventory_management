@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\DeliveryReceipt;
 use App\Models\ProductBatch;
+use App\Models\ProductReturn;
 use App\Models\Customer;
 use App\Models\Location;
 use App\Models\ReturnItem;
@@ -106,8 +107,18 @@ class ReturnItemController extends Controller
             }
         }
 
-        $created = DB::transaction(function () use ($lines, $validated, $deliveryReceipt) {
-            return $lines->map(function ($line, $batchId) use ($validated, $deliveryReceipt) {
+        $productReturn = null;
+        $created = DB::transaction(function () use ($lines, $validated, $deliveryReceipt, &$productReturn) {
+            $productReturn = ProductReturn::create([
+                'return_no' => ProductReturn::nextNumber(),
+                'delivery_receipt_id' => $deliveryReceipt->id,
+                'customer_id' => $deliveryReceipt->customer_id,
+                'return_date' => $validated['return_date'],
+                'prepared_by' => $validated['prepared_by'] ?? null,
+                'user_id' => auth()->id(),
+            ]);
+
+            return $lines->map(function ($line, $batchId) use ($validated, $deliveryReceipt, $productReturn) {
                 $data = $this->resolveSource([
                     'delivery_receipt_id' => $deliveryReceipt->id,
                     'customer_id' => $deliveryReceipt->customer_id,
@@ -121,6 +132,7 @@ class ReturnItemController extends Controller
                 $data['user_id'] = auth()->id();
                 $data['status'] = 'pending';
                 $data['is_draft'] = false;
+                $data['product_return_id'] = $productReturn->id;
 
                 return ReturnItem::create($data);
             })->values();
@@ -131,12 +143,12 @@ class ReturnItemController extends Controller
                 module: 'ReturnItem',
                 action: 'created',
                 loggable: $returnItem,
-                description: "Created return item request {$returnItem->reference} from {$deliveryReceipt->dr_no} (qty: {$returnItem->quantity}, reason: {$returnItem->reason})",
+                description: "Created {$productReturn->return_no} line from {$deliveryReceipt->dr_no} (qty: {$returnItem->quantity}, reason: {$returnItem->reason})",
             );
         }
 
-        return redirect()->route('return-items.index')
-            ->with('success', $created->count() . ' return item(s) created from ' . $deliveryReceipt->dr_no . '. Approve each to put the stock back.');
+        return redirect()->route('product-returns.show', $productReturn)
+            ->with('success', "{$productReturn->return_no} created from {$deliveryReceipt->dr_no}. Approve it to put the stock back.");
     }
 
     /**

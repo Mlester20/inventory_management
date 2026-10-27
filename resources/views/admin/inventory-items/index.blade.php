@@ -820,7 +820,7 @@
                                             $source instanceof \App\Models\StockTransfer => [$source->reference, route('stock-transfers.show', $source)],
                                             $source instanceof \App\Models\StockDisposal => [$source->reference, route('stock-disposals.show', $source)],
                                             $source instanceof \App\Models\Repack => [$source->reference, route('repacks.show', $source)],
-                                            $source instanceof \App\Models\ReturnItem => [$source->reference, route('return-items.index')],
+                                            $source instanceof \App\Models\ReturnItem => [$source->reference, $source->productReturn ? route('product-returns.show', $source->productReturn) : route('return-items.index')],
                                             default => [null, null],
                                         };
                                         $customer = match (true) {
