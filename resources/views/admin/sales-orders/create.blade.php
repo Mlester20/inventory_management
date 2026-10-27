@@ -77,7 +77,7 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label for="po_no" class="form-label">Customer P.O. #</label>
                         <input
                             type="text"
@@ -91,7 +91,22 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
+                        <label for="customer_po_date" class="form-label">Customer PO Date</label>
+                        <input
+                            type="date"
+                            name="customer_po_date"
+                            id="customer_po_date"
+                            class="form-control @error('customer_po_date') is-invalid @enderror"
+                            value="{{ old('customer_po_date', $editingSalesOrder?->customer_po_date?->toDateString()) }}"
+                        >
+                        <div class="form-text">The date written on the customer's own PO.</div>
+                        @error('customer_po_date')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="col-md-4 mb-3">
                         <label for="order_date" class="form-label">Order Date</label>
                         <input
                             type="date"

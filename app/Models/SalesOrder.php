@@ -16,6 +16,7 @@ class SalesOrder extends Model
         'sales_quote_id',
         'so_no',
         'po_no',
+        'customer_po_date',
         'status',
         'is_draft',
         'order_date',
@@ -26,6 +27,7 @@ class SalesOrder extends Model
 
     protected $casts = [
         'order_date' => 'date',
+        'customer_po_date' => 'date',
         'is_draft' => 'boolean',
         'archived_at' => 'datetime',
     ];

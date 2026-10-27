@@ -142,6 +142,10 @@
                     <label class="text-muted small">Order Date</label>
                     <p class="mb-0">{{ $salesOrder->order_date->format('M d, Y') }}</p>
                 </div>
+                <div class="col-md-3">
+                    <label class="text-muted small">Customer PO Date</label>
+                    <p class="mb-0">{{ $salesOrder->customer_po_date?->format('M d, Y') ?? '—' }}</p>
+                </div>
             </div>
         </div>
     </div>
@@ -344,6 +348,8 @@
                 'docNo' => $salesOrder->so_no,
                 'docNoLabel2' => 'P.O No.',
                 'docNo2' => $salesOrder->po_no ?? null,
+                'docNoLabel3' => $salesOrder->customer_po_date ? 'P.O Date' : null,
+                'docNo3' => $salesOrder->customer_po_date?->format('m/d/Y'),
                 'docDate' => $salesOrder->order_date->format('m/d/Y'),
                 'toHeader' => 'Customer',
                 'toRows' => [

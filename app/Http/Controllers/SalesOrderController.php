@@ -227,6 +227,7 @@ class SalesOrderController extends Controller
         return [
             'customer_id' => 'nullable|exists:customers,id',
             'po_no' => 'nullable|string|max:255',
+            'customer_po_date' => 'nullable|date',
             'order_date' => 'nullable|date',
             'prepared_by' => 'nullable|exists:users,id',
             'notes' => 'nullable|string',
@@ -250,6 +251,7 @@ class SalesOrderController extends Controller
         return [
             'customer_id' => 'required|exists:customers,id',
             'po_no' => 'nullable|string|max:255',
+            'customer_po_date' => 'nullable|date',
             'order_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
             'notes' => 'nullable|string',

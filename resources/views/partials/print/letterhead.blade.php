@@ -12,6 +12,7 @@
     - docNo (string, required)
     - docNoLabel2 (string, optional): a second reference number, e.g. "S.O No."
     - docNo2 (string, optional)
+    - docNoLabel3 / docNo3 (string, optional): a third reference line, e.g. "P.O Date"; skipped when the label is empty
     - docDate (string, required): already formatted, e.g. "09/08/2026"
     - toHeader (string, required): e.g. "Deliver to", "Supplier", "Customer"
     - toRows (array, required): ordered [label => value] pairs, e.g.
@@ -38,6 +39,12 @@
                 <span class="print-doc-no-value">{{ $docNo2 ?? '' }}</span>
             </div>
         @endisset
+        @if (! empty($docNoLabel3))
+            <div class="print-doc-no-row">
+                <span class="print-doc-no-label">{{ $docNoLabel3 }}:</span>
+                <span class="print-doc-no-value">{{ $docNo3 ?? '' }}</span>
+            </div>
+        @endif
         <div class="print-doc-no-row">
             <span class="print-doc-no-label">Date:</span>
             <span class="print-doc-no-value">{{ $docDate }}</span>

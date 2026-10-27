@@ -127,6 +127,7 @@ class SalesOrderService
                 'customer_id' => $data['customer_id'],
                 'so_no' => $this->generateSoNo(),
                 'po_no' => $data['po_no'] ?? null,
+                'customer_po_date' => $data['customer_po_date'] ?? null,
                 'status' => 'open',
                 'is_draft' => false,
                 'order_date' => $data['order_date'],
@@ -157,6 +158,7 @@ class SalesOrderService
             $salesOrder->fill([
                 'customer_id' => $data['customer_id'] ?? null,
                 'po_no' => $data['po_no'] ?? null,
+                'customer_po_date' => $data['customer_po_date'] ?? null,
                 'order_date' => $data['order_date'] ?? now()->toDateString(),
                 'prepared_by' => $data['prepared_by'] ?? null,
                 'is_draft' => true,
@@ -198,6 +200,7 @@ class SalesOrderService
             $draft->fill([
                 'customer_id' => $data['customer_id'],
                 'po_no' => $data['po_no'] ?? null,
+                'customer_po_date' => $data['customer_po_date'] ?? null,
                 'status' => 'open',
                 'is_draft' => false,
                 'order_date' => $data['order_date'],
