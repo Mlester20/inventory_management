@@ -818,7 +818,17 @@
                                     @endphp
                                     <tr>
                                         <td>{{ $movement->created_at->format('m/d/Y') }}</td>
-                                        <td>{{ $transactionLabel }}</td>
+                                        <td>
+                                            {{ $transactionLabel }}
+                                            @if($linkedDr)
+                                                <div class="small">
+                                                    <a href="{{ route('delivery-receipts.show', $linkedDr) }}">{{ $linkedDr->dr_no }}</a>
+                                                    @if($linkedDr->salesOrder)
+                                                        · <a href="{{ route('sales-orders.show', $linkedDr->salesOrder) }}">{{ $linkedDr->salesOrder->so_no }}</a>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </td>
                                         <td>{{ $customer ?? '—' }}</td>
                                         <td>{{ $supplier ?? '—' }}</td>
                                         <td>{{ $historyProduct->item_name }}</td>

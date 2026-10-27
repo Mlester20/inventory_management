@@ -126,7 +126,7 @@ class CustomerReturnAdjustmentTest extends TestCase
             ->assertOk()->assertSee('Returned by the customer')->assertSee($adjustment->adjustment_no);
 
         $this->actingAs($this->admin)->get(route('inventory-items.index', ['tab' => 'history', 'product_id' => $this->product->id]))
-            ->assertOk()->assertSee(route('delivery-receipts.show', $this->dr), false)->assertSee('Returned by Customer');
+            ->assertOk()->assertSee(route('delivery-receipts.show', $this->dr), false)->assertSee('Returned by Customer')->assertSee($this->dr->dr_no);
     }
 
     public function test_writing_off_a_return_takes_the_stock_out_again(): void
