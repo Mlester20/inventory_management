@@ -161,8 +161,65 @@ class DeliveryReceipt extends Model
         return $this->belongsTo(User::class, 'prepared_by');
     }
 
+    /** chaperone(): each line knows this very receipt, so line-level checks share one computation. */
     public function items(): HasMany
     {
-        return $this->hasMany(DeliveryReceiptItem::class);
+        return $this->hasMany(DeliveryReceiptItem::class)->chaperone();
+    }
+
+    /** @var array<int,int>|null line id => quantity already sent back, computed once per receipt */
+    protected ?array $returnAllocation = null;
+
+    /**
+     * How much of this line was sent back (or is on its way back), so it can no longer be invoiced.
+     * Returns are per product on the receipt; when the same item sits on several lines they are taken
+     * off the last lines first.
+     */
+    public function returnedQtyForLine(DeliveryReceiptItem $line): int
+    {
+        $this->returnAllocation ??= $this->allocateReturnsToLines();
+
+        return $this->returnAllocation[$line->id] ?? 0;
+    }
+
+    /** @return array<int,int> */
+    protected function allocateReturnsToLines(): array
+    {
+        $returned = [];
+        $add = function (?int $productId, int $qty) use (&$returned) {
+            if ($productId && $qty > 0) {
+                $returned[$productId] = ($returned[$productId] ?? 0) + $qty;
+            }
+        };
+
+        // Pending counts too: goods that came back must not be billed while the return is being approved.
+        foreach (ReturnItem::where('delivery_receipt_id', $this->id)->where('is_draft', false)->where('status', '!=', 'rejected')->with('productBatch')->get() as $return) {
+            $add($return->productBatch?->product_id, (int) $return->quantity);
+        }
+        foreach (InventoryAdjustment::where('delivery_receipt_id', $this->id)->where('adjustment_type', InventoryAdjustment::CUSTOMER_RETURN)->where('status', 'posted')->with('lines')->get() as $adjustment) {
+            foreach ($adjustment->lines as $adjustmentLine) {
+                $add($adjustmentLine->product_id, (int) $adjustmentLine->qty);
+            }
+        }
+
+        if ($returned === []) {
+            return [];
+        }
+
+        $allocation = [];
+        $lines = $this->items()->with('productBatch')->get()->sortByDesc('id');
+        foreach ($lines as $line) {
+            $productId = $line->productBatch?->product_id;
+            $left = $returned[$productId] ?? 0;
+            if ($left <= 0) {
+                continue;
+            }
+
+            $take = min($left, (int) $line->qty);
+            $allocation[$line->id] = $take;
+            $returned[$productId] = $left - $take;
+        }
+
+        return $allocation;
     }
 }

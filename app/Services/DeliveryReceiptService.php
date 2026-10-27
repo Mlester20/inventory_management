@@ -289,7 +289,7 @@ class DeliveryReceiptService
                 /** @var DeliveryReceiptItem $line */
                 if ($line->remaining_invoiceable_qty <= 0) {
                     throw ValidationException::withMessages([
-                        'line_ids' => "{$line->productBatch->product->item_name} is already fully invoiced.",
+                        'line_ids' => "{$line->productBatch->product->item_name} has nothing left to invoice (fully invoiced, or sent back by the customer).",
                     ]);
                 }
 

@@ -27,7 +27,8 @@ class DeliveryReceiptItem extends Model
 
     public function getRemainingInvoiceableQtyAttribute(): int
     {
-        return $this->qty - $this->invoiced_qty;
+        // Goods the customer sent back are not billed.
+        return max(0, $this->qty - $this->invoiced_qty - ($this->deliveryReceipt?->returnedQtyForLine($this) ?? 0));
     }
 
     public function sales(): HasMany

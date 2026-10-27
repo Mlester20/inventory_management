@@ -135,4 +135,43 @@ class ReturnedAsteriskTest extends TestCase
         $this->assertSame([17, 1, 1], $this->dr->fresh('items')->items->pluck('qty')->all());
         $this->assertSame(19, $this->so->items()->first()->delivered_qty);
     }
+
+    public function test_goods_sent_back_cannot_be_invoiced(): void
+    {
+        $this->returnItem('approved');                     // 2 back, taken off the last lines first
+
+        $dr = $this->dr->fresh();
+        $this->assertSame([17, 0, 0], $dr->items->map->remaining_invoiceable_qty->all());
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(DeliveryReceiptService::class)->createInvoiceFromLines($dr, [$dr->items[2]->id], $this->admin->id);
+    }
+
+    public function test_a_return_that_is_still_pending_already_holds_the_goods_back_from_billing(): void
+    {
+        $this->returnItem('pending');
+
+        $this->assertSame([17, 0, 0], $this->dr->fresh()->items->map->remaining_invoiceable_qty->all());
+    }
+
+    public function test_only_what_is_left_can_be_invoiced_and_a_rejected_return_frees_it(): void
+    {
+        $return = $this->returnItem('approved');
+        $dr = $this->dr->fresh();
+
+        $invoice = app(DeliveryReceiptService::class)->createInvoiceFromLines($dr, [$dr->items[0]->id], $this->admin->id);
+        $this->assertSame(17, (int) $invoice->sales()->sum('qty'));
+
+        $return->update(['status' => 'rejected']);
+        $this->assertSame([0, 1, 1], $this->dr->fresh()->items->map->remaining_invoiceable_qty->all(), 'the 17 is invoiced; the two 1s are free again');
+    }
+
+    public function test_the_dr_page_disables_a_returned_line(): void
+    {
+        $this->returnItem('approved');
+
+        $this->actingAs($this->admin)->get(route('delivery-receipts.show', $this->dr))
+            ->assertOk()
+            ->assertSee('sent back by the customer');
+    }
 }

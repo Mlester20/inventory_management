@@ -273,7 +273,7 @@
                 </div>
                 @if(!$deliveryReceipt->isDraft())
                     <p class="text-muted small mb-3 no-print">
-                        Check the lines to invoice, then click Create Invoice. A line's checkbox disables once it's fully invoiced.
+                        Check the lines to invoice, then click Create Invoice. A line's checkbox disables once it's fully invoiced or sent back by the customer.
                         @include('partials.returned-note', ['returned' => $returnedByProduct])
                     </p>
                 @endif
