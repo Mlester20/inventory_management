@@ -65,7 +65,7 @@
                 <div id="noPurchasesWarning" class="alert alert-warning d-none">Nothing has been delivered or invoiced to this customer yet, so there is nothing to return against.</div>
 
                 <div class="row g-2">
-                    <div class="col-md-4">
+                    <div class="col-12">
                         <label class="form-label">Item</label>
                         <input type="text" class="form-control" id="itemSearchInput" list="itemList"
                             placeholder="Search item..." autocomplete="off"
@@ -77,22 +77,22 @@
                         <datalist id="itemList"></datalist>
                         <input type="hidden" name="product_batch_id" id="productBatchIdInput" value="{{ old('product_batch_id', $editingReturnItem?->product_batch_id ?? '') }}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Delivered / Purchased</label>
                         <input type="text" class="form-control" id="totalPurchasedDisplay" readonly>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Lot/Batch No.</label>
                         <input type="text" class="form-control" id="batchInput" list="batchList" autocomplete="off"
                             value="{{ $editingReturnItem?->productBatch ? ($editingReturnItem->productBatch->batch_no ?? '(no lot)') : '' }}">
                         <datalist id="batchList"></datalist>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Expiry</label>
                         <input type="text" class="form-control" id="expiryDisplay" readonly
                             value="{{ $editingReturnItem?->productBatch?->expiration_date?->format('Y-m-d') ?? '' }}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Quantity</label>
                         <input type="number" name="quantity" id="quantityInput" class="form-control" min="1" value="{{ old('quantity', $editingReturnItem?->quantity ?? 1) }}">
                     </div>
@@ -226,7 +226,10 @@
         fillDrSources(null);
     }
 
+    itemSearchInput.title = itemSearchInput.value;
+
     itemSearchInput.addEventListener('input', function () {
+        this.title = this.value;   // hover shows the whole name if it is longer than the box
         const product = findProductByLabel(this.value);
         productBatchIdInput.value = '';
         batchInput.value = '';
