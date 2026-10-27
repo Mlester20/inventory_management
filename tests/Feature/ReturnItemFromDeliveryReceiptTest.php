@@ -199,4 +199,128 @@ class ReturnItemFromDeliveryReceiptTest extends TestCase
         $this->actingAs($this->admin)->get(route('delivery-receipts.show', $this->dr))
             ->assertOk()->assertSee('Returned by the customer')->assertSee($return->reference);
     }
+
+    // ---- the form that lists every line of the receipt (Return from a Delivery Receipt)
+
+    protected function secondProduct(): Product
+    {
+        $generic = GenericName::factory()->create(['category_id' => Category::factory()->create()->id]);
+        $product = Product::factory()->create(['generic_name_id' => $generic->id]);
+        app(InventoryAdjustmentService::class)->createAdjustment([
+            'adjustment_date' => now()->toDateString(), 'adjustment_type' => 'opening_balance', 'prepared_by' => $this->admin->id,
+            'lines' => [['product_id' => $product->id, 'qty' => 20]],
+        ], $this->admin->id);
+
+        return $product;
+    }
+
+    protected function twoLineReceipt(): array
+    {
+        $other = $this->secondProduct();
+        $dr = app(DeliveryReceiptService::class)->createDeliveryReceipt([
+            'customer_id' => $this->customer->id, 'transaction_type' => 'walk_in', 'receipt_date' => now()->toDateString(),
+            'prepared_by' => $this->admin->id,
+            'items' => [
+                ['product_batch_id' => $this->batch()->id, 'qty' => 4],
+                ['product_batch_id' => $other->batches()->first()->id, 'qty' => 3],
+            ],
+        ], $this->admin->id);
+
+        return [$dr, $other];
+    }
+
+    public function test_the_api_lists_the_receipts_lines_with_what_can_still_be_returned(): void
+    {
+        $this->submitReturn(['quantity' => 4]);   // 4 of the 10 on $this->dr, still pending
+
+        $deliveries = $this->actingAs($this->admin)->getJson("/api/customers/{$this->customer->id}/returnable-deliveries")->assertOk()->json('deliveries');
+
+        $this->assertCount(1, $deliveries);
+        $row = $deliveries[0]['rows'][0];
+        $this->assertSame([10, 4, 6], [$row['delivered'], $row['returned'], $row['returnable']]);
+        $this->assertSame($this->batch()->id, $row['batch_id']);
+        $this->assertFalse($deliveries[0]['invoiced']);
+    }
+
+    public function test_a_receipt_with_nothing_left_is_not_offered(): void
+    {
+        $this->submitReturn(['quantity' => 10]);
+
+        $this->actingAs($this->admin)->getJson("/api/customers/{$this->customer->id}/returnable-deliveries")
+            ->assertOk()->assertJsonCount(0, 'deliveries');
+    }
+
+    public function test_one_save_returns_several_lines_each_with_its_own_reason(): void
+    {
+        [$dr, $other] = $this->twoLineReceipt();
+
+        $this->actingAs($this->admin)->post(route('return-items.store-from-dr'), [
+            'delivery_receipt_id' => $dr->id, 'return_date' => now()->toDateString(), 'prepared_by' => $this->admin->id,
+            'lines' => [
+                $this->batch()->id => ['qty' => 2, 'reason' => 'Damaged During Delivery', 'notes' => 'cracked'],
+                $other->batches()->first()->id => ['qty' => 1, 'reason' => 'Wrong Item Received'],
+            ],
+        ])->assertRedirect(route('return-items.index'));
+
+        $returns = ReturnItem::where('delivery_receipt_id', $dr->id)->get();
+        $this->assertCount(2, $returns);
+        $this->assertSame(['Damaged During Delivery', 'Wrong Item Received'], $returns->sortBy('id')->pluck('reason')->all());
+        $this->assertSame([2, 1], $returns->sortBy('id')->pluck('quantity')->all());
+        $this->assertTrue($returns->every(fn ($r) => $r->status === 'pending' && ! $r->is_draft && (int) $r->customer_id === $this->customer->id));
+    }
+
+    public function test_lines_left_at_zero_are_skipped_and_a_return_needs_one_quantity(): void
+    {
+        [$dr, $other] = $this->twoLineReceipt();
+
+        $this->actingAs($this->admin)->post(route('return-items.store-from-dr'), [
+            'delivery_receipt_id' => $dr->id, 'return_date' => now()->toDateString(),
+            'lines' => [
+                $this->batch()->id => ['qty' => 0, 'reason' => ''],
+                $other->batches()->first()->id => ['qty' => 0, 'reason' => ''],
+            ],
+        ])->assertSessionHasErrors('lines');
+
+        $this->assertSame(0, ReturnItem::where('delivery_receipt_id', $dr->id)->count());
+    }
+
+    public function test_every_returned_line_needs_a_reason(): void
+    {
+        [$dr] = $this->twoLineReceipt();
+
+        $this->actingAs($this->admin)->post(route('return-items.store-from-dr'), [
+            'delivery_receipt_id' => $dr->id, 'return_date' => now()->toDateString(),
+            'lines' => [$this->batch()->id => ['qty' => 1, 'reason' => '']],
+        ])->assertSessionHasErrors('lines');
+
+        $this->assertSame(0, ReturnItem::where('delivery_receipt_id', $dr->id)->count());
+    }
+
+    public function test_it_is_all_or_nothing_when_one_line_asks_for_too_much(): void
+    {
+        [$dr, $other] = $this->twoLineReceipt();
+
+        $this->actingAs($this->admin)->post(route('return-items.store-from-dr'), [
+            'delivery_receipt_id' => $dr->id, 'return_date' => now()->toDateString(),
+            'lines' => [
+                $this->batch()->id => ['qty' => 2, 'reason' => 'Changed Mind'],
+                $other->batches()->first()->id => ['qty' => 9, 'reason' => 'Changed Mind'],   // only 3 were delivered
+            ],
+        ])->assertSessionHasErrors('quantity');
+
+        $this->assertSame(0, ReturnItem::where('delivery_receipt_id', $dr->id)->count(), 'the valid line is not kept either');
+    }
+
+    public function test_only_a_full_admin_can_use_the_form_and_the_page_renders(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin_staff', 'is_active' => true]))
+            ->post(route('return-items.store-from-dr'), [
+                'delivery_receipt_id' => $this->dr->id, 'return_date' => now()->toDateString(),
+                'lines' => [$this->batch()->id => ['qty' => 1, 'reason' => 'Changed Mind']],
+            ]);
+        $this->assertSame(0, ReturnItem::count());
+
+        $this->actingAs($this->admin)->get(route('return-items.from-dr', ['delivery_receipt_id' => $this->dr->id]))
+            ->assertOk()->assertSee('Return from a Delivery Receipt')->assertSee('SAGADA LOCAL GOVERNMENT UNIT');
+    }
 }

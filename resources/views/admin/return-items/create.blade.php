@@ -6,6 +6,12 @@
     <div class="card mt-3">
         <h5 class="card-header">{{ isset($editingReturnItem) ? 'Edit Draft Return Item' : 'New Return Item' }}</h5>
         <div class="card-body">
+            @unless(isset($editingReturnItem))
+                <div class="alert alert-light border small py-2">
+                    Returning several items that were delivered together? Use
+                    <a href="{{ route('return-items.from-dr') }}">Return from a Delivery Receipt</a> — every item of the receipt is listed, with a reason for each.
+                </div>
+            @endunless
             @if ($errors->any())
                 <div class="alert alert-danger">
                     <ul class="mb-0">

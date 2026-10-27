@@ -229,6 +229,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('admin/import-results', [ImportResultsController::class, 'index'])->name('import-results.index');
     Route::get('admin/import-results/export', [ImportResultsController::class, 'export'])->name('import-results.export');
+    // Declared before the resource so 'from-delivery-receipt' is not read as a return item's id.
+    Route::get('admin/return-items/from-delivery-receipt', [ReturnItemController::class, 'createFromDeliveryReceipt'])->name('return-items.from-dr');
+    Route::post('admin/return-items/from-delivery-receipt', [ReturnItemController::class, 'storeFromDeliveryReceipt'])->name('return-items.store-from-dr');
     Route::resource('admin/return-items', ReturnItemController::class);
     Route::resource('admin/taxes', TaxesController::class);
     Route::resource('admin/expenses', ExpenseController::class)->only(['index', 'store', 'update', 'destroy']);
@@ -299,6 +302,7 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
 
     // Customers API (admin Return Item form — scope items to what this customer actually bought)
     Route::get('customers/{customer}/purchased-items', [ApiCustomerController::class, 'purchasedItems'])->name('customers.purchased-items');
+    Route::get('customers/{customer}/returnable-deliveries', [ApiCustomerController::class, 'returnableDeliveries'])->name('customers.returnable-deliveries');
 
     // Sales Orders API (Purchase-Order-mode Delivery Receipt remaining lines)
     Route::get('sales-orders/{salesOrder}/remaining-items', [ApiSalesOrderController::class, 'remainingItems'])->name('sales-orders.remaining-items');

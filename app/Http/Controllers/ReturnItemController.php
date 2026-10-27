@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Services\ReturnItemService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -46,6 +47,96 @@ class ReturnItemController extends Controller
         $products = Product::with('batches')->orderBy('item_name')->get();
         $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name']);
         return view('admin.return-items.index', compact('returnItems', 'products', 'customers'));
+    }
+
+    /** The reasons offered on a return, per line on the Delivery Receipt form. */
+    public const REASONS = ['Defective Product', 'Wrong Item Received', 'Not as Described', 'Changed Mind', 'Damaged During Delivery', 'Other'];
+
+    /**
+     * Return several items at once: pick the customer and a Delivery Receipt and every line of it is
+     * listed, ready for a return quantity and a reason of its own (one may be damaged, another the
+     * wrong item).
+     */
+    public function createFromDeliveryReceipt(Request $request)
+    {
+        $customers = Customer::orderBy('customer_name')->get(['id', 'customer_name']);
+        $preselected = $request->query('delivery_receipt_id')
+            ? DeliveryReceipt::with('customer')->find($request->query('delivery_receipt_id'))
+            : null;
+
+        return view('admin.return-items.from-delivery-receipt', [
+            'customers' => $customers,
+            'preselected' => $preselected,
+            'reasons' => self::REASONS,
+        ]);
+    }
+
+    /**
+     * One Return Item per line that has a return quantity, each with its own reason. All or nothing: if
+     * any line is refused (more than was delivered, ...) none is created.
+     */
+    public function storeFromDeliveryReceipt(Request $request)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Submitting a Return Item is restricted to full admin accounts.');
+            return back()->withInput();
+        }
+
+        $validated = $request->validate([
+            'delivery_receipt_id' => 'required|exists:delivery_receipts,id',
+            'return_date' => 'required|date',
+            'prepared_by' => 'nullable|exists:users,id',
+            'lines' => 'required|array',
+            'lines.*.qty' => 'nullable|integer|min:0',
+            'lines.*.reason' => 'nullable|string|max:255',
+            'lines.*.notes' => 'nullable|string|max:500',
+        ]);
+
+        $deliveryReceipt = DeliveryReceipt::findOrFail($validated['delivery_receipt_id']);
+
+        $lines = collect($validated['lines'])->filter(fn ($line) => (int) ($line['qty'] ?? 0) > 0);
+        if ($lines->isEmpty()) {
+            throw ValidationException::withMessages(['lines' => 'Enter a return quantity for at least one item.']);
+        }
+
+        foreach ($lines as $batchId => $line) {
+            if (trim((string) ($line['reason'] ?? '')) === '') {
+                $name = ProductBatch::with('product')->find($batchId)?->product?->display_description ?? "item {$batchId}";
+                throw ValidationException::withMessages(['lines' => "Choose a reason for {$name}."]);
+            }
+        }
+
+        $created = DB::transaction(function () use ($lines, $validated, $deliveryReceipt) {
+            return $lines->map(function ($line, $batchId) use ($validated, $deliveryReceipt) {
+                $data = $this->resolveSource([
+                    'delivery_receipt_id' => $deliveryReceipt->id,
+                    'customer_id' => $deliveryReceipt->customer_id,
+                    'product_batch_id' => (int) $batchId,
+                    'quantity' => (int) $line['qty'],
+                    'return_date' => $validated['return_date'],
+                    'reason' => $line['reason'],
+                    'notes' => $line['notes'] ?? null,
+                    'prepared_by' => $validated['prepared_by'] ?? null,
+                ]);
+                $data['user_id'] = auth()->id();
+                $data['status'] = 'pending';
+                $data['is_draft'] = false;
+
+                return ReturnItem::create($data);
+            })->values();
+        });
+
+        foreach ($created as $returnItem) {
+            ActivityLog::record(
+                module: 'ReturnItem',
+                action: 'created',
+                loggable: $returnItem,
+                description: "Created return item request {$returnItem->reference} from {$deliveryReceipt->dr_no} (qty: {$returnItem->quantity}, reason: {$returnItem->reason})",
+            );
+        }
+
+        return redirect()->route('return-items.index')
+            ->with('success', $created->count() . ' return item(s) created from ' . $deliveryReceipt->dr_no . '. Approve each to put the stock back.');
     }
 
     /**
