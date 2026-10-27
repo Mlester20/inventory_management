@@ -5,7 +5,7 @@
 @if (! empty($returned))
     <div class="returned-note small mt-2">
         @foreach ($returned as $row)
-            <strong>*</strong> {{ $row['qty'] }} {{ $row['qty'] === 1 ? 'unit' : 'units' }} Returned by Client: {{ $row['name'] }} ({{ implode(', ', array_unique($row['refs'])) }}){{ ! $loop->last ? ' ' : '' }}
+            <div><strong>*</strong> {{ $row['qty'] }} {{ $row['qty'] === 1 ? 'unit' : 'units' }} Returned by Client: {{ $row['name'] }} ({{ implode(', ', array_unique($row['refs'])) }})</div>
         @endforeach
     </div>
 @endif
