@@ -12,6 +12,7 @@ use App\Models\Taxes;
 use App\Models\User;
 use App\Services\SalesOrderService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class SalesOrderController extends Controller
@@ -139,6 +140,9 @@ class SalesOrderController extends Controller
                     'item_description_label' => $line->product ? ($line->product->description ?: ($line->product->brand_name ?: $line->product->item_name)) : null,
                     'advance_order_qty' => $line->advance_order_qty,
                     'remarks' => $line->remarks,
+                    'id' => $editing->isDraft() ? null : $line->id,
+                    'delivered_qty' => (int) $line->delivered_qty,
+                    'locked' => ! $editing->isDraft() && $this->salesOrderService->lineHasDeliveries($line),
                 ])
                 ->values();
         }
@@ -150,8 +154,11 @@ class SalesOrderController extends Controller
         // precedence over the draft's own saved items, since it reflects
         // the user's most recent (unsaved) edits.
         if (old('items')) {
+            $savedLines = $editing ? $editing->items->keyBy('id') : collect();
             $prefillLines = collect(old('items'))
-                ->map(function ($line) use ($genericNames) {
+                ->map(function ($line) use ($genericNames, $savedLines, $editing) {
+                    $saved = ! empty($line['id']) ? $savedLines->get((int) $line['id']) : null;
+
                     $genericName = $genericNames->firstWhere('id', $line['generic_name_id'] ?? null);
                     $product = $genericName && ! empty($line['product_id'])
                         ? $genericName->products->firstWhere('id', $line['product_id'])
@@ -169,6 +176,9 @@ class SalesOrderController extends Controller
                         'item_description_label' => $product ? ($product->description ?: ($product->brand_name ?: $product->item_name)) : null,
                         'advance_order_qty' => $line['advance_order_qty'] ?? null,
                         'remarks' => $line['remarks'] ?? null,
+                        'id' => $saved?->id,
+                        'delivered_qty' => (int) ($saved?->delivered_qty ?? 0),
+                        'locked' => $saved && $editing && ! $editing->isDraft() && $this->salesOrderService->lineHasDeliveries($saved),
                     ];
                 })
                 ->values();
@@ -413,11 +423,75 @@ class SalesOrderController extends Controller
     public function edit(SalesOrder $salesOrder)
     {
         if (! $salesOrder->isDraft()) {
-            Alert::info('Not supported', 'Editing an issued Sales Order is not supported.');
-            return redirect()->route('sales-orders.show', $salesOrder);
+            if ($blocked = $this->issuedEditBlocked($salesOrder)) {
+                return $blocked;
+            }
         }
 
         return view('admin.sales-orders.create', $this->formData($salesOrder));
+    }
+
+    /** An issued order is corrected by a full admin, and only while it is open, partly delivered or completed. */
+    protected function issuedEditBlocked(SalesOrder $salesOrder)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Editing an issued Sales Order is restricted to full admin accounts.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        if (! in_array($salesOrder->status, SalesOrderService::EDITABLE_STATUSES, true)) {
+            Alert::info('Not editable', 'A cancelled or closed Sales Order can no longer be edited.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        return null;
+    }
+
+    /** Saving the corrections to an issued Sales Order (see SalesOrderService::updateIssuedOrder). */
+    protected function updateIssued(Request $request, SalesOrder $salesOrder)
+    {
+        if ($blocked = $this->issuedEditBlocked($salesOrder)) {
+            return $blocked;
+        }
+
+        $validated = $request->validate($this->issuedValidationRules());
+
+        try {
+            $changes = $this->salesOrderService->updateIssuedOrder($salesOrder, $validated);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'edited',
+            loggable: $salesOrder,
+            description: "Edited Sales Order {$salesOrder->so_no}" . ($changes ? ': ' . implode('; ', $changes) : ' (header only)'),
+            metadata: ['changes' => $changes],
+        );
+
+        Alert::success('Saved', "{$salesOrder->so_no} was updated.");
+        return redirect()->route('sales-orders.show', $salesOrder);
+    }
+
+    protected function issuedValidationRules(): array
+    {
+        return [
+            'po_no' => 'nullable|string|max:255',
+            'customer_po_date' => 'nullable|date',
+            'order_date' => 'required|date',
+            'prepared_by' => 'nullable|exists:users,id',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'nullable|integer',
+            'items.*.generic_name_id' => 'required|exists:generic_names,id',
+            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.qty' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.tax_classification' => 'nullable|in:' . implode(',', array_keys(SalesOrderItem::TAX_CLASSIFICATIONS)),
+            'items.*.advance_order_qty' => 'nullable|integer|min:0',
+            'items.*.remarks' => 'nullable|string',
+        ];
     }
 
     /**
@@ -426,8 +500,7 @@ class SalesOrderController extends Controller
     public function update(Request $request, SalesOrder $salesOrder)
     {
         if (! $salesOrder->isDraft()) {
-            Alert::info('Not supported', 'Editing an issued Sales Order is not supported.');
-            return redirect()->route('sales-orders.show', $salesOrder);
+            return $this->updateIssued($request, $salesOrder);
         }
 
         if ($request->input('save_action') === 'draft') {

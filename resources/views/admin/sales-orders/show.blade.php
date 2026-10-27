@@ -70,6 +70,11 @@
                                 </button>
                             </form>
                         @endif
+                        @if(Auth::user()->role === 'admin' && in_array($salesOrder->status, \App\Services\SalesOrderService::EDITABLE_STATUSES, true))
+                            <a href="{{ route('sales-orders.edit', $salesOrder) }}" class="dropdown-item">
+                                <i class="bx bx-edit-alt"></i> Edit Order
+                            </a>
+                        @endif
                         @if(Auth::user()->role === 'admin' && in_array($salesOrder->status, ['open', 'partially_delivered'], true))
                             @php $undeliveredUnits = $salesOrder->items->sum(fn ($item) => $item->remaining_qty); @endphp
                             <form action="{{ route('sales-orders.close', $salesOrder) }}" method="POST" onsubmit="return confirmSubmit(this, 'Close {{ $salesOrder->so_no }}? The {{ $undeliveredUnits }} unit(s) still undelivered will no longer be expected, and no more Delivery Receipts can be made against it. What was already delivered stays. You can reopen it later.');">

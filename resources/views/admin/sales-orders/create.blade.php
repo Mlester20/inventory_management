@@ -1,6 +1,7 @@
 @extends(in_array(Auth::user()->role, ['admin', 'admin_staff', 'user'], true) ? 'layout.app' : 'layout.user')
 
-@section('title', $editingSalesOrder ? 'Edit Draft — ' . $editingSalesOrder->so_no : 'New Sales Order')
+@php $editingIssued = $editingSalesOrder && ! $editingSalesOrder->isDraft(); @endphp
+@section('title', $editingSalesOrder ? ($editingIssued ? 'Edit Sales Order — ' : 'Edit Draft — ') . $editingSalesOrder->so_no : 'New Sales Order')
 
 @section('content')
     <style>
@@ -29,8 +30,15 @@
         .item-suggestions button:hover { background-color: #f8f9fa; }
     </style>
     <div class="card mt-3">
-        <h5 class="card-header">{{ $editingSalesOrder ? 'Edit Draft — ' . $editingSalesOrder->so_no : 'New Sales Order' }}</h5>
+        <h5 class="card-header">{{ $editingSalesOrder ? ($editingIssued ? 'Edit Sales Order — ' : 'Edit Draft — ') . $editingSalesOrder->so_no : 'New Sales Order' }}</h5>
         <div class="card-body">
+            @if($editingIssued)
+                <div class="alert alert-info small">
+                    This order is already issued. A line that has been (or is being) delivered can only be <strong>lowered</strong> — down to what was delivered plus its
+                    Advance Qty — and its remarks changed; it cannot be removed or swapped. To go lower, edit the Delivery Receipt first (Revise, while it is still For Delivery).
+                    A line with nothing delivered can be changed freely, removed, or you can add new lines.
+                </div>
+            @endif
             @if ($errors->any())
                 <div class="alert alert-danger">
                     <ul class="mb-0">
@@ -59,6 +67,7 @@
                             placeholder="Search customer..."
                             autocomplete="off"
                             value="{{ old('customer_search', $editingSalesOrder?->customer?->customer_name) }}"
+                            @if($editingIssued) readonly @endif
                             required
                         >
                         <datalist id="customer_datalist">
@@ -70,7 +79,9 @@
                         @error('customer_id')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
-                        @if(Auth::user()->role === 'admin')
+                        @if($editingIssued)
+                            <div class="form-text">The customer of an issued order is changed with <strong>Edit Customer</strong> on the order page.</div>
+                        @elseif(Auth::user()->role === 'admin')
                             <div class="form-text">Don't see the customer? <a href="{{ route('customers.index') }}" target="_blank">Add one here</a>.</div>
                         @endif
                     </div>
@@ -192,11 +203,16 @@
                     <button type="button" class="btn btn-secondary" id="addRowBtn">
                         <i class="bx bx-plus"></i> Add Item
                     </button>
-                    <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
-                        <i class="bx bx-save"></i> Save Draft
-                    </button>
-                    <button type="submit" name="save_action" value="posted" class="btn btn-primary" @disabled(Auth::user()->role !== 'admin') @if(Auth::user()->role !== 'admin') title="Finalizing is restricted to full admin accounts — use Save Draft instead." @endif>Save Sales Order</button>
-                    <a href="{{ route('sales-orders.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    @if($editingIssued)
+                        <button type="submit" name="save_action" value="posted" class="btn btn-primary">Save Changes</button>
+                        <a href="{{ route('sales-orders.show', $editingSalesOrder) }}" class="btn btn-outline-secondary">Cancel</a>
+                    @else
+                        <button type="submit" name="save_action" value="draft" formnovalidate class="btn btn-outline-secondary">
+                            <i class="bx bx-save"></i> Save Draft
+                        </button>
+                        <button type="submit" name="save_action" value="posted" class="btn btn-primary" @disabled(Auth::user()->role !== 'admin') @if(Auth::user()->role !== 'admin') title="Finalizing is restricted to full admin accounts — use Save Draft instead." @endif>Save Sales Order</button>
+                        <a href="{{ route('sales-orders.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    @endif
                 </div>
             </form>
         </div>
@@ -316,8 +332,36 @@
         });
     }
 
+    // A line of an issued order that already has deliveries: only its quantity (down to what was delivered plus
+    // the advance quantity) and remarks can change. The fields stay in the form (read-only) so the order still posts whole.
+    function lockRow(card, deliveredQty, advanceQty) {
+        const minimum = (Number(deliveredQty) || 0) + (Number(advanceQty) || 0);
+        card.dataset.locked = '1';
+
+        ['.generic-search-input', '.item-description-search-input', '.price-input', '.advance-input'].forEach(selector => {
+            const el = card.querySelector(selector);
+            el.readOnly = true;
+            el.classList.add('bg-light');
+        });
+
+        const tax = card.querySelector('.tax-classification-input');
+        tax.style.pointerEvents = 'none';
+        tax.tabIndex = -1;
+        tax.classList.add('bg-light');
+
+        card.querySelector('.qty-input').min = Math.max(1, minimum);
+
+        const note = card.querySelector('.delivered-note');
+        note.textContent = `Delivered ${deliveredQty}` + (Number(advanceQty) ? ` · Advance ${advanceQty}` : '') + ` — quantity cannot go below ${Math.max(1, minimum)}`;
+        note.classList.remove('d-none');
+
+        const remove = card.querySelector('.remove-row-btn');
+        remove.disabled = true;
+        remove.title = 'Already delivered — edit the Delivery Receipt first';
+    }
+
     function addRow(prefill = {}) {
-        const { genericLabel = '', qty = '', price = null, taxClassification = '', itemDescriptionLabel = '', advanceOrderQty = '', remarks = '' } = prefill;
+        const { genericLabel = '', qty = '', price = null, taxClassification = '', itemDescriptionLabel = '', advanceOrderQty = '', remarks = '', lineId = null, deliveredQty = 0, locked = false } = prefill;
         const index = rowIndex++;
         const card = document.createElement('div');
         card.className = 'line-item-card border rounded p-3 mb-3';
@@ -325,10 +369,12 @@
         card.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="fw-semibold text-muted line-item-number">Item</span>
+                <span class="delivered-note small text-muted d-none"></span>
                 <button type="button" class="btn btn-sm btn-outline-danger remove-row-btn">
                     <i class="bx bx-trash"></i> Remove
                 </button>
             </div>
+            ${lineId ? `<input type="hidden" name="items[${index}][id]" value="${lineId}">` : ''}
 
             <div class="row g-2">
                 <div class="col-12 position-relative">
@@ -385,6 +431,10 @@
         // price-tier auto-suggestion), then qty/price/advance qty are
         // overlaid — everything here is already client-side in
         // GENERIC_NAMES, no fetch needed.
+        if (locked) {
+            lockRow(card, deliveredQty, advanceOrderQty);
+        }
+
         if (genericLabel) {
             const genericSearchInput = card.querySelector('.generic-search-input');
             genericSearchInput.value = genericLabel;
@@ -617,6 +667,9 @@
                 itemDescriptionLabel: line.item_description_label,
                 advanceOrderQty: line.advance_order_qty,
                 remarks: line.remarks,
+                lineId: line.id,
+                deliveredQty: line.delivered_qty,
+                locked: line.locked,
             });
         });
     } else {

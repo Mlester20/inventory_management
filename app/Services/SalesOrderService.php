@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\DeliveryReceiptItem;
+use App\Models\GenericName;
 use App\Models\Invoice;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
@@ -10,6 +12,138 @@ use Illuminate\Validation\ValidationException;
 
 class SalesOrderService
 {
+    /** Statuses an issued Sales Order can still be edited in (not cancelled, not closed, not a draft). */
+    public const EDITABLE_STATUSES = ['open', 'partially_delivered', 'completed'];
+
+    /**
+     * Whether a line has been (or is being) delivered: delivered quantity, or any Delivery Receipt line —
+     * even a draft one — that points at it. Such a line can only be lowered, never removed or swapped.
+     */
+    public function lineHasDeliveries(SalesOrderItem $item): bool
+    {
+        return $item->delivered_qty > 0
+            || DeliveryReceiptItem::where('sales_order_item_id', $item->id)->exists();
+    }
+
+    /**
+     * Correct an issued Sales Order (Sir's rules): a line that already has deliveries can only have its quantity
+     * lowered — never below what was delivered plus the advance quantity — and its remarks changed; its item,
+     * price and tax stay, and it cannot be removed (edit the Delivery Receipt first). A line with no deliveries is
+     * free: change the item, quantity, price, description or advance quantity, remove it, or add new lines.
+     * Lines are matched by id, so the delivered quantities and the Delivery Receipts that point at them survive.
+     *
+     * @param array $data ['po_no','customer_po_date','order_date','prepared_by','notes','items' => [['id'?,'generic_name_id','product_id','qty','price','tax_classification','advance_order_qty','remarks'], ...]]
+     * @return array<int,string> what changed, for the audit trail
+     */
+    public function updateIssuedOrder(SalesOrder $salesOrder, array $data): array
+    {
+        return DB::transaction(function () use ($salesOrder, $data) {
+            $order = SalesOrder::lockForUpdate()->findOrFail($salesOrder->id);
+
+            if ($order->isDraft() || ! in_array($order->status, self::EDITABLE_STATUSES, true)) {
+                throw ValidationException::withMessages(['items' => 'Only an open, partially delivered or completed Sales Order can be edited.']);
+            }
+
+            $existing = $order->items()->with('genericName')->get()->keyBy('id');
+            $changes = [];
+            $kept = [];
+
+            foreach ($data['items'] as $line) {
+                $qty = (int) $line['qty'];
+                $item = ! empty($line['id']) ? $existing->get((int) $line['id']) : null;
+
+                if (! empty($line['id']) && ! $item) {
+                    throw ValidationException::withMessages(['items' => 'A line of this order could not be found — reload the page and try again.']);
+                }
+
+                if (! $item) {
+                    if ((int) ($line['advance_order_qty'] ?? 0) > $qty) {
+                        throw ValidationException::withMessages(['items' => 'A new line\'s Advance Qty cannot be more than its quantity.']);
+                    }
+
+                    $order->items()->create($this->lineAttributes($line));
+                    $changes[] = 'added ' . (GenericName::find($line['generic_name_id'])?->generic_name ?? 'an item') . " ({$qty})";
+
+                    continue;
+                }
+
+                $kept[] = $item->id;
+                $name = $item->genericName?->generic_name ?? 'Item';
+                $minimum = (int) $item->delivered_qty + (int) $item->advance_order_qty;
+
+                if ($this->lineHasDeliveries($item)) {
+                    if ($qty < $minimum) {
+                        throw ValidationException::withMessages(['items' => "{$name}: {$item->delivered_qty} already delivered" . ($item->advance_order_qty ? " and {$item->advance_order_qty} advance" : '') . ", so the quantity cannot go below {$minimum}. Edit the Delivery Receipt first to go lower."]);
+                    }
+
+                    if ($qty !== (int) $item->qty) {
+                        $changes[] = "{$name} qty {$item->qty} -> {$qty}";
+                    }
+                    $item->update(['qty' => $qty, 'remarks' => $line['remarks'] ?? null]);
+
+                    continue;
+                }
+
+                if ($qty < $minimum || (int) ($line['advance_order_qty'] ?? 0) > $qty) {
+                    throw ValidationException::withMessages(['items' => "{$name}: the quantity cannot be less than its Advance Qty."]);
+                }
+
+                $attributes = $this->lineAttributes($line);
+                if ((int) $item->generic_name_id !== (int) $attributes['generic_name_id']) {
+                    $changes[] = "{$name} replaced by " . (GenericName::find($attributes['generic_name_id'])?->generic_name ?? 'another item');
+                } elseif ($qty !== (int) $item->qty) {
+                    $changes[] = "{$name} qty {$item->qty} -> {$qty}";
+                } elseif ((int) $item->product_id !== (int) ($attributes['product_id'] ?? 0)) {
+                    $changes[] = "{$name} item description changed";
+                }
+                $item->update($attributes);
+            }
+
+            foreach ($existing as $item) {
+                if (in_array($item->id, $kept, true)) {
+                    continue;
+                }
+
+                if ($this->lineHasDeliveries($item)) {
+                    throw ValidationException::withMessages(['items' => ($item->genericName?->generic_name ?? 'A line') . ' already has deliveries, so it cannot be removed. Edit the Delivery Receipt first.']);
+                }
+
+                $changes[] = 'removed ' . ($item->genericName?->generic_name ?? 'an item');
+                $item->delete();
+            }
+
+            if ($order->items()->count() === 0) {
+                throw ValidationException::withMessages(['items' => 'A Sales Order needs at least one line.']);
+            }
+
+            $order->update([
+                'po_no' => $data['po_no'] ?? null,
+                'customer_po_date' => $data['customer_po_date'] ?? null,
+                'order_date' => $data['order_date'],
+                'prepared_by' => $data['prepared_by'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            // Lowering or raising quantities can complete the order or reopen it.
+            $order->update(['status' => $order->deliveryStatus()]);
+
+            return $changes;
+        });
+    }
+
+    protected function lineAttributes(array $line): array
+    {
+        return [
+            'generic_name_id' => $line['generic_name_id'],
+            'product_id' => $line['product_id'] ?? null,
+            'qty' => $line['qty'],
+            'price' => $line['price'],
+            'tax_classification' => $line['tax_classification'] ?? null,
+            'advance_order_qty' => $line['advance_order_qty'] ?? 0,
+            'remarks' => $line['remarks'] ?? null,
+        ];
+    }
+
     /**
      * Close an issued Sales Order whose remaining items will never be delivered. Nothing is
      * deleted or reversed — the order just becomes CLOSED, so it drops out of "open" and no
