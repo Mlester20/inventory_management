@@ -6,9 +6,14 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Return Items</h5>
-        <a href="{{ route('return-items.create') }}" class="btn btn-primary">
-            <i class="bx bx-plus"></i> New Return
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('return-items.from-dr') }}" class="btn btn-outline-primary">
+                <i class="bx bx-receipt"></i> Return from a Delivery Receipt
+            </a>
+            <a href="{{ route('return-items.create') }}" class="btn btn-primary">
+                <i class="bx bx-plus"></i> New Return
+            </a>
+        </div>
     </div>
     <datalist id="customer_datalist">
         @foreach($customers as $customer)

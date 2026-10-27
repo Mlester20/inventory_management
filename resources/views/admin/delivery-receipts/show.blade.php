@@ -71,6 +71,9 @@
                                 </form>
                             @endif
                             @if($isAdmin && ! $deliveryReceipt->isCancelled())
+                                <a href="{{ route('return-items.from-dr', ['delivery_receipt_id' => $deliveryReceipt->id]) }}" class="dropdown-item">
+                                    <i class="bx bx-undo me-1"></i> Return items
+                                </a>
                                 <div class="dropdown-divider"></div>
                                 <form action="{{ route('delivery-receipts.cancel', $deliveryReceipt) }}" method="POST" class="m-0" onsubmit="return confirmSubmit(this, 'Cancel/void this Delivery Receipt? The record and its stock history stay, only the status changes.');">
                                     @csrf

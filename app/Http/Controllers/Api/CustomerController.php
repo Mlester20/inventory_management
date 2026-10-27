@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\DeliveryReceipt;
 use App\Models\DeliveryReceiptItem;
+use App\Models\InventoryAdjustment;
 use App\Models\ReturnItem;
 use App\Models\Sale;
 
@@ -84,5 +86,70 @@ class CustomerController extends Controller
         })->sortBy('name')->values();
 
         return response()->json(['items' => $items]);
+    }
+
+    /**
+     * The customer's Delivery Receipts (posted, not cancelled) with their lines already worked out for
+     * the "return from a Delivery Receipt" form: one row per lot delivered, how many were delivered,
+     * how many already came back (Return Items not rejected, plus posted "Returned by Customer"
+     * adjustments) and so how many can still be returned. Receipts with nothing left to return are left out.
+     */
+    public function returnableDeliveries(Customer $customer)
+    {
+        $receipts = DeliveryReceipt::where('customer_id', $customer->id)
+            ->where('is_draft', false)->where('status', '!=', 'cancelled')
+            ->with('salesOrder', 'items.productBatch.product.genericName')
+            ->latest('id')
+            ->get();
+
+        $ids = $receipts->pluck('id');
+
+        $returned = ReturnItem::whereIn('delivery_receipt_id', $ids)
+            ->where('is_draft', false)->where('status', '!=', 'rejected')
+            ->get()
+            ->groupBy(fn (ReturnItem $return) => $return->delivery_receipt_id . '|' . $return->product_batch_id)
+            ->map(fn ($rows) => (int) $rows->sum('quantity'));
+
+        foreach (InventoryAdjustment::whereIn('delivery_receipt_id', $ids)->where('adjustment_type', InventoryAdjustment::CUSTOMER_RETURN)
+            ->where('status', 'posted')->with('lines')->get() as $adjustment) {
+            foreach ($adjustment->lines as $line) {
+                $key = $adjustment->delivery_receipt_id . '|' . $line->product_batch_id;
+                $returned[$key] = ($returned[$key] ?? 0) + (int) $line->qty;
+            }
+        }
+
+        $deliveries = $receipts->map(function (DeliveryReceipt $dr) use ($returned) {
+            $rows = $dr->items
+                ->filter(fn ($line) => $line->productBatch?->product)
+                ->groupBy('product_batch_id')
+                ->map(function ($lines, $batchId) use ($dr, $returned) {
+                    $batch = $lines->first()->productBatch;
+                    $delivered = (int) $lines->sum('qty');
+                    $already = (int) ($returned[$dr->id . '|' . $batchId] ?? 0);
+
+                    return [
+                        'batch_id' => (int) $batchId,
+                        'name' => $batch->product->display_description,
+                        'unit' => $batch->product->genericName->unit ?? '',
+                        'batch_no' => $batch->batch_no,
+                        'expiration_date' => $batch->expiration_date?->format('Y-m-d'),
+                        'delivered' => $delivered,
+                        'returned' => $already,
+                        'returnable' => max(0, $delivered - $already),
+                    ];
+                })
+                ->values();
+
+            return [
+                'id' => $dr->id,
+                'dr_no' => $dr->dr_no,
+                'so_no' => $dr->salesOrder?->so_no,
+                'date' => $dr->receipt_date?->format('Y-m-d'),
+                'invoiced' => $dr->items->sum('invoiced_qty') > 0,
+                'rows' => $rows,
+            ];
+        })->filter(fn ($dr) => $dr['rows']->contains(fn ($row) => $row['returnable'] > 0))->values();
+
+        return response()->json(['deliveries' => $deliveries]);
     }
 }
