@@ -425,12 +425,18 @@ class DeliveryReceiptService
      * Return Item), a line can never go below what is already invoiced, and the receipt must keep at
      * least one line (use Cancel/Void for the whole thing).
      *
+     * A line can also go UP, and new lines can be added, so a forgotten or extra item does not need a second
+     * receipt: the extra units are taken from the Warehouse (the batch must have them) and, where the line
+     * belongs to a Sales Order line, count against that line's remaining balance. A new line on a receipt
+     * that has a Sales Order must match one of that order's lines (same item, something still owed).
+     *
      * @param array<int,int|string|null> $newQtys DR item id => new qty (blank = unchanged)
-     * @return array<int,array{item:string,batch:?string,from:int,to:int}> the lines that changed
+     * @param array<int,array{product_batch_id:mixed,qty:mixed}> $added brand-new lines
+     * @return array<int,array{item:string,batch:?string,from:int,to:int}> the lines that changed (an added line has from 0)
      */
-    public function reviseDeliveryReceipt(DeliveryReceipt $deliveryReceipt, array $newQtys, ?int $userId = null): array
+    public function reviseDeliveryReceipt(DeliveryReceipt $deliveryReceipt, array $newQtys, ?int $userId = null, array $added = []): array
     {
-        return DB::transaction(function () use ($deliveryReceipt, $newQtys, $userId) {
+        return DB::transaction(function () use ($deliveryReceipt, $newQtys, $userId, $added) {
             $dr = DeliveryReceipt::lockForUpdate()->findOrFail($deliveryReceipt->id);
 
             if ($dr->isDraft() || $dr->isCancelled()) {
@@ -445,6 +451,7 @@ class DeliveryReceiptService
             $warehouse = Location::warehouse();
             $changes = [];
             $salesOrderDecrements = [];
+            $salesOrderIncrements = [];
             $keepsALine = false;
 
             foreach ($lines as $line) {
@@ -452,8 +459,8 @@ class DeliveryReceiptService
                 $new = ($raw === null || $raw === '') ? (int) $line->qty : (int) $raw;
                 $name = $line->productBatch->product->display_description;
 
-                if ($new < 0 || $new > $line->qty) {
-                    throw ValidationException::withMessages(['revise' => "{$name}: the new quantity must be between 0 and {$line->qty}."]);
+                if ($new < 0) {
+                    throw ValidationException::withMessages(['revise' => "{$name}: the new quantity cannot be negative."]);
                 }
 
                 if ($new < $line->invoiced_qty) {
@@ -471,6 +478,20 @@ class DeliveryReceiptService
                 $removed = (int) $line->qty - $new;
                 $changes[] = ['item' => $name, 'batch' => $line->batch_no, 'from' => (int) $line->qty, 'to' => $new];
 
+                if ($removed < 0) {
+                    $extra = -$removed;
+                    $this->guardWarehouseStock($line->productBatch, $extra);
+
+                    if ($line->sales_order_item_id) {
+                        $this->guardSalesOrderBalance(SalesOrderItem::with('salesOrder')->findOrFail($line->sales_order_item_id), $extra, $name);
+                        $salesOrderIncrements[$line->sales_order_item_id] = ($salesOrderIncrements[$line->sales_order_item_id] ?? 0) + $extra;
+                    }
+
+                    $this->stockService->deduct($line->productBatch, $extra, $warehouse, "Delivery Receipt {$dr->dr_no} revised", $userId, $dr);
+                    $line->update(['qty' => $new]);
+                    continue;
+                }
+
                 $this->stockService->restock($line->productBatch, $removed, $warehouse, "Delivery Receipt {$dr->dr_no} revised", $userId, $dr);
 
                 if ($line->sales_order_item_id) {
@@ -484,8 +505,46 @@ class DeliveryReceiptService
                 }
             }
 
+            foreach ($added as $new) {
+                $qty = (int) ($new['qty'] ?? 0);
+                if (empty($new['product_batch_id']) && $qty <= 0) {
+                    continue;
+                }
+                if (empty($new['product_batch_id']) || $qty <= 0) {
+                    throw ValidationException::withMessages(['revise' => 'A new line needs both an item and a quantity.']);
+                }
+
+                $batch = ProductBatch::with('product')->findOrFail($new['product_batch_id']);
+                $name = $batch->product->display_description;
+                $this->guardWarehouseStock($batch, $qty);
+
+                $soItem = null;
+                if ($dr->sales_order_id) {
+                    $soItem = SalesOrderItem::with('salesOrder')->where('sales_order_id', $dr->sales_order_id)
+                        ->where('generic_name_id', $batch->product->generic_name_id)->get()
+                        ->first(fn ($item) => $item->remaining_qty >= $qty);
+
+                    if (! $soItem) {
+                        throw ValidationException::withMessages(['revise' => "{$name}: {$dr->salesOrder->so_no} has no line for this item with {$qty} still to deliver. Add or raise the line on the Sales Order first."]);
+                    }
+                    $this->guardSalesOrderBalance($soItem, $qty, $name);
+                    $salesOrderIncrements[$soItem->id] = ($salesOrderIncrements[$soItem->id] ?? 0) + $qty;
+                }
+
+                $this->stockService->deduct($batch, $qty, $warehouse, "Delivery Receipt {$dr->dr_no} revised", $userId, $dr);
+                $dr->items()->create([
+                    'sales_order_item_id' => $soItem?->id,
+                    'product_batch_id' => $batch->id,
+                    'qty' => $qty,
+                    'batch_no' => $batch->batch_no,
+                    'expiration_date' => $batch->expiration_date,
+                ]);
+                $changes[] = ['item' => $name, 'batch' => $batch->batch_no, 'from' => 0, 'to' => $qty];
+                $keepsALine = true;
+            }
+
             if (empty($changes)) {
-                throw ValidationException::withMessages(['revise' => 'Nothing to revise — change at least one quantity.']);
+                throw ValidationException::withMessages(['revise' => 'Nothing to revise — change at least one quantity or add a line.']);
             }
 
             if (! $keepsALine) {
@@ -493,6 +552,13 @@ class DeliveryReceiptService
             }
 
             $affectedOrders = [];
+            foreach ($salesOrderIncrements as $soItemId => $extra) {
+                $soItem = SalesOrderItem::lockForUpdate()->find($soItemId);
+                if ($soItem) {
+                    $soItem->update(['delivered_qty' => (int) $soItem->delivered_qty + $extra]);
+                    $affectedOrders[$soItem->sales_order_id] = true;
+                }
+            }
             foreach ($salesOrderDecrements as $soItemId => $removed) {
                 $soItem = SalesOrderItem::lockForUpdate()->find($soItemId);
                 if ($soItem) {
@@ -506,6 +572,26 @@ class DeliveryReceiptService
 
             return $changes;
         });
+    }
+
+    protected function guardWarehouseStock(ProductBatch $batch, int $qty): void
+    {
+        $available = $batch->qtyAtLocation(Location::warehouse()->id);
+
+        if ($available < $qty) {
+            throw ValidationException::withMessages(['revise' => "Insufficient stock for {$batch->product->display_description}. Available in the Warehouse: {$available}"]);
+        }
+    }
+
+    protected function guardSalesOrderBalance(SalesOrderItem $soItem, int $qty, string $name): void
+    {
+        if ($soItem->salesOrder?->isClosed()) {
+            throw ValidationException::withMessages(['revise' => "Sales Order {$soItem->salesOrder->so_no} is closed — reopen it before delivering more against it."]);
+        }
+
+        if ($qty > $soItem->remaining_qty) {
+            throw ValidationException::withMessages(['revise' => "{$name}: only {$soItem->remaining_qty} still to deliver on the Sales Order."]);
+        }
     }
 
     /**

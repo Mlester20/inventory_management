@@ -268,7 +268,11 @@ class DeliveryReceiptController extends Controller
             ->orderBy('id')
             ->get();
 
-        return view('admin.delivery-receipts.show', compact('deliveryReceipt', 'canLink', 'linkCandidates', 'canRevise', 'revisions'));
+        $addableBatches = $canRevise
+            ? ProductBatch::availableFefo(Location::warehouse()->id)->with('product')->get()
+            : collect();
+
+        return view('admin.delivery-receipts.show', compact('deliveryReceipt', 'canLink', 'linkCandidates', 'canRevise', 'revisions', 'addableBatches'));
     }
 
     protected function canReviseDeliveryReceipt(DeliveryReceipt $deliveryReceipt): bool
@@ -292,21 +296,31 @@ class DeliveryReceiptController extends Controller
             'reason' => 'required|string|max:255',
             'new_qty' => 'required|array',
             'new_qty.*' => 'nullable|integer|min:0',
+            'add' => 'nullable|array',
+            'add.*.product_batch_id' => 'nullable|exists:product_batches,id',
+            'add.*.qty' => 'nullable|integer|min:0',
         ]);
 
-        $changes = $this->deliveryReceiptService->reviseDeliveryReceipt($deliveryReceipt, $validated['new_qty'], auth()->id());
+        try {
+            $changes = $this->deliveryReceiptService->reviseDeliveryReceipt($deliveryReceipt, $validated['new_qty'], auth()->id(), $validated['add'] ?? []);
+        } catch (ValidationException $e) {
+            Alert::error('Cannot revise', $e->validator->errors()->first());
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
 
-        $returned = array_sum(array_map(fn ($c) => $c['from'] - $c['to'], $changes));
+        $returned = array_sum(array_map(fn ($c) => max(0, $c['from'] - $c['to']), $changes));
+        $taken = array_sum(array_map(fn ($c) => max(0, $c['to'] - $c['from']), $changes));
+        $summary = trim(($returned ? "{$returned} unit(s) went back to the Warehouse. " : '') . ($taken ? "{$taken} more unit(s) were taken from the Warehouse." : ''));
 
         ActivityLog::record(
             module: 'DeliveryReceipt',
             action: 'revised',
             loggable: $deliveryReceipt,
-            description: "Revised Delivery Receipt {$deliveryReceipt->dr_no}: {$returned} unit(s) returned to the Warehouse — {$validated['reason']}",
+            description: "Revised Delivery Receipt {$deliveryReceipt->dr_no}: {$summary} — {$validated['reason']}",
             metadata: ['reason' => $validated['reason'], 'changes' => $changes],
         );
 
-        Alert::success('Revised', "{$deliveryReceipt->dr_no} updated. {$returned} unit(s) went back to the Warehouse.");
+        Alert::success('Revised', "{$deliveryReceipt->dr_no} updated. {$summary}");
         return redirect()->route('delivery-receipts.show', $deliveryReceipt);
     }
 

@@ -199,6 +199,116 @@ class ReviseDeliveryReceiptTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['module' => 'DeliveryReceipt', 'action' => 'revised', 'loggable_id' => $dr->id]);
     }
 
+    public function test_a_line_can_be_raised_within_what_the_sales_order_still_has_to_deliver(): void
+    {
+        [$dr, $so, [$a, $b]] = $this->postedReceipt();
+        $so->items[0]->update(['qty' => 15]);   // the order owes 5 more of A
+
+        $changes = $this->drs->reviseDeliveryReceipt($dr, [$dr->items[0]->id => 13], $this->admin->id);
+
+        $this->assertSame([['item' => $a->display_description, 'batch' => $changes[0]['batch'], 'from' => 10, 'to' => 13]], $changes);
+        $this->assertSame(13, $dr->fresh('items')->items[0]->qty);
+        $this->assertSame(7, $this->stock($a), 'the 3 extra came out of the Warehouse');
+        $this->assertSame(13, $so->fresh('items')->items[0]->delivered_qty);
+        $this->assertSame('partially_delivered', $so->fresh()->status);
+
+        try {
+            $this->drs->reviseDeliveryReceipt($dr->fresh('items'), [$dr->items[0]->id => 16], $this->admin->id);
+            $this->fail('a raise past the Sales Order balance was accepted');
+        } catch (ValidationException) {
+        }
+        $this->assertSame(13, $dr->fresh('items')->items[0]->qty);
+        $this->assertSame(7, $this->stock($a));
+    }
+
+    public function test_a_raise_cannot_take_more_than_the_warehouse_has(): void
+    {
+        [$dr, $so, [$a]] = $this->postedReceipt();
+        $so->items[0]->update(['qty' => 100]);
+
+        $this->expectException(ValidationException::class);
+        try {
+            $this->drs->reviseDeliveryReceipt($dr, [$dr->items[0]->id => 25], $this->admin->id);   // only 10 left
+        } finally {
+            $this->assertSame(10, $dr->fresh('items')->items[0]->qty);
+            $this->assertSame(10, $this->stock($a));
+        }
+    }
+
+    public function test_an_item_can_be_added_to_the_receipt_and_it_counts_on_the_sales_order(): void
+    {
+        [$dr, $so, [$a, $b]] = $this->postedReceipt();
+        $so->items[1]->update(['qty' => 9]);   // B was 5, all delivered; the order now owes 4 more
+
+        // a second batch of B (a different lot) is what gets added
+        app(InventoryAdjustmentService::class)->createAdjustment([
+            'adjustment_date' => now()->toDateString(), 'adjustment_type' => 'opening_balance', 'prepared_by' => $this->admin->id,
+            'lines' => [['product_id' => $b->id, 'qty' => 6, 'batch_no' => 'LOT-B2']],
+        ], $this->admin->id);
+        $newBatch = $b->batches()->where('batch_no', 'LOT-B2')->first();
+
+        $changes = $this->drs->reviseDeliveryReceipt($dr, [], $this->admin->id, [['product_batch_id' => $newBatch->id, 'qty' => 4], ['product_batch_id' => '', 'qty' => '']]);
+
+        $this->assertSame([0, 4], [$changes[0]['from'], $changes[0]['to']]);
+        $dr = $dr->fresh('items');
+        $this->assertCount(3, $dr->items);
+        $this->assertSame([$so->items[1]->id, 4], [$dr->items[2]->sales_order_item_id, $dr->items[2]->qty]);
+        $this->assertSame(2, $newBatch->fresh()->qtyAtLocation($this->warehouse->id));
+        $this->assertSame(9, $so->fresh('items')->items[1]->delivered_qty);
+        $this->assertSame('completed', $so->fresh()->status);
+    }
+
+    public function test_an_added_item_must_be_on_the_sales_order_with_something_left_to_deliver(): void
+    {
+        [$dr, $so, [$a]] = $this->postedReceipt();
+        $other = Product::factory()->create(['generic_name_id' => GenericName::factory()->create(['category_id' => Category::factory()->create()->id])->id]);
+        app(InventoryAdjustmentService::class)->createAdjustment([
+            'adjustment_date' => now()->toDateString(), 'adjustment_type' => 'opening_balance', 'prepared_by' => $this->admin->id,
+            'lines' => [['product_id' => $other->id, 'qty' => 5]],
+        ], $this->admin->id);
+
+        foreach ([[$other->batches()->first()->id, 'not on the order'], [$a->batches()->first()->id, 'order already fully delivered']] as [$batchId, $label]) {
+            try {
+                $this->drs->reviseDeliveryReceipt($dr, [], $this->admin->id, [['product_batch_id' => $batchId, 'qty' => 1]]);
+                $this->fail("{$label} was accepted");
+            } catch (ValidationException) {
+            }
+        }
+
+        $this->assertCount(2, $dr->fresh('items')->items);
+        $this->assertSame(5, $this->stock($other));
+    }
+
+    public function test_an_item_can_be_added_to_a_receipt_with_no_sales_order(): void
+    {
+        [$dr, , [$a, $b]] = $this->postedReceipt();
+        $walkIn = $this->drs->createDeliveryReceipt([
+            'customer_id' => $this->customer->id, 'transaction_type' => 'advance_order', 'receipt_date' => now()->toDateString(),
+            'prepared_by' => $this->admin->id, 'items' => [['product_batch_id' => $a->batches()->first()->id, 'qty' => 2]],
+        ], $this->admin->id);
+
+        $this->drs->reviseDeliveryReceipt($walkIn, [], $this->admin->id, [['product_batch_id' => $b->batches()->first()->id, 'qty' => 3]]);
+
+        $this->assertCount(2, $walkIn->fresh('items')->items);
+        $this->assertSame(2, $this->stock($b));
+    }
+
+    public function test_adding_and_raising_work_over_http(): void
+    {
+        [$dr, $so, [$a]] = $this->postedReceipt();
+        $so->items[0]->update(['qty' => 14]);
+
+        $this->actingAs($this->admin)->get(route('delivery-receipts.show', $dr))->assertOk()->assertSee('Add an item to this receipt');
+
+        $this->actingAs($this->admin)->post(route('delivery-receipts.revise', $dr), [
+            'reason' => 'Customer wants 2 more', 'new_qty' => [$dr->items[0]->id => 12], 'add' => [['product_batch_id' => '', 'qty' => '']],
+        ])->assertRedirect(route('delivery-receipts.show', $dr));
+
+        $this->assertSame(12, $dr->fresh('items')->items[0]->qty);
+        $this->assertSame(8, $this->stock($a));
+        $this->assertDatabaseHas('activity_logs', ['module' => 'DeliveryReceipt', 'action' => 'revised', 'loggable_id' => $dr->id]);
+    }
+
     public function test_a_reason_is_required(): void
     {
         [$dr] = $this->postedReceipt();

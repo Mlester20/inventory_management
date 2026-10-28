@@ -345,10 +345,10 @@
                         </div>
                         <div class="modal-body">
                             <p class="text-muted small">
-                                For a receipt that was posted before the goods were picked — an item is missing, or short. Lower the quantity
-                                (or set it to 0 to take the line off). What comes off goes back to the Warehouse stock it was taken from, and
-                                if the line belongs to a Sales Order, that order's delivered quantity goes down too, so the order is open for it again.
-                                A line can't go below what is already invoiced.
+                                For a receipt that is still For Delivery. Lower a quantity (or set it to 0 to take the line off) and it goes back
+                                to the Warehouse stock it was taken from; raise a quantity, or add an item below, and the extra is taken from the
+                                Warehouse. If the line belongs to a Sales Order, that order's delivered quantity follows, and a raise or a new item
+                                cannot go past what the order still has to deliver. A line cannot go below what is already invoiced.
                             </p>
                             <table class="table table-sm align-middle">
                                 <thead>
@@ -370,7 +370,31 @@
                                             <td class="text-end">{{ $line->invoiced_qty }}</td>
                                             <td>
                                                 <input type="number" class="form-control form-control-sm text-end revise-qty" name="new_qty[{{ $line->id }}]"
-                                                    value="{{ $line->qty }}" min="{{ $line->invoiced_qty }}" max="{{ $line->qty }}" data-current="{{ $line->qty }}">
+                                                    value="{{ $line->qty }}" min="{{ $line->invoiced_qty }}" data-current="{{ $line->qty }}">
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            <div class="fw-semibold small mb-1">Add an item to this receipt</div>
+                            <table class="table table-sm align-middle mb-2">
+                                <tbody>
+                                    @foreach(range(0, 2) as $i)
+                                        <tr>
+                                            <td>
+                                                <select name="add[{{ $i }}][product_batch_id]" class="form-select form-select-sm revise-add-batch">
+                                                    <option value="">— none —</option>
+                                                    @foreach($addableBatches as $batch)
+                                                        <option value="{{ $batch->id }}" data-available="{{ $batch->locationStocks->sum('qty') }}">
+                                                            {{ $batch->product->display_description }}@if($batch->batch_no) · Lot {{ $batch->batch_no }}@endif
+                                                            @if($batch->expiration_date) · exp {{ $batch->expiration_date->format('M Y') }}@endif
+                                                            · {{ $batch->locationStocks->sum('qty') }} in Warehouse
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td style="width: 120px;">
+                                                <input type="number" min="0" class="form-control form-control-sm text-end revise-add-qty" name="add[{{ $i }}][qty]" placeholder="Qty">
                                             </td>
                                         </tr>
                                     @endforeach
@@ -638,6 +662,8 @@
 <script>
     (function () {
         const inputs = [...document.querySelectorAll('.revise-qty')];
+        const addBatches = [...document.querySelectorAll('.revise-add-batch')];
+        const addQtys = [...document.querySelectorAll('.revise-add-qty')];
         const reason = document.getElementById('reviseReason');
         const summary = document.getElementById('reviseSummary');
         const submit = document.getElementById('reviseSubmit');
@@ -646,22 +672,32 @@
             let returned = 0;
             let changed = 0;
             let kept = 0;
+            let taken = 0;
             let valid = true;
 
             inputs.forEach(input => {
                 const current = parseInt(input.dataset.current, 10);
                 const min = parseInt(input.min, 10) || 0;
                 const value = input.value === '' ? current : parseInt(input.value, 10);
-                const bad = isNaN(value) || value < min || value > current;
+                const bad = isNaN(value) || value < min;
                 input.classList.toggle('is-invalid', bad);
                 if (bad) { valid = false; return; }
                 if (value > 0) kept++;
-                if (value !== current) { changed++; returned += current - value; }
+                if (value !== current) { changed++; if (value < current) returned += current - value; else taken += value - current; }
+            });
+
+            addBatches.forEach((select, i) => {
+                const qty = parseInt(addQtys[i].value, 10) || 0;
+                const available = parseInt(select.selectedOptions[0] ? select.selectedOptions[0].dataset.available : 0, 10) || 0;
+                const bad = (select.value !== '' && qty <= 0) || (select.value === '' && qty > 0) || (select.value !== '' && qty > available);
+                addQtys[i].classList.toggle('is-invalid', bad);
+                if (bad) { valid = false; return; }
+                if (select.value !== '') { kept++; changed++; taken += qty; }
             });
 
             if (!valid) {
                 summary.className = 'small mb-3 text-danger';
-                summary.textContent = 'A quantity is out of range (it can only go down, and not below what is already invoiced).';
+                summary.textContent = 'Check the quantities: nothing below what is already invoiced, and a new item needs a quantity the Warehouse has.';
             } else if (changed === 0) {
                 summary.className = 'small mb-3 text-muted';
                 summary.textContent = 'No change yet.';
@@ -671,13 +707,15 @@
                 summary.textContent = 'The receipt must keep at least one line. To void the whole receipt, use Cancel/Void.';
             } else {
                 summary.className = 'small mb-3 text-success';
-                summary.textContent = changed + ' line(s) changed — ' + returned + ' unit(s) go back to the Warehouse.';
+                summary.textContent = changed + ' line(s) changed — ' + (returned ? returned + ' unit(s) go back to the Warehouse. ' : '') + (taken ? taken + ' more unit(s) come out of the Warehouse.' : '');
             }
 
             submit.disabled = !(valid && changed > 0 && reason.value.trim() !== '');
         }
 
         inputs.forEach(input => input.addEventListener('input', refresh));
+        addBatches.forEach(el => el.addEventListener('change', refresh));
+        addQtys.forEach(el => el.addEventListener('input', refresh));
         reason.addEventListener('input', refresh);
         refresh();
     })();
