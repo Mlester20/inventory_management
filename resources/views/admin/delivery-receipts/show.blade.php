@@ -382,16 +382,9 @@
                                     @foreach(range(0, 2) as $i)
                                         <tr>
                                             <td>
-                                                <select name="add[{{ $i }}][product_batch_id]" class="form-select form-select-sm revise-add-batch">
-                                                    <option value="">— none —</option>
-                                                    @foreach($addableBatches as $batch)
-                                                        <option value="{{ $batch->id }}" data-available="{{ $batch->locationStocks->sum('qty') }}">
-                                                            {{ $batch->product->display_description }}@if($batch->batch_no) · Lot {{ $batch->batch_no }}@endif
-                                                            @if($batch->expiration_date) · exp {{ $batch->expiration_date->format('M Y') }}@endif
-                                                            · {{ $batch->locationStocks->sum('qty') }} in Warehouse
-                                                        </option>
-                                                    @endforeach
-                                                </select>
+                                                <input type="text" class="form-control form-control-sm revise-add-search" list="reviseBatchList"
+                                                    placeholder="Search item or lot..." autocomplete="off">
+                                                <input type="hidden" name="add[{{ $i }}][product_batch_id]" class="revise-add-batch" value="">
                                             </td>
                                             <td style="width: 120px;">
                                                 <input type="number" min="0" class="form-control form-control-sm text-end revise-add-qty" name="add[{{ $i }}][qty]" placeholder="Qty">
@@ -400,6 +393,7 @@
                                     @endforeach
                                 </tbody>
                             </table>
+                            <datalist id="reviseBatchList"></datalist>
                             <div id="reviseSummary" class="small mb-3 text-muted">No change yet.</div>
                             <label for="reviseReason" class="form-label">Reason</label>
                             <textarea name="reason" id="reviseReason" class="form-control" rows="2" maxlength="255"
@@ -663,7 +657,28 @@
     (function () {
         const inputs = [...document.querySelectorAll('.revise-qty')];
         const addBatches = [...document.querySelectorAll('.revise-add-batch')];
+        const addSearches = [...document.querySelectorAll('.revise-add-search')];
         const addQtys = [...document.querySelectorAll('.revise-add-qty')];
+        const batchList = document.getElementById('reviseBatchList');
+        const batchesByLabel = {};
+        let batchesLoaded = false;
+
+        // Thousands of lots can be in the Warehouse, so the list is fetched when the modal is first opened.
+        document.getElementById('reviseModal').addEventListener('show.bs.modal', function () {
+            if (batchesLoaded) return;
+            batchesLoaded = true;
+            fetch(@json(route('delivery-receipts.addable-batches', $deliveryReceipt)), { headers: { 'Accept': 'application/json' } })
+                .then(response => response.json())
+                .then(batches => {
+                    batches.forEach(batch => {
+                        batchesByLabel[batch.label] = batch;
+                        const option = document.createElement('option');
+                        option.value = batch.label;
+                        batchList.appendChild(option);
+                    });
+                })
+                .catch(() => { batchesLoaded = false; });
+        });
         const reason = document.getElementById('reviseReason');
         const summary = document.getElementById('reviseSummary');
         const submit = document.getElementById('reviseSubmit');
@@ -686,13 +701,19 @@
                 if (value !== current) { changed++; if (value < current) returned += current - value; else taken += value - current; }
             });
 
-            addBatches.forEach((select, i) => {
+            addBatches.forEach((hidden, i) => {
+                const typed = addSearches[i].value.trim();
+                const batch = batchesByLabel[typed];
+                hidden.value = batch ? batch.id : '';
+
                 const qty = parseInt(addQtys[i].value, 10) || 0;
-                const available = parseInt(select.selectedOptions[0] ? select.selectedOptions[0].dataset.available : 0, 10) || 0;
-                const bad = (select.value !== '' && qty <= 0) || (select.value === '' && qty > 0) || (select.value !== '' && qty > available);
-                addQtys[i].classList.toggle('is-invalid', bad);
-                if (bad) { valid = false; return; }
-                if (select.value !== '') { kept++; changed++; taken += qty; }
+                const unmatched = typed !== '' && !batch;
+                const badItem = unmatched || (!batch && qty > 0);
+                const badQty = batch && (qty <= 0 || qty > batch.available);
+                addSearches[i].classList.toggle('is-invalid', badItem);
+                addQtys[i].classList.toggle('is-invalid', !!badQty);
+                if (badItem || badQty) { valid = false; return; }
+                if (batch) { kept++; changed++; taken += qty; }
             });
 
             if (!valid) {
@@ -714,7 +735,7 @@
         }
 
         inputs.forEach(input => input.addEventListener('input', refresh));
-        addBatches.forEach(el => el.addEventListener('change', refresh));
+        addSearches.forEach(el => { el.addEventListener('input', refresh); el.addEventListener('change', refresh); });
         addQtys.forEach(el => el.addEventListener('input', refresh));
         reason.addEventListener('input', refresh);
         refresh();

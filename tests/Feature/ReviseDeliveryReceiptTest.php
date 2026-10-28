@@ -309,6 +309,22 @@ class ReviseDeliveryReceiptTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['module' => 'DeliveryReceipt', 'action' => 'revised', 'loggable_id' => $dr->id]);
     }
 
+    public function test_the_add_item_search_lists_warehouse_lots_for_a_full_admin_only(): void
+    {
+        [$dr, , [$a, $b]] = $this->postedReceipt();
+        $route = route('delivery-receipts.addable-batches', $dr);
+
+        $labels = collect($this->actingAs($this->admin)->getJson($route)->assertOk()->json())->pluck('label')->all();
+        $this->assertCount(2, $labels);
+        $this->assertStringContainsString('ITEM A', $labels[0] . $labels[1]);
+        $this->assertStringContainsString('in Warehouse', $labels[0]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin_staff', 'is_active' => true]))->getJson($route)->assertForbidden();
+
+        $dr->update(['status' => 'delivered']);
+        $this->actingAs($this->admin)->getJson($route)->assertForbidden();
+    }
+
     public function test_a_reason_is_required(): void
     {
         [$dr] = $this->postedReceipt();

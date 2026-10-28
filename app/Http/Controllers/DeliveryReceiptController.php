@@ -268,11 +268,33 @@ class DeliveryReceiptController extends Controller
             ->orderBy('id')
             ->get();
 
-        $addableBatches = $canRevise
-            ? ProductBatch::availableFefo(Location::warehouse()->id)->with('product')->get()
-            : collect();
+        return view('admin.delivery-receipts.show', compact('deliveryReceipt', 'canLink', 'linkCandidates', 'canRevise', 'revisions'));
+    }
 
-        return view('admin.delivery-receipts.show', compact('deliveryReceipt', 'canLink', 'linkCandidates', 'canRevise', 'revisions', 'addableBatches'));
+    /**
+     * The Warehouse lots the Revise modal can add to a receipt, for its searchable item field. Loaded when the
+     * modal opens rather than with the page, because there can be thousands of lots.
+     */
+    public function addableBatches(DeliveryReceipt $deliveryReceipt)
+    {
+        abort_unless($this->canReviseDeliveryReceipt($deliveryReceipt), 403);
+
+        $labels = [];
+
+        return ProductBatch::availableFefo(Location::warehouse()->id)->with('product')->get()->map(function ($batch) use (&$labels) {
+            $label = $batch->product->display_description
+                . ($batch->batch_no ? " · Lot {$batch->batch_no}" : '')
+                . ($batch->expiration_date ? ' · exp ' . $batch->expiration_date->format('M Y') : '')
+                . ' · ' . $batch->locationStocks->sum('qty') . ' in Warehouse';
+
+            // The label is what the person picks, so two lots that read the same get their id to tell them apart.
+            $labels[$label] = ($labels[$label] ?? 0) + 1;
+            if ($labels[$label] > 1) {
+                $label .= " (#{$batch->id})";
+            }
+
+            return ['id' => $batch->id, 'label' => $label, 'available' => (int) $batch->locationStocks->sum('qty')];
+        })->values();
     }
 
     protected function canReviseDeliveryReceipt(DeliveryReceipt $deliveryReceipt): bool
