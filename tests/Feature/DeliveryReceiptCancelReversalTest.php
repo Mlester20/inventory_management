@@ -262,4 +262,19 @@ class DeliveryReceiptCancelReversalTest extends TestCase
         $this->expectException(ValidationException::class);
         app(DeliveryReceiptService::class)->reverseCancelledDeliveryReceipt($this->dr->fresh(), $this->admin->id);
     }
+
+    public function test_a_cancelled_receipt_page_says_so_and_offers_nothing_to_invoice(): void
+    {
+        $page = $this->actingAs($this->admin)->get(route('delivery-receipts.show', $this->dr))->assertOk();
+        $page->assertDontSee('This Delivery Receipt was cancelled.');
+        $page->assertSee('Create Invoice');
+
+        $this->actingAs($this->admin)->post(route('delivery-receipts.cancel', $this->dr));
+
+        $this->actingAs($this->admin)->get(route('delivery-receipts.show', $this->dr))
+            ->assertOk()
+            ->assertSee('This Delivery Receipt was cancelled.')
+            ->assertSee('went back to the Warehouse')
+            ->assertDontSee('Create Invoice');
+    }
 }

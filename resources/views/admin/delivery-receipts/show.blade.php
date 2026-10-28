@@ -89,6 +89,17 @@
         </div>
     </div>
 
+    @if ($deliveryReceipt->isCancelled())
+        <div class="alert alert-danger no-print">
+            <i class="bx bx-block me-1"></i>
+            <strong>This Delivery Receipt was cancelled.</strong>
+            @if($deliveryReceipt->stock_reversed_at)
+                Its goods went back to the Warehouse and the Sales Order's Delivered quantities were lowered.
+            @endif
+            It can no longer be invoiced, delivered or revised.
+        </div>
+    @endif
+
     @if ($deliveryReceipt->cancellation_note)
         <div class="alert alert-warning">
             <i class="bx bx-error-circle me-1"></i> {{ $deliveryReceipt->cancellation_note }}
@@ -230,7 +241,8 @@
                             @foreach ($deliveryReceipt->items as $line)
                                 @php
                                     $remaining = $line->remaining_invoiceable_qty;
-                                    $fullyInvoiced = $remaining <= 0;
+                                    // A cancelled receipt is void: nothing on it can be invoiced.
+                                    $fullyInvoiced = $remaining <= 0 || $deliveryReceipt->isCancelled();
                                     // What the invoice will charge for this line, worked out the same way
                                     // DeliveryReceiptService does — used only for the withholding suggestion.
                                     $lineProduct = $line->productBatch->product;
@@ -276,7 +288,9 @@
                 </div>
                 @if(!$deliveryReceipt->isDraft())
                     <p class="text-muted small mb-3 no-print">
-                        Check the lines to invoice, then click Create Invoice. A line's checkbox disables once it's fully invoiced or sent back by the customer.
+                        @unless($deliveryReceipt->isCancelled())
+                            Check the lines to invoice, then click Create Invoice. A line's checkbox disables once it's fully invoiced or sent back by the customer.
+                        @endunless
                         @include('partials.returned-note', ['returned' => $returnedByProduct])
                     </p>
                 @endif
@@ -288,7 +302,7 @@
                         <label class="text-muted small">Prepared By</label>
                         <p class="fw-bold mb-0">{{ $deliveryReceipt->preparedBy->name ?? '—' }}</p>
                     </div>
-                    @if(!$deliveryReceipt->isDraft())
+                    @if(!$deliveryReceipt->isDraft() && ! $deliveryReceipt->isCancelled())
                         <div class="col-md-3 no-print">
                             <label for="dr_po_no" class="form-label small mb-1">Customer PO #</label>
                             <input type="text" name="po_no" id="dr_po_no" class="form-control form-control-sm"
