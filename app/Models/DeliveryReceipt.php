@@ -24,9 +24,11 @@ class DeliveryReceipt extends Model
         'prepared_by',
         'archived_at',
         'cancellation_note',
+        'stock_reversed_at',
     ];
 
     protected $casts = [
+        'stock_reversed_at' => 'datetime',
         'receipt_date' => 'date',
         'is_draft' => 'boolean',
         'archived_at' => 'datetime',

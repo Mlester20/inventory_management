@@ -22,7 +22,9 @@ class SalesOrderService
     public function lineHasDeliveries(SalesOrderItem $item): bool
     {
         return $item->delivered_qty > 0
-            || DeliveryReceiptItem::where('sales_order_item_id', $item->id)->exists();
+            || DeliveryReceiptItem::where('sales_order_item_id', $item->id)
+                ->whereHas('deliveryReceipt', fn ($q) => $q->where('status', '!=', 'cancelled'))
+                ->exists();
     }
 
     /**

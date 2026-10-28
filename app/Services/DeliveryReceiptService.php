@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\DeliveryReceipt;
 use App\Models\DeliveryReceiptItem;
+use App\Models\InventoryAdjustment;
 use App\Models\Invoice;
 use App\Models\Location;
 use App\Models\ProductBatch;
+use App\Models\ReturnItem;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
 use App\Models\Taxes;
@@ -628,12 +630,124 @@ class DeliveryReceiptService
     }
 
     /**
+     * Void a Delivery Receipt that never really left: the goods go back to the Warehouse and every linked
+     * Sales Order line's Delivered quantity goes back down, then the receipt is marked Cancelled. The lines stay
+     * on the document as its history.
+     *
+     * Refused when the goods can no longer simply come back: the receipt is already Delivered, a line is already
+     * invoiced, or something was already returned against it (a Product Return is the way for goods that left).
+     *
+     * @return array{units:int,lines:int,orders:array<int,string>}
+     */
+    public function cancelDeliveryReceipt(DeliveryReceipt $deliveryReceipt, ?int $userId = null): array
+    {
+        return DB::transaction(function () use ($deliveryReceipt, $userId) {
+            $dr = DeliveryReceipt::lockForUpdate()->findOrFail($deliveryReceipt->id);
+
+            if ($dr->status === 'delivered') {
+                throw ValidationException::withMessages(['cancel' => "{$dr->dr_no} is already marked Delivered — the goods are with the customer. Use a Product Return for what came back."]);
+            }
+
+            $result = $this->reverseStockAndOrders($dr, $userId, "Delivery Receipt {$dr->dr_no} cancelled");
+            $dr->update(['status' => 'cancelled']);
+
+            return $result;
+        });
+    }
+
+    /**
+     * Repair for a receipt that was cancelled while Cancel only changed the status: put its goods back in the
+     * Warehouse and take its quantities off the Sales Order, once (the receipt is then marked as reversed).
+     *
+     * @return array{units:int,lines:int,orders:array<int,string>}
+     */
+    public function reverseCancelledDeliveryReceipt(DeliveryReceipt $deliveryReceipt, ?int $userId = null): array
+    {
+        return DB::transaction(function () use ($deliveryReceipt, $userId) {
+            $dr = DeliveryReceipt::lockForUpdate()->findOrFail($deliveryReceipt->id);
+
+            if (! $dr->isCancelled()) {
+                throw ValidationException::withMessages(['cancel' => "{$dr->dr_no} is not cancelled."]);
+            }
+
+            return $this->reverseStockAndOrders($dr, $userId, "Delivery Receipt {$dr->dr_no} cancelled (stock put back)");
+        });
+    }
+
+    /** Whether anything was already returned (or is on its way back) against this receipt. */
+    protected function hasReturns(DeliveryReceipt $dr): bool
+    {
+        return ReturnItem::where('delivery_receipt_id', $dr->id)->where('is_draft', false)->where('status', '!=', 'rejected')->exists()
+            || InventoryAdjustment::where('delivery_receipt_id', $dr->id)
+                ->where('adjustment_type', InventoryAdjustment::CUSTOMER_RETURN)->where('status', 'posted')->exists();
+    }
+
+    /** @return array{units:int,lines:int,orders:array<int,string>} */
+    protected function reverseStockAndOrders(DeliveryReceipt $dr, ?int $userId, string $remarks): array
+    {
+        if ($dr->isDraft()) {
+            throw ValidationException::withMessages(['cancel' => 'A draft Delivery Receipt never moved any stock — delete the draft instead.']);
+        }
+
+        if ($dr->stock_reversed_at) {
+            throw ValidationException::withMessages(['cancel' => "{$dr->dr_no}'s stock was already put back."]);
+        }
+
+        $lines = $dr->items()->with('productBatch.product')->lockForUpdate()->get();
+
+        if ($lines->contains(fn ($line) => $line->invoiced_qty > 0)) {
+            throw ValidationException::withMessages(['cancel' => "{$dr->dr_no} already has an invoice. Cancel or correct the invoice first."]);
+        }
+
+        if ($this->hasReturns($dr)) {
+            throw ValidationException::withMessages(['cancel' => "Goods were already returned against {$dr->dr_no}, so it cannot simply be cancelled."]);
+        }
+
+        $warehouse = Location::warehouse();
+        $units = 0;
+        $decrements = [];
+
+        foreach ($lines as $line) {
+            if (! $line->productBatch || (int) $line->qty <= 0) {
+                continue;
+            }
+
+            $this->stockService->restock($line->productBatch, (int) $line->qty, $warehouse, $remarks, $userId, $dr);
+            $units += (int) $line->qty;
+
+            if ($line->sales_order_item_id) {
+                $decrements[$line->sales_order_item_id] = ($decrements[$line->sales_order_item_id] ?? 0) + (int) $line->qty;
+            }
+        }
+
+        $orders = [];
+        foreach ($decrements as $soItemId => $qty) {
+            $soItem = SalesOrderItem::lockForUpdate()->find($soItemId);
+            if ($soItem) {
+                $soItem->update(['delivered_qty' => max(0, (int) $soItem->delivered_qty - $qty)]);
+                $orders[$soItem->sales_order_id] = true;
+            }
+        }
+
+        $orderNumbers = [];
+        foreach (array_keys($orders) as $salesOrderId) {
+            $order = SalesOrder::findOrFail($salesOrderId);
+            $this->refreshSalesOrderStatus($order);
+            $orderNumbers[] = $order->so_no;
+        }
+
+        $dr->update(['stock_reversed_at' => now()]);
+
+        return ['units' => $units, 'lines' => $lines->count(), 'orders' => $orderNumbers];
+    }
+
+    /**
      * Recompute a Sales Order's status from its line items' delivered quantities.
      */
     protected function refreshSalesOrderStatus(SalesOrder $salesOrder): void
     {
-        // A closed order stays closed — only Reopen changes that.
-        if ($salesOrder->isClosed()) {
+        // A closed order stays closed — only Reopen changes that; a cancelled one stays cancelled.
+        if ($salesOrder->isClosed() || $salesOrder->isCancelled()) {
             return;
         }
 

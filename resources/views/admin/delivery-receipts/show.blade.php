@@ -75,7 +75,7 @@
                                     <i class="bx bx-undo me-1"></i> New Product Return
                                 </a>
                                 <div class="dropdown-divider"></div>
-                                <form action="{{ route('delivery-receipts.cancel', $deliveryReceipt) }}" method="POST" class="m-0" onsubmit="return confirmSubmit(this, 'Cancel/void this Delivery Receipt? The record and its stock history stay, only the status changes.');">
+                                <form action="{{ route('delivery-receipts.cancel', $deliveryReceipt) }}" method="POST" class="m-0" onsubmit="return confirmSubmit(this, 'Cancel/void this Delivery Receipt? Its goods go back to the Warehouse and the Delivered quantities on the Sales Order go back down. The record stays. This only works while it is still For Delivery, not invoiced and with no returns.');">
                                     @csrf
                                     <button type="submit" class="dropdown-item text-danger">
                                         <i class="bx bx-block me-1"></i> Cancel/Void

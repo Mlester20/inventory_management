@@ -578,10 +578,9 @@ class DeliveryReceiptController extends Controller
     }
 
     /**
-     * Void a Delivery Receipt — status label only. Does NOT reverse the
-     * stock already deducted from Warehouse when this DR was posted; use
-     * an Inventory Adjustment separately if the stock itself needs
-     * correcting. This just marks the document as no longer valid.
+     * Void a Delivery Receipt that has not been delivered: its goods go back to the Warehouse and the Sales
+     * Order's Delivered quantities go back down (see DeliveryReceiptService::cancelDeliveryReceipt). Refused for a
+     * receipt that is already Delivered, invoiced, or has returns.
      */
     public function cancel(DeliveryReceipt $deliveryReceipt)
     {
@@ -596,17 +595,25 @@ class DeliveryReceiptController extends Controller
         }
 
         $previousStatus = $deliveryReceipt->status;
-        $deliveryReceipt->update(['status' => 'cancelled']);
+
+        try {
+            $result = $this->deliveryReceiptService->cancelDeliveryReceipt($deliveryReceipt, auth()->id());
+        } catch (ValidationException $e) {
+            Alert::error('Cannot cancel', $e->validator->errors()->first());
+            return redirect()->route('delivery-receipts.show', $deliveryReceipt);
+        }
 
         ActivityLog::record(
             module: 'DeliveryReceipt',
             action: 'cancelled',
             loggable: $deliveryReceipt,
-            description: "Cancelled Delivery Receipt {$deliveryReceipt->dr_no}",
-            metadata: ['previous_status' => $previousStatus],
+            description: "Cancelled Delivery Receipt {$deliveryReceipt->dr_no}: {$result['units']} unit(s) back in the Warehouse"
+                . ($result['orders'] ? ', Delivered lowered on ' . implode(', ', $result['orders']) : ''),
+            metadata: ['previous_status' => $previousStatus] + $result,
         );
 
-        Alert::success('Success', 'Delivery Receipt cancelled.');
+        Alert::success('Cancelled', "{$deliveryReceipt->dr_no} cancelled. {$result['units']} unit(s) went back to the Warehouse"
+            . ($result['orders'] ? ' and the Delivered quantities on ' . implode(', ', $result['orders']) . ' went back down.' : '.'));
         return redirect()->route('delivery-receipts.show', $deliveryReceipt);
     }
 
