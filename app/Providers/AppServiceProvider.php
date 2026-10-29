@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,5 +27,8 @@ class AppServiceProvider extends ServiceProvider
         // but Laravel's pagination views default to Tailwind markup — without
         // this, {{ $paginator->links() }} renders unstyled links.
         Paginator::useBootstrapFive();
+
+        // The read-only API: 60 calls a minute per token.
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
     }
 }

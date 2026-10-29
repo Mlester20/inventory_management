@@ -45,8 +45,8 @@ class AuthenticatedSessionController extends Controller
             return back()->withInput($request->only('email'));
         }
 
-        // An Encoder is only a name for Prepared By — it can never sign in.
-        if (Auth::user()->is_encoder) {
+        // An Encoder is only a name for Prepared By, and an API account only holds tokens — neither can ever sign in.
+        if (Auth::user()->is_encoder || Auth::user()->role === 'api') {
             Auth::guard('web')->logout();
 
             Alert::error('Login Failed', 'Invalid email or password');
