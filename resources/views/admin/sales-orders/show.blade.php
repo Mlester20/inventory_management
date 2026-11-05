@@ -88,6 +88,9 @@
                             </form>
                         @endif
                         @if(Auth::user()->role === 'admin' && $salesOrder->isClosed())
+                            <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#orderInvoiceModal">
+                                <i class="bx bx-receipt"></i> Create Invoice
+                            </button>
                             <form action="{{ route('sales-orders.reopen', $salesOrder) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="dropdown-item">
@@ -360,6 +363,53 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                             <button type="submit" class="btn btn-primary">Save Customer</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    @if(Auth::user()->role === 'admin' && $salesOrder->isClosed())
+        <div class="modal fade no-print" id="orderInvoiceModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form action="{{ route('sales-orders.create-invoice', $salesOrder) }}" method="POST">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Create Invoice — {{ $salesOrder->so_no }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">
+                                One invoice for everything this order delivered that is not yet invoiced, from all its Delivery Receipts
+                                (cancelled receipts, goods the customer sent back, and what is already invoiced are left out).
+                                Each line is priced at its Sales Order price.
+                            </p>
+                            <div class="mb-3">
+                                <label for="orderInvoicePo" class="form-label">Customer P.O. #</label>
+                                <input type="text" id="orderInvoicePo" name="po_no" class="form-control" maxlength="255" value="{{ $salesOrder->po_no }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="orderInvoiceWt" class="form-label">Withholding Tax (₱)</label>
+                                <input type="number" id="orderInvoiceWt" name="less_wt" class="form-control" min="0" step="0.01" placeholder="Optional">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="personal_use" value="1" id="orderInvoicePersonal">
+                                    <label class="form-check-label small" for="orderInvoicePersonal">Personal use (not covered by withholding tax)</label>
+                                </div>
+                            </div>
+                            <div class="mb-0">
+                                <label for="orderInvoicePrepared" class="form-label">Prepared By</label>
+                                <select id="orderInvoicePrepared" name="prepared_by" class="form-select">
+                                    @foreach($preparers as $preparer)
+                                        <option value="{{ $preparer->id }}" @selected($preparer->id === $salesOrder->prepared_by)>{{ $preparer->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create Invoice</button>
                         </div>
                     </div>
                 </form>

@@ -267,7 +267,6 @@ class DeliveryReceiptService
             }
 
             $customer = $deliveryReceipt->customer;
-            $activeVatRate = Taxes::activeRate();
 
             // lockForUpdate() closes the same race as the other fixes in
             // this file: two near-simultaneous "Create Invoice" clicks on
@@ -287,122 +286,166 @@ class DeliveryReceiptService
                 ]);
             }
 
-            $vatSales = 0;
-            $vatexSales = 0;
-            $zeroSales = 0;
-            $vatAmount = 0;
-            $saleRows = [];
-
-            foreach ($lines as $line) {
-                /** @var DeliveryReceiptItem $line */
-                if ($line->remaining_invoiceable_qty <= 0) {
-                    throw ValidationException::withMessages([
-                        'line_ids' => "{$line->productBatch->product->item_name} has nothing left to invoice (fully invoiced, or sent back by the customer).",
-                    ]);
-                }
-
-                $product = $line->productBatch->product;
-
-                // Partial invoicing: an entered qty overrides the default
-                // (invoice everything still remaining on this line), but
-                // can never exceed what's actually left — a stale/tampered
-                // value from the form is rejected here, not just capped by
-                // the input's client-side max.
-                $qty = $qtyOverrides[$line->id] ?? $line->remaining_invoiceable_qty;
-                if ($qty <= 0 || $qty > $line->remaining_invoiceable_qty) {
-                    throw ValidationException::withMessages([
-                        'line_ids' => "Invalid quantity for {$product->item_name}: {$qty} (only {$line->remaining_invoiceable_qty} remaining to invoice).",
-                    ]);
-                }
-
-                $price = $line->salesOrderItem
-                    ? (float) $line->salesOrderItem->price
-                    : (float) ($product->{$customer->priceColumn()} ?? $product->unit_price);
-
-                $lineAmount = $qty * $price;
-                $classification = $product->taxClassification();
-
-                // Per Sir: Price is the VAT-inclusive amount the customer
-                // actually pays, not a net-of-VAT base price — so a VATable
-                // line's own amount already has VAT inside it. VAT is
-                // extracted back out of it here, not added on top (adding on
-                // top double-charges VAT — same fix as InvoiceController::
-                // store() for a direct Invoice).
-                $lineVat = 0;
-                if ($classification === 'vatable') {
-                    $lineNet = round($lineAmount / (1 + $activeVatRate / 100), 2);
-                    $lineVat = round($lineAmount - $lineNet, 2);
-                    $vatSales += $lineNet;
-                    $vatAmount += $lineVat;
-                } elseif ($classification === 'zero') {
-                    $zeroSales += $lineAmount;
-                } else {
-                    $vatexSales += $lineAmount;
-                }
-
-                $saleRows[] = [
-                    'delivery_receipt_item_id' => $line->id,
-                    'product_batch_id' => $line->product_batch_id,
-                    'desc' => $product->display_description,
-                    'qty' => $qty,
-                    'unit' => $product->genericName->unit ?? null,
-                    'batch_no' => $line->batch_no,
-                    'exp' => $line->expiration_date,
-                    'price' => $price,
-                    'vat' => $lineVat,
-                    'dis' => 0,
-                    'amount' => $lineAmount,
-                ];
-
-                $line->increment('invoiced_qty', $qty);
-            }
-
-            $totalSales = $vatSales + $vatexSales + $zeroSales + $vatAmount;
-
-            // Withholding tax is typed in by hand (Sir: an editable field, so a
-            // correction can always be encoded) — it's subtracted from what the
-            // customer owes, and can't exceed the invoice total.
-            if ($lessWt > round($totalSales, 2)) {
-                throw ValidationException::withMessages([
-                    'less_wt' => 'Withholding Tax cannot be more than the invoice total (' . number_format($totalSales, 2) . ').',
-                ]);
-            }
-
-            // Personal-use medicine is not covered by withholding tax (Sir).
-            if ($personalUse && $lessWt > 0) {
-                throw ValidationException::withMessages([
-                    'less_wt' => 'A personal-use invoice has no withholding tax. Set it to 0, or untick Personal use.',
-                ]);
-            }
-
-            $invoice = Invoice::create([
-                'customer_name' => $customer->customer_name,
-                'customer_id' => $customer->id,
-                'po_no' => $poNo,
-                'sales_no' => $this->generateSalesNo(),
-                'prepared_by' => $preparedBy ?? $deliveryReceipt->prepared_by ?? $userId,
-                'vat_sales' => round($vatSales, 2),
-                'vatex_sales' => round($vatexSales, 2),
-                'zero_sales' => round($zeroSales, 2),
-                'vat_amount' => round($vatAmount, 2),
-                'total_sales' => round($totalSales, 2),
-                'less_vat' => 0,
-                'amount_net' => round($totalSales, 2),
-                'less_sc' => 0,
-                'less_wt' => round($lessWt, 2),
-                'is_personal_use' => $personalUse,
-                'amount_due' => round($totalSales - $lessWt, 2),
-                'add_vat' => 0,
-            ]);
-
-            foreach ($saleRows as $row) {
-                $invoice->sales()->create($row);
-            }
-
-            $this->customerPaymentService->applyAvailableCredit($invoice);
-
-            return $invoice;
+            return $this->invoiceLines($customer, $lines, $qtyOverrides, $poNo, $lessWt, $personalUse, $preparedBy ?? $deliveryReceipt->prepared_by ?? $userId);
         });
+    }
+
+    /**
+     * Create one Sales Invoice covering every Delivery Receipt line of a Sales Order that is still waiting to be
+     * invoiced: not cancelled, not a draft, and not what the customer sent back or what an earlier invoice already
+     * took. The lines of all the order's receipts go onto the same invoice, each at its Sales Order price.
+     */
+    public function createInvoiceFromSalesOrder(SalesOrder $salesOrder, ?int $userId = null, ?string $poNo = null, float $lessWt = 0, bool $personalUse = false, ?int $preparedBy = null): Invoice
+    {
+        return DB::transaction(function () use ($salesOrder, $userId, $poNo, $lessWt, $personalUse, $preparedBy) {
+            if ($salesOrder->isDraft() || $salesOrder->isCancelled()) {
+                throw ValidationException::withMessages(['invoice' => "{$salesOrder->so_no} cannot be invoiced."]);
+            }
+
+            $lines = DeliveryReceiptItem::query()
+                ->whereHas('deliveryReceipt', fn ($q) => $q->where('sales_order_id', $salesOrder->id)->where('is_draft', false)->where('status', '!=', 'cancelled'))
+                ->with(['productBatch.product.tax', 'salesOrderItem', 'deliveryReceipt'])
+                ->orderBy('delivery_receipt_id')->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->filter(fn (DeliveryReceiptItem $line) => $line->remaining_invoiceable_qty > 0)
+                ->values();
+
+            if ($lines->isEmpty()) {
+                throw ValidationException::withMessages(['invoice' => "Nothing left to invoice on {$salesOrder->so_no}: everything delivered is already invoiced or was sent back."]);
+            }
+
+            return $this->invoiceLines($salesOrder->customer, $lines, [], $poNo ?? $salesOrder->po_no, $lessWt, $personalUse, $preparedBy ?? $salesOrder->prepared_by ?? $userId);
+        });
+    }
+
+    /**
+     * The invoice itself, shared by the one-receipt and the whole-order invoicing: prices each line (its Sales Order
+     * price, else the customer's price level), splits VAT out of the VAT-inclusive amounts, raises each line's
+     * invoiced qty, and applies any advance credit. Stock is not touched (it left with the Delivery Receipt).
+     *
+     * @param \Illuminate\Support\Collection<int,DeliveryReceiptItem> $lines already locked, each with productBatch.product.tax and salesOrderItem
+     * @param array<int,int> $qtyOverrides line id => qty (default: everything still left on the line)
+     */
+    protected function invoiceLines($customer, $lines, array $qtyOverrides, ?string $poNo, float $lessWt, bool $personalUse, ?int $preparedBy): Invoice
+    {
+        $activeVatRate = Taxes::activeRate();
+
+        $vatSales = 0;
+        $vatexSales = 0;
+        $zeroSales = 0;
+        $vatAmount = 0;
+        $saleRows = [];
+
+        foreach ($lines as $line) {
+            /** @var DeliveryReceiptItem $line */
+            if ($line->remaining_invoiceable_qty <= 0) {
+                throw ValidationException::withMessages([
+                    'line_ids' => "{$line->productBatch->product->item_name} has nothing left to invoice (fully invoiced, or sent back by the customer).",
+                ]);
+            }
+
+            $product = $line->productBatch->product;
+
+            // Partial invoicing: an entered qty overrides the default
+            // (invoice everything still remaining on this line), but
+            // can never exceed what's actually left — a stale/tampered
+            // value from the form is rejected here, not just capped by
+            // the input's client-side max.
+            $qty = $qtyOverrides[$line->id] ?? $line->remaining_invoiceable_qty;
+            if ($qty <= 0 || $qty > $line->remaining_invoiceable_qty) {
+                throw ValidationException::withMessages([
+                    'line_ids' => "Invalid quantity for {$product->item_name}: {$qty} (only {$line->remaining_invoiceable_qty} remaining to invoice).",
+                ]);
+            }
+
+            $price = $line->salesOrderItem
+                ? (float) $line->salesOrderItem->price
+                : (float) ($product->{$customer->priceColumn()} ?? $product->unit_price);
+
+            $lineAmount = $qty * $price;
+            $classification = $product->taxClassification();
+
+            // Per Sir: Price is the VAT-inclusive amount the customer
+            // actually pays, not a net-of-VAT base price — so a VATable
+            // line's own amount already has VAT inside it. VAT is
+            // extracted back out of it here, not added on top (adding on
+            // top double-charges VAT — same fix as InvoiceController::
+            // store() for a direct Invoice).
+            $lineVat = 0;
+            if ($classification === 'vatable') {
+                $lineNet = round($lineAmount / (1 + $activeVatRate / 100), 2);
+                $lineVat = round($lineAmount - $lineNet, 2);
+                $vatSales += $lineNet;
+                $vatAmount += $lineVat;
+            } elseif ($classification === 'zero') {
+                $zeroSales += $lineAmount;
+            } else {
+                $vatexSales += $lineAmount;
+            }
+
+            $saleRows[] = [
+                'delivery_receipt_item_id' => $line->id,
+                'product_batch_id' => $line->product_batch_id,
+                'desc' => $product->display_description,
+                'qty' => $qty,
+                'unit' => $product->genericName->unit ?? null,
+                'batch_no' => $line->batch_no,
+                'exp' => $line->expiration_date,
+                'price' => $price,
+                'vat' => $lineVat,
+                'dis' => 0,
+                'amount' => $lineAmount,
+            ];
+
+            $line->increment('invoiced_qty', $qty);
+        }
+
+        $totalSales = $vatSales + $vatexSales + $zeroSales + $vatAmount;
+
+        // Withholding tax is typed in by hand (Sir: an editable field, so a
+        // correction can always be encoded) — it's subtracted from what the
+        // customer owes, and can't exceed the invoice total.
+        if ($lessWt > round($totalSales, 2)) {
+            throw ValidationException::withMessages([
+                'less_wt' => 'Withholding Tax cannot be more than the invoice total (' . number_format($totalSales, 2) . ').',
+            ]);
+        }
+
+        // Personal-use medicine is not covered by withholding tax (Sir).
+        if ($personalUse && $lessWt > 0) {
+            throw ValidationException::withMessages([
+                'less_wt' => 'A personal-use invoice has no withholding tax. Set it to 0, or untick Personal use.',
+            ]);
+        }
+
+        $invoice = Invoice::create([
+            'customer_name' => $customer->customer_name,
+            'customer_id' => $customer->id,
+            'po_no' => $poNo,
+            'sales_no' => $this->generateSalesNo(),
+            'prepared_by' => $preparedBy,
+            'vat_sales' => round($vatSales, 2),
+            'vatex_sales' => round($vatexSales, 2),
+            'zero_sales' => round($zeroSales, 2),
+            'vat_amount' => round($vatAmount, 2),
+            'total_sales' => round($totalSales, 2),
+            'less_vat' => 0,
+            'amount_net' => round($totalSales, 2),
+            'less_sc' => 0,
+            'less_wt' => round($lessWt, 2),
+            'is_personal_use' => $personalUse,
+            'amount_due' => round($totalSales - $lessWt, 2),
+            'add_vat' => 0,
+        ]);
+
+        foreach ($saleRows as $row) {
+            $invoice->sales()->create($row);
+        }
+
+        $this->customerPaymentService->applyAvailableCredit($invoice);
+
+        return $invoice;
     }
 
     /**
@@ -833,11 +876,7 @@ class DeliveryReceiptService
     protected function refreshSalesOrderStatus(SalesOrder $salesOrder): void
     {
         // A closed order stays closed — only Reopen changes that; a cancelled one stays cancelled.
-        if ($salesOrder->isClosed() || $salesOrder->isCancelled()) {
-            return;
-        }
-
-        $salesOrder->update(['status' => $salesOrder->deliveryStatus()]);
+        $salesOrder->syncStatus();
     }
 
     /**

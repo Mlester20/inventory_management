@@ -244,6 +244,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/purchase-orders', PurchaseOrderController::class);
     Route::post('admin/sales-orders/{salesOrder}/close', [SalesOrderController::class, 'close'])->name('sales-orders.close');
     Route::post('admin/sales-orders/{salesOrder}/reopen', [SalesOrderController::class, 'reopen'])->name('sales-orders.reopen');
+    Route::post('admin/sales-orders/{salesOrder}/create-invoice', [SalesOrderController::class, 'createInvoice'])->name('sales-orders.create-invoice');
     Route::post('admin/purchase-orders/{purchaseOrder}/close', [PurchaseOrderController::class, 'close'])->name('purchase-orders.close');
     Route::post('admin/purchase-orders/{purchaseOrder}/reopen', [PurchaseOrderController::class, 'reopen'])->name('purchase-orders.reopen');
     Route::get('admin/purchase-order-summary', [PurchaseOrderSummaryController::class, 'index'])->name('po-summary.index');
@@ -254,6 +255,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/purchase-order-summary/all-items/export', [PurchaseOrderSummaryController::class, 'exportAllItems'])->name('po-summary.all-items.export');
     Route::get('admin/purchase-order-summary/by-item', [PurchaseOrderSummaryController::class, 'byItem'])->name('po-summary.by-item');
     Route::get('admin/purchase-order-summary/receipts', [PurchaseOrderSummaryController::class, 'receipts'])->name('po-summary.receipts');
+    Route::get('admin/goods-receipts/{goodsReceipt}/revise', [GoodsReceiptController::class, 'revise'])->name('goods-receipts.revise');
+    Route::post('admin/goods-receipts/{goodsReceipt}/revise', [GoodsReceiptController::class, 'applyRevision'])->name('goods-receipts.apply-revision');
     Route::resource('admin/goods-receipts', GoodsReceiptController::class);
     Route::resource('admin/purchase-invoices', PurchaseInvoiceController::class);
     Route::resource('admin/stock-transfers', StockTransferController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);

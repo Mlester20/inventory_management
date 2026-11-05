@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\DeliveryReceipt;
 use App\Models\Location;
 use App\Models\ReturnItem;
+use App\Models\SalesOrder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -103,6 +105,12 @@ class ReturnItemService
                 'stock_disposition' => $stockDisposition,
                 'stock_disposal_id' => $stockDisposal?->id,
             ]);
+
+            // Goods sent back from a Delivery Receipt reopen the Sales Order it was delivered against.
+            if ($returnItem->delivery_receipt_id) {
+                $salesOrderId = DeliveryReceipt::whereKey($returnItem->delivery_receipt_id)->value('sales_order_id');
+                SalesOrder::find($salesOrderId)?->syncStatus();
+            }
 
             $creditPayment = null;
 

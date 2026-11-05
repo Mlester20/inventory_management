@@ -10,6 +10,7 @@ use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
 use App\Models\Taxes;
 use App\Models\User;
+use App\Services\DeliveryReceiptService;
 use App\Services\SalesOrderService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -300,8 +301,9 @@ class SalesOrderController extends Controller
 
         $vatPreview = $this->buildVatPreview($salesOrder->items);
         $customers = Customer::orderBy('customer_name')->get();
+        $preparers = User::preparers($salesOrder->prepared_by)->get();
 
-        return view('admin.sales-orders.show', compact('salesOrder', 'vatPreview', 'customers'));
+        return view('admin.sales-orders.show', compact('salesOrder', 'vatPreview', 'customers', 'preparers'));
     }
 
     /**
@@ -631,6 +633,55 @@ class SalesOrderController extends Controller
 
         Alert::success('Closed', "{$salesOrder->so_no} is now closed.");
         return redirect()->route('sales-orders.show', $salesOrder);
+    }
+
+    /**
+     * One invoice for everything a closed Sales Order delivered and nobody has invoiced yet (all its Delivery Receipts
+     * together, leaving out what the customer sent back).
+     */
+    public function createInvoice(Request $request, SalesOrder $salesOrder, DeliveryReceiptService $deliveryReceiptService)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Creating an invoice from a Sales Order is restricted to full admin accounts.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        if (! $salesOrder->isClosed()) {
+            Alert::error('Not closed', 'Only a closed Sales Order can be invoiced directly. Use the Delivery Receipts for an open one.');
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        $validated = $request->validate([
+            'po_no' => 'nullable|string|max:255',
+            'less_wt' => 'nullable|numeric|min:0',
+            'personal_use' => 'nullable|boolean',
+            'prepared_by' => 'nullable|exists:users,id',
+        ]);
+
+        try {
+            $invoice = $deliveryReceiptService->createInvoiceFromSalesOrder(
+                $salesOrder,
+                auth()->id(),
+                $validated['po_no'] ?? null,
+                (float) ($validated['less_wt'] ?? 0),
+                (bool) ($validated['personal_use'] ?? false),
+                isset($validated['prepared_by']) ? (int) $validated['prepared_by'] : null,
+            );
+        } catch (ValidationException $e) {
+            Alert::error('Cannot invoice', collect($e->errors())->flatten()->first());
+            return redirect()->route('sales-orders.show', $salesOrder);
+        }
+
+        ActivityLog::record(
+            module: 'SalesOrder',
+            action: 'invoice_created',
+            loggable: $salesOrder,
+            description: "Created Invoice {$invoice->sales_no} from closed Sales Order {$salesOrder->so_no}",
+            metadata: ['invoice_id' => $invoice->id, 'lines' => $invoice->sales()->count()],
+        );
+
+        Alert::success('Success', "Invoice {$invoice->sales_no} created from {$salesOrder->so_no}.");
+        return redirect()->route('invoices.show', $invoice);
     }
 
     public function reopen(SalesOrder $salesOrder)
