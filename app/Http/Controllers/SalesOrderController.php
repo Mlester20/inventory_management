@@ -22,14 +22,27 @@ class SalesOrderController extends Controller
     /**
      * Display a listing of the resource.
      */
+    /** The Status filter on the list: a draft is its own flag, the rest are the order's status. */
+    public const STATUS_FILTERS = [
+        'draft' => 'Draft',
+        'open' => 'Open',
+        'partially_delivered' => 'Partially Delivered',
+        'completed' => 'Completed',
+        'closed' => 'Closed',
+        'cancelled' => 'Cancelled',
+    ];
+
     public function index(Request $request)
     {
         $search = $request->input('search');
         $showTrashed = $request->boolean('show_trashed');
         $showArchived = $request->boolean('show_archived');
+        $status = array_key_exists((string) $request->input('status'), self::STATUS_FILTERS) ? (string) $request->input('status') : null;
 
         $salesOrders = SalesOrder::query()
             ->with('customer')
+            ->when($status === 'draft', fn ($q) => $q->where('is_draft', true))
+            ->when($status && $status !== 'draft', fn ($q) => $q->where('is_draft', false)->where('status', $status))
             ->when($showTrashed, fn ($q) => $q->onlyTrashed())
             ->when(! $showTrashed && $showArchived, fn ($q) => $q->whereNotNull('archived_at'))
             ->when(! $showTrashed && ! $showArchived, fn ($q) => $q->whereNull('archived_at'))
@@ -46,7 +59,9 @@ class SalesOrderController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('admin.sales-orders.index', compact('salesOrders', 'search', 'showTrashed', 'showArchived'));
+        $statusFilters = self::STATUS_FILTERS;
+
+        return view('admin.sales-orders.index', compact('salesOrders', 'search', 'showTrashed', 'showArchived', 'status', 'statusFilters'));
     }
 
     /**

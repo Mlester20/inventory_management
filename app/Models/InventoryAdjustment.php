@@ -40,6 +40,9 @@ class InventoryAdjustment extends Model
         'stock_out_damaged' => 'Stock Out - Damaged',
         'stock_out_lost' => 'Stock Out - Lost/Theft',
         'stock_out_expired' => 'Stock Out - Expired',
+        'stock_out_office_use' => 'Stock Out - Office Use',
+        'stock_out_donation' => 'Stock Out - Donation',
+        'stock_out_production' => 'Stock Out - Production',
         'correction_increase' => 'Correction - Increase',
         'correction_decrease' => 'Correction - Decrease',
     ];

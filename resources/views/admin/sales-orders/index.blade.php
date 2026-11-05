@@ -13,8 +13,16 @@
                 placeholder="Search by customer, S.O. no., or P.O. no."
                 value="{{ $search }}"
             >
+            <select name="status" class="form-select" style="width: auto;" aria-label="Filter by status" onchange="this.form.submit()">
+                <option value="">All statuses</option>
+                @foreach($statusFilters as $value => $label)
+                    <option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+            <input type="hidden" name="show_archived" value="{{ $showArchived ? 1 : 0 }}">
+            <input type="hidden" name="show_trashed" value="{{ $showTrashed ? 1 : 0 }}">
             <button type="submit" class="btn btn-outline-secondary">Search</button>
-            @if($search)
+            @if($search || $status)
                 <a href="{{ route('sales-orders.index') }}" class="btn btn-outline-danger">Clear</a>
             @endif
         </form>

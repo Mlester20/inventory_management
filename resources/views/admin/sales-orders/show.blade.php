@@ -9,6 +9,9 @@
         </a>
         <div class="d-flex gap-2">
             @if($salesOrder->isDraft())
+                <button type="button" class="btn btn-outline-primary" onclick="printSalesOrderList()">
+                    <i class="bx bx-printer"></i> Print Packing List
+                </button>
                 <a href="{{ route('sales-orders.edit', $salesOrder) }}" class="btn btn-primary">
                     <i class="bx bx-edit-alt"></i> Continue Editing
                 </a>
@@ -156,6 +159,13 @@
     </div>
 
     @php
+        // ?sort=generic lists the lines A-Z by Generic Description (screen and both prints); the line numbers follow the order shown.
+        $sortedByGeneric = request('sort') === 'generic';
+        $lineItems = $sortedByGeneric
+            ? $salesOrder->items->sortBy(fn ($line) => mb_strtolower((string) ($line->genericName->generic_name ?? '')), SORT_NATURAL)->values()
+            : $salesOrder->items;
+        // The Item Description under the generic, when the line has been matched to a product.
+        $itemDescription = fn ($line) => $line->product ? ($line->product->description ?: ($line->product->brand_name ?: $line->product->item_name)) : null;
         $returnedBySoItem = $salesOrder->returnedByItem();
         $returnedNote = collect($returnedBySoItem)->map(fn ($row, $itemId) => [
             'name' => $salesOrder->items->firstWhere('id', $itemId)?->genericName?->generic_name ?? '—',
@@ -164,11 +174,17 @@
         ])->values()->all();
     @endphp
     <div class="card mb-4">
-        <h5 class="card-header">Line Items</h5>
+        <h5 class="card-header d-flex justify-content-between align-items-center">
+            <span>Line Items</span>
+            <a href="{{ route('sales-orders.show', array_merge(['sales_order' => $salesOrder->id], $sortedByGeneric ? [] : ['sort' => 'generic'])) }}" class="btn btn-sm btn-outline-secondary no-print">
+                <i class="bx bx-sort-a-z"></i> {{ $sortedByGeneric ? 'Original order' : 'Sort by Generic Description' }}
+            </a>
+        </h5>
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
                     <tr class="table-header-bg">
+                        <th style="width: 40px;">#</th>
                         <th>Generic Description</th>
                         <th>Item Description</th>
                         <th class="text-end">Qty</th>
@@ -180,8 +196,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($salesOrder->items as $item)
+                    @foreach ($lineItems as $item)
                         <tr>
+                            <td class="text-muted">{{ $loop->iteration }}</td>
                             <td>
                                 {{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }}){{ isset($returnedBySoItem[$item->id]) ? ' *' : '' }}
                                 @if($item->remarks)
@@ -210,7 +227,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="table-info fw-bold">
-                        <td colspan="7">TOTAL</td>
+                        <td colspan="8">TOTAL</td>
                         <td class="text-end">{{ number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2) }}</td>
                     </tr>
                 </tfoot>
@@ -387,11 +404,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($salesOrder->items as $item)
+                        @foreach ($lineItems as $item)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
                                 <td>
                                     {{ $item->genericName->generic_name ?? '—' }}{{ isset($returnedBySoItem[$item->id]) ? ' *' : '' }}
+                                    @if($itemDescription($item))
+                                        <div class="print-item-remarks">{{ $itemDescription($item) }}</div>
+                                    @endif
                                     @if($item->remarks)
                                         <div class="print-item-remarks" style="white-space: pre-line;">{{ $item->remarks }}</div>
                                     @endif
@@ -490,10 +510,15 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($salesOrder->items as $item)
+                        @foreach ($lineItems as $item)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
-                                <td>{{ $item->genericName->generic_name ?? '—' }}</td>
+                                <td>
+                                    {{ $item->genericName->generic_name ?? '—' }}
+                                    @if($itemDescription($item))
+                                        <div class="print-item-remarks">{{ $itemDescription($item) }}</div>
+                                    @endif
+                                </td>
                                 <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $item->qty ?? '—' }}</td>
                                 <td class="text-end">{{ $item->advance_order_qty }}</td>
