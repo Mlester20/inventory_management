@@ -123,7 +123,87 @@ class CorrectionsRevBatchTwoTest extends TestCase
 
         $order = $order->fresh('items');
         $this->assertSame('open', $order->status);
-        $this->assertSame([19, 0], [$order->items[0]->delivered_qty, $order->items[0]->remaining_qty], 'Delivered keeps 19 and Remaining stays 0');
+        $this->assertSame([19, 19], [$order->items[0]->delivered_qty, $order->items[0]->remaining_qty], 'Delivered keeps 19 and Remaining goes back up to 19');
+    }
+
+    public function test_the_returned_units_can_be_delivered_again_on_a_replacement_receipt(): void
+    {
+        $a = $this->product('ITEM A', 50);
+        [$order, $receipt] = $this->deliveredOrder([[$a, 19, 100]]);
+        app(ReturnItemService::class)->approve($this->pendingReturn($receipt, $a, 19), 'none', 'restock', $this->admin->id);
+
+        $replacement = app(DeliveryReceiptService::class)->createDeliveryReceipt([
+            'customer_id' => $this->customer->id, 'sales_order_id' => $order->id, 'transaction_type' => 'purchase_order',
+            'receipt_date' => now()->toDateString(), 'prepared_by' => $this->admin->id,
+            'items' => [['product_batch_id' => $a->batches()->first()->id, 'qty' => 19, 'sales_order_item_id' => $order->items[0]->id]],
+        ], $this->admin->id);
+
+        $order = $order->fresh('items');
+        // 19 went out, 19 came back, 19 went out again on the replacement: Delivered 38, the returned 19 are counted off, nothing is left
+        $this->assertSame(38, $order->items[0]->delivered_qty);
+        $this->assertSame(0, $order->items[0]->remaining_qty);
+        $this->assertSame('completed', $order->status);
+        $this->assertSame(19, (int) $replacement->items()->first()->qty);
+    }
+
+    public function test_same_product_return_is_allocated_per_sales_order_line(): void
+    {
+        $product = $this->product('SHARED PRODUCT', 200);
+        [$order, $receipt] = $this->deliveredOrder([
+            [$product, 100, 100],
+            [$product, 50, 100],
+        ]);
+
+        app(ReturnItemService::class)->approve($this->pendingReturn($receipt, $product, 150), 'none', 'restock', $this->admin->id);
+
+        $items = $order->fresh('items')->items->sortBy('id')->values();
+        $this->assertSame([100, 50], $items->map(fn ($item) => $item->returnedQty())->all());
+        $this->assertSame([100, 50], $items->map(fn ($item) => $item->remaining_qty)->all());
+
+        app(DeliveryReceiptService::class)->createDeliveryReceipt([
+            'customer_id' => $this->customer->id,
+            'sales_order_id' => $order->id,
+            'transaction_type' => 'purchase_order',
+            'receipt_date' => now()->toDateString(),
+            'prepared_by' => $this->admin->id,
+            'items' => [
+                ['product_batch_id' => $product->batches()->first()->id, 'qty' => 100, 'sales_order_item_id' => $items[0]->id],
+                ['product_batch_id' => $product->batches()->first()->id, 'qty' => 50, 'sales_order_item_id' => $items[1]->id],
+            ],
+        ], $this->admin->id);
+
+        $items = $order->fresh('items')->items->sortBy('id')->values();
+        $this->assertSame([200, 100], $items->pluck('delivered_qty')->all());
+        $this->assertSame([0, 0], $items->map(fn ($item) => $item->remaining_qty)->all());
+    }
+
+    public function test_single_line_return_allocation_preserves_remaining_quantity(): void
+    {
+        $product = $this->product('SINGLE LINE PRODUCT', 50);
+        [$order, $receipt] = $this->deliveredOrder([[$product, 19, 100]]);
+
+        app(ReturnItemService::class)->approve($this->pendingReturn($receipt, $product, 19), 'none', 'restock', $this->admin->id);
+
+        $item = $order->fresh('items')->items->first();
+        $this->assertSame(19, $item->returnedQty());
+        $this->assertSame(19, $item->remaining_qty);
+
+        app(DeliveryReceiptService::class)->createDeliveryReceipt([
+            'customer_id' => $this->customer->id,
+            'sales_order_id' => $order->id,
+            'transaction_type' => 'purchase_order',
+            'receipt_date' => now()->toDateString(),
+            'prepared_by' => $this->admin->id,
+            'items' => [[
+                'product_batch_id' => $product->batches()->first()->id,
+                'qty' => 19,
+                'sales_order_item_id' => $item->id,
+            ]],
+        ], $this->admin->id);
+
+        $item = $order->fresh('items')->items->first();
+        $this->assertSame(38, $item->delivered_qty);
+        $this->assertSame(0, $item->remaining_qty);
     }
 
     public function test_a_partial_return_or_a_return_of_one_line_makes_it_partially_delivered(): void

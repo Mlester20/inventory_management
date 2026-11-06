@@ -79,8 +79,8 @@ class SalesOrder extends Model
     /**
      * completed / partially_delivered / open, as the delivered and advance quantities say. Goods the client sent
      * back (an approved Product Return or a customer-return adjustment) no longer count as delivered here, so an
-     * order whose delivery was returned goes back to Open. The Delivered and Remaining columns themselves are not
-     * touched: Delivered keeps the original quantity (with its asterisk) and Remaining stays 0.
+     * order whose delivery was returned goes back to Open. Delivered keeps the original quantity (with its asterisk),
+     * and Remaining goes back up by what came back (SalesOrderItem::getRemainingQtyAttribute).
      */
     public function deliveryStatus(): string
     {
