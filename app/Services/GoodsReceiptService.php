@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\StockMovement;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -283,6 +284,28 @@ class GoodsReceiptService
             $warehouse = Location::warehouse();
             $changes = [];
             $affectedOrders = [];
+            $hasPurchaseInvoice = $gr->purchaseInvoices()->exists();
+            $supplierChanged = ! $gr->purchase_order_id
+                && ! empty($header['supplier_id'])
+                && (int) $header['supplier_id'] !== (int) $gr->supplier_id;
+
+            if ($supplierChanged) {
+                if ($hasPurchaseInvoice) {
+                    throw ValidationException::withMessages([
+                        'revise' => 'This supplier cannot be changed because a Purchase Invoice is linked to this Goods Receipt.',
+                    ]);
+                }
+
+                foreach ($gr->items()->with('productBatch')->get() as $receiptItem) {
+                    if ($receiptItem->productBatch) {
+                        $this->guardNoLaterStockMovement(
+                            $gr,
+                            $receiptItem->productBatch,
+                            'This supplier cannot be changed because a batch from this Goods Receipt has later stock movements.'
+                        );
+                    }
+                }
+            }
 
             foreach ($gr->items()->with(['product', 'productBatch', 'purchaseOrderItem.purchaseOrder'])->orderBy('id')->lockForUpdate()->get() as $item) {
                 if (! array_key_exists($item->id, $lines)) {
@@ -307,9 +330,29 @@ class GoodsReceiptService
 
                 $sameLot = $oldBatch && $newLot === trim((string) $oldBatch->batch_no);
                 $newBatch = $sameLot ? $oldBatch : $item->product->findOrCreateBatch($newLot, $newExpiry);
+                $qtyChanged = $newQty !== $oldQty;
+                $lotChanged = $newBatch->id !== $oldBatch?->id;
+                $currentExpiry = $oldBatch?->expiration_date?->toDateString();
+                $expiryChanged = $newExpiry !== $currentExpiry;
+                $costChanged = round((float) $newCost, 2) !== round((float) $item->unit_cost, 2);
+
+                if (($qtyChanged || $lotChanged || $expiryChanged) && $oldBatch) {
+                    $this->guardNoLaterStockMovement($gr, $oldBatch);
+                }
+
+                if ($costChanged) {
+                    if ($hasPurchaseInvoice) {
+                        throw ValidationException::withMessages([
+                            'revise' => 'Unit cost cannot be changed because a Purchase Invoice is linked to this Goods Receipt.',
+                        ]);
+                    }
+
+                    if ($oldBatch) {
+                        $this->guardNoLaterStockMovement($gr, $oldBatch, 'Unit cost cannot be changed because this batch has later stock movements.');
+                    }
+                }
 
                 if ($newBatch->id === $oldBatch?->id) {
-                    $currentExpiry = $oldBatch->expiration_date?->toDateString();
                     if ($newExpiry !== $currentExpiry) {
                         $oldBatch->update(['expiration_date' => $newExpiry]);
                         $lineChanges[] = 'expiry ' . ($currentExpiry ?? '—') . ' → ' . ($newExpiry ?? '—');
@@ -329,7 +372,7 @@ class GoodsReceiptService
                     $lineChanges[] = 'lot ' . ($oldBatch->batch_no ?: '—') . ' → ' . ($newBatch->batch_no ?: '—');
                 }
 
-                if ($newQty !== $oldQty) {
+                if ($qtyChanged) {
                     $lineChanges[] = "qty {$oldQty} → {$newQty}";
 
                     if ($item->purchaseOrderItem) {
@@ -338,7 +381,7 @@ class GoodsReceiptService
                     }
                 }
 
-                if (round((float) $newCost, 2) !== round((float) $item->unit_cost, 2)) {
+                if ($costChanged) {
                     $lineChanges[] = 'cost ' . number_format((float) $item->unit_cost, 2) . ' → ' . number_format((float) $newCost, 2);
 
                     // The product's cost is the latest receipt's; correcting an older receipt must not overwrite it.
@@ -375,7 +418,7 @@ class GoodsReceiptService
                 $headerUpdate['prepared_by'] = $header['prepared_by'];
                 $changes[] = 'prepared by changed';
             }
-            if (! $gr->purchase_order_id && ! empty($header['supplier_id']) && (int) $header['supplier_id'] !== (int) $gr->supplier_id) {
+            if ($supplierChanged) {
                 $headerUpdate['supplier_id'] = $header['supplier_id'];
                 $changes[] = 'supplier changed';
             }
@@ -401,6 +444,27 @@ class GoodsReceiptService
 
         if ($available < $qty) {
             throw ValidationException::withMessages(['revise' => "{$name}: only {$available} of this lot is still in the Warehouse (it was delivered, sold, transferred or adjusted since), so {$qty} cannot be taken out. Use an Inventory Adjustment instead."]);
+        }
+    }
+
+    protected function guardNoLaterStockMovement(GoodsReceipt $goodsReceipt, ProductBatch $batch, ?string $message = null): void
+    {
+        $lastReceiptMovementId = StockMovement::query()
+            ->where('source_type', $goodsReceipt->getMorphClass())
+            ->where('source_id', $goodsReceipt->id)
+            ->where('product_batch_id', $batch->id)
+            ->max('id');
+
+        $hasLaterMovement = $lastReceiptMovementId === null
+            || StockMovement::query()
+                ->where('product_batch_id', $batch->id)
+                ->where('id', '>', $lastReceiptMovementId)
+                ->exists();
+
+        if ($hasLaterMovement) {
+            throw ValidationException::withMessages([
+                'revise' => $message ?? 'This batch has later stock movements and cannot be corrected.',
+            ]);
         }
     }
 
