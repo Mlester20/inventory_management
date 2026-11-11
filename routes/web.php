@@ -257,6 +257,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/purchase-order-summary/receipts', [PurchaseOrderSummaryController::class, 'receipts'])->name('po-summary.receipts');
     Route::get('admin/goods-receipts/{goodsReceipt}/revise', [GoodsReceiptController::class, 'revise'])->name('goods-receipts.revise');
     Route::post('admin/goods-receipts/{goodsReceipt}/revise', [GoodsReceiptController::class, 'applyRevision'])->name('goods-receipts.apply-revision');
+    Route::post('admin/goods-receipts/{goodsReceipt}/create-purchase-invoice', [GoodsReceiptController::class, 'createPurchaseInvoice'])->name('goods-receipts.create-purchase-invoice');
     Route::resource('admin/goods-receipts', GoodsReceiptController::class);
     Route::resource('admin/purchase-invoices', PurchaseInvoiceController::class);
     Route::resource('admin/stock-transfers', StockTransferController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);

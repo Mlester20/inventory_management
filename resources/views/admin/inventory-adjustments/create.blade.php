@@ -183,7 +183,7 @@
     // own internal width no matter how wide the <input> is, so the dropdown
     // had to be built by hand to actually show the full name.
     function productLabel(p) {
-        return p.name;
+        return p.name + ' (' + (p.unit || '') + ')';
     }
 
     function findProductByLabel(label) {

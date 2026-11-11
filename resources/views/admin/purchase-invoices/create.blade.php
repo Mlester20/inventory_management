@@ -22,13 +22,54 @@
                     @method('PUT')
                 @endif
 
+                @if($editingPurchaseInvoice?->items->isNotEmpty())
+                    <div class="mb-3">
+                        <h6 class="text-muted small mb-2">Invoiced Items</h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Item Description</th>
+                                        <th class="text-end">Qty</th>
+                                        <th class="text-end">Unit Cost</th>
+                                        <th class="text-end">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($editingPurchaseInvoice->items as $item)
+                                        @php
+                                            $goodsReceiptItem = $item->goodsReceiptItem;
+                                            $product = $goodsReceiptItem?->product
+                                                ?? $goodsReceiptItem?->productBatch?->product;
+                                            $unitCost = (float) ($goodsReceiptItem?->unit_cost ?? 0);
+                                        @endphp
+                                        <tr>
+                                            <td>{{ $product?->display_description ?? '—' }}</td>
+                                            <td class="text-end">{{ $item->qty }}</td>
+                                            <td class="text-end">{{ number_format($unitCost, 2) }}</td>
+                                            <td class="text-end">{{ number_format($item->qty * $unitCost, 2) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="row">
                     <div class="col-12 mb-3">
                         <label for="supplier_search" class="form-label">Supplier</label>
+                        @php
+                            $supplierNotDetermined = $editingPurchaseInvoice
+                                && $editingPurchaseInvoice->goods_receipt_id !== null
+                                && $editingPurchaseInvoice->supplier_id === null;
+                        @endphp
                         <input type="text" name="supplier_search" id="supplier_search"
                             class="form-control @error('supplier_id') is-invalid @enderror"
                             list="supplier_datalist" placeholder="Search supplier..." autocomplete="off"
-                            value="{{ old('supplier_search', $editingPurchaseInvoice?->supplier?->supplier_name) }}" required>
+                            value="{{ $supplierNotDetermined ? 'Not Determined' : old('supplier_search', $editingPurchaseInvoice?->supplier?->supplier_name) }}"
+                            @readonly($supplierNotDetermined)
+                            @if(!$supplierNotDetermined) required @endif>
                         <datalist id="supplier_datalist">
                             @foreach ($suppliers as $supplier)
                                 <option value="{{ $supplier->supplier_name }}"></option>
@@ -159,6 +200,7 @@
     const PURCHASE_ORDERS = @json($purchaseOrders);
     const PREFILL_GOODS_RECEIPT_ID = @json(old('goods_receipt_id', $editingPurchaseInvoice?->goods_receipt_id));
     const PREFILL_PURCHASE_ORDER_ID = @json(old('purchase_order_id', $editingPurchaseInvoice?->purchase_order_id));
+    const PREFILL_SUPPLIER_ID = @json($editingPurchaseInvoice?->supplier_id);
 
     const SUPPLIERS = @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->supplier_name])->values());
 
@@ -230,13 +272,26 @@
         }
     });
 
-    if (supplierSelect.value) {
+    if (PREFILL_SUPPLIER_ID) {
+        supplierSelect.value = PREFILL_SUPPLIER_ID;
         refreshGoodsReceiptOptions();
         refreshPurchaseOrderOptions();
 
         // A resumed draft's saved GR/PO links only make sense once the
         // matching supplier's options have been built above.
         if (PREFILL_GOODS_RECEIPT_ID) {
+            const exists = Array.from(goodsReceiptSelect.options)
+                .some(opt => String(opt.value) === String(PREFILL_GOODS_RECEIPT_ID));
+            if (!exists) {
+                const gr = GOODS_RECEIPTS.find(g =>
+                    String(g.id) === String(PREFILL_GOODS_RECEIPT_ID));
+                if (gr) {
+                    const opt = document.createElement('option');
+                    opt.value = gr.id;
+                    opt.textContent = gr.gr_no;
+                    goodsReceiptSelect.appendChild(opt);
+                }
+            }
             goodsReceiptSelect.value = PREFILL_GOODS_RECEIPT_ID;
         }
         if (PREFILL_PURCHASE_ORDER_ID) {

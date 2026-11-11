@@ -91,6 +91,41 @@
                     <p class="mb-0">{{ $purchaseInvoice->remarks ?? '—' }}</p>
                 </div>
             </div>
+
+            @if($purchaseInvoice->items->isNotEmpty())
+                <div class="mt-3">
+                    <h6 class="text-muted small mb-2">Invoiced Items</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Item Description</th>
+                                    <th class="text-end">Qty</th>
+                                    <th class="text-end">Unit Cost</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($purchaseInvoice->items as $item)
+                                    @php
+                                        $goodsReceiptItem = $item->goodsReceiptItem;
+                                        $product = $goodsReceiptItem?->product
+                                            ?? $goodsReceiptItem?->productBatch?->product;
+                                        $unitCost = (float) ($goodsReceiptItem?->unit_cost ?? 0);
+                                    @endphp
+                                    <tr>
+                                        <td>{{ $product?->display_description ?? '—' }}</td>
+                                        <td class="text-end">{{ $item->qty }}</td>
+                                        <td class="text-end">{{ number_format($unitCost, 2) }}</td>
+                                        <td class="text-end">{{ number_format($item->qty * $unitCost, 2) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
+
 @endsection

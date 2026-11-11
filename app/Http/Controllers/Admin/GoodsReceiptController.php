@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\GoodsReceiptService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -104,6 +105,8 @@ class GoodsReceiptController extends Controller
                 $shared = [
                     'product_id' => $item->product_id,
                     'label' => $item->product->description ?: $item->product->item_name,
+                    'supplier_id' => $item->supplier_id,
+                    'supplier_not_determined' => $item->supplier_not_determined,
                     'qty' => $item->qty,
                     'unit_cost' => $item->unit_cost !== null ? (float) $item->unit_cost : null,
                     'unit' => $item->unit,
@@ -146,6 +149,8 @@ class GoodsReceiptController extends Controller
                 $shared = [
                     'product_id' => $line['product_id'] ?? null,
                     'label' => $product ? ($product->description ?: $product->item_name) : null,
+                    'supplier_id' => $line['supplier_id'] ?? null,
+                    'supplier_not_determined' => $line['supplier_not_determined'] ?? false,
                     'qty' => $line['qty'] ?? null,
                     'unit_cost' => $line['unit_cost'] ?? null,
                     'unit' => $line['unit'] ?? null,
@@ -230,6 +235,8 @@ class GoodsReceiptController extends Controller
             'prepared_by' => 'nullable|exists:users,id',
             'items' => 'nullable|array',
             'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.supplier_id' => 'nullable|exists:suppliers,id',
+            'items.*.supplier_not_determined' => 'boolean',
             'items.*.qty' => 'nullable|integer|min:1',
             'items.*.unit' => 'nullable|string|max:50',
             'items.*.unit_cost' => 'nullable|numeric|min:0',
@@ -248,11 +255,13 @@ class GoodsReceiptController extends Controller
     {
         return [
             'purchase_order_id' => 'nullable|exists:purchase_orders,id',
-            'supplier_id' => 'required_without:purchase_order_id|nullable|exists:suppliers,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'receipt_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
+            'items.*.supplier_id' => 'nullable|exists:suppliers,id',
+            'items.*.supplier_not_determined' => 'boolean',
             'items.*.qty' => 'nullable|integer|min:1',
             'items.*.unit' => 'nullable|string|max:50',
             'items.*.unit_cost' => 'required|numeric|min:0',
@@ -268,7 +277,7 @@ class GoodsReceiptController extends Controller
      */
     public function show(GoodsReceipt $goodsReceipt)
     {
-        $goodsReceipt->load('supplier', 'purchaseOrder', 'preparedBy', 'items.productBatch.product', 'items.product');
+        $goodsReceipt->load('supplier', 'purchaseOrder', 'preparedBy', 'items.productBatch.product', 'items.product', 'items.supplier');
 
         return view('admin.goods-receipts.show', compact('goodsReceipt'));
     }
@@ -345,8 +354,8 @@ class GoodsReceiptController extends Controller
     }
 
     /**
-     * The Edit page of a posted Goods Receipt (full admin only): the lines' quantity, cost, lot, expiry and remarks, plus
-     * the date, Prepared By and, for a direct receipt, the supplier. See GoodsReceiptService::reviseGoodsReceipt.
+     * The Edit page of a posted Goods Receipt (full admin only): the lines' quantity, cost, lot, expiry, remarks and supplier, plus
+     * the date and Prepared By. See GoodsReceiptService::reviseGoodsReceipt.
      */
     public function revise(GoodsReceipt $goodsReceipt)
     {
@@ -359,7 +368,7 @@ class GoodsReceiptController extends Controller
             return redirect()->route('goods-receipts.edit', $goodsReceipt);
         }
 
-        $goodsReceipt->load('supplier', 'purchaseOrder', 'items.productBatch.product', 'items.product');
+        $goodsReceipt->load('supplier', 'purchaseOrder', 'items.productBatch.product', 'items.product', 'items.supplier');
 
         return view('admin.goods-receipts.revise', [
             'goodsReceipt' => $goodsReceipt,
@@ -379,9 +388,10 @@ class GoodsReceiptController extends Controller
             'reason' => 'required|string|max:255',
             'receipt_date' => 'required|date',
             'prepared_by' => 'nullable|exists:users,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
             'lines' => 'required|array',
             'lines.*.qty' => 'required|integer|min:1',
+            'lines.*.supplier_id' => 'nullable|exists:suppliers,id',
+            'lines.*.supplier_not_determined' => 'boolean',
             'lines.*.unit_cost' => 'nullable|numeric|min:0',
             'lines.*.batch_no' => 'nullable|string|max:255',
             'lines.*.expiration_date' => 'nullable|date',
@@ -391,7 +401,7 @@ class GoodsReceiptController extends Controller
         try {
             $changes = $this->goodsReceiptService->reviseGoodsReceipt(
                 $goodsReceipt,
-                ['receipt_date' => $validated['receipt_date'], 'prepared_by' => $validated['prepared_by'] ?? null, 'supplier_id' => $validated['supplier_id'] ?? null],
+                ['receipt_date' => $validated['receipt_date'], 'prepared_by' => $validated['prepared_by'] ?? null],
                 $validated['lines'],
                 Auth::id()
             );
@@ -409,6 +419,41 @@ class GoodsReceiptController extends Controller
 
         Alert::success('Updated', "{$goodsReceipt->gr_no} updated.");
         return redirect()->route('goods-receipts.show', $goodsReceipt);
+    }
+
+    public function createPurchaseInvoice(Request $request, GoodsReceipt $goodsReceipt)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Creating a Purchase Invoice from a Goods Receipt is restricted to full admin accounts.');
+            return redirect()->route('goods-receipts.show', $goodsReceipt);
+        }
+
+        $validated = $request->validate([
+            'line_ids' => 'required|array|min:1',
+            'line_ids.*' => [
+                'required',
+                'integer',
+                Rule::exists('goods_receipt_items', 'id')
+                    ->where('goods_receipt_id', $goodsReceipt->id),
+            ],
+            'qty' => 'required|array',
+            'qty.*' => 'required|integer|min:1',
+        ]);
+
+        try {
+            $purchaseInvoice = $this->goodsReceiptService->createPurchaseInvoiceFromLines(
+                $goodsReceipt,
+                $validated['line_ids'],
+                $validated['qty'],
+                Auth::id()
+            );
+        } catch (ValidationException $e) {
+            Alert::error('Cannot create Purchase Invoice', $e->validator->errors()->first());
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        Alert::success('Success', 'Purchase Invoice created successfully');
+        return redirect()->route('purchase-invoices.edit', $purchaseInvoice);
     }
 
     /**

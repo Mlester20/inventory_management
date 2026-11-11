@@ -29,25 +29,12 @@
                     against a Purchase Order also updates what that order has received. Lines cannot be added or removed.
                 </p>
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="receiptDate" class="form-label">Receipt Date</label>
                         <input type="date" id="receiptDate" name="receipt_date" class="form-control"
                             value="{{ old('receipt_date', $goodsReceipt->receipt_date?->toDateString()) }}" required>
                     </div>
-                    <div class="col-md-4">
-                        <label for="supplierId" class="form-label">Supplier</label>
-                        @if($goodsReceipt->purchase_order_id)
-                            <input type="text" class="form-control" value="{{ $goodsReceipt->supplier->supplier_name ?? '—' }}" disabled>
-                            <div class="form-text">Set by {{ $goodsReceipt->purchaseOrder->po_no ?? 'the Purchase Order' }}.</div>
-                        @else
-                            <select id="supplierId" name="supplier_id" class="form-select">
-                                @foreach($suppliers as $supplier)
-                                    <option value="{{ $supplier->id }}" @selected((int) old('supplier_id', $goodsReceipt->supplier_id) === $supplier->id)>{{ $supplier->supplier_name }}</option>
-                                @endforeach
-                            </select>
-                        @endif
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="preparedBy" class="form-label">Prepared By</label>
                         <select id="preparedBy" name="prepared_by" class="form-select">
                             @foreach($preparers as $preparer)
@@ -57,52 +44,77 @@
                     </div>
                 </div>
             </div>
-            <div class="table-responsive">
-                <table class="table align-middle">
-                    <thead>
-                        <tr class="table-header-bg">
-                            <th>Item Description</th>
-                            <th style="width: 110px;">Qty</th>
-                            <th style="width: 130px;">Unit Cost</th>
-                            <th style="width: 160px;">Lot/Batch</th>
-                            <th style="width: 160px;">Expiry</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($goodsReceipt->items as $line)
-                            @php $key = "lines.{$line->id}"; @endphp
-                            <tr>
-                                <td>
+            <div class="card-body border-top p-0">
+                <div class="p-3">
+                    @foreach($goodsReceipt->items as $line)
+                        @php $key = "lines.{$line->id}"; @endphp
+                        <div class="line-item-card border rounded p-3 mb-3 bg-light">
+                            <div class="mb-2">
+                                <span class="fw-semibold text-muted">Item</span>
+                                <div class="mt-1">
                                     {{ $line->productBatch?->product?->display_description ?? $line->product?->display_description ?? '—' }}
                                     @if($line->purchaseOrderItem)
                                         <span class="d-block text-muted small">Against the Purchase Order</span>
                                     @endif
-                                </td>
-                                <td>
-                                    <input type="number" min="1" class="form-control form-control-sm text-end @error($key . '.qty') is-invalid @enderror"
+                                </div>
+                            </div>
+                            <div class="row g-2 mt-1">
+                                <div class="col-12">
+                                    <label class="form-label small mb-1">Supplier (optional)</label>
+                                    <select name="lines[{{ $line->id }}][supplier_id]" class="form-select line-supplier-select"
+                                        title="{{ $line->supplier?->supplier_name ?? '' }}" onchange="this.title=this.options[this.selectedIndex].text"
+                                        @disabled((bool) old($key . '.supplier_not_determined', $line->supplier_not_determined))>
+                                        <option value="">-- No Supplier --</option>
+                                        @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}"
+                                                @selected((string) old($key . '.supplier_id', $line->supplier?->id) === (string) $supplier->id)>
+                                                {{ $supplier->supplier_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row g-2 mt-1">
+                                <div class="col-md-2 d-flex align-items-end pb-2">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="lines[{{ $line->id }}][supplier_not_determined]" value="1"
+                                            class="form-check-input" id="supplierNotDetermined{{ $line->id }}"
+                                            @checked((bool) old($key . '.supplier_not_determined', $line->supplier_not_determined))
+                                            onchange="const card=this.closest('.line-item-card'); const select=card.querySelector('.line-supplier-select'); if(this.checked) select.value=''; select.disabled=this.checked">
+                                        <label class="form-check-label small" for="supplierNotDetermined{{ $line->id }}">Supplier Not Determined</label>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label small mb-1">Qty</label>
+                                    <input type="number" min="1" class="form-control text-end @error($key . '.qty') is-invalid @enderror"
                                         name="lines[{{ $line->id }}][qty]" value="{{ old($key . '.qty', $line->qty) }}" required>
-                                </td>
-                                <td>
-                                    <input type="number" min="0" step="0.01" class="form-control form-control-sm text-end"
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label small mb-1">Unit Cost</label>
+                                    <input type="number" min="0" step="0.01" class="form-control text-end"
                                         name="lines[{{ $line->id }}][unit_cost]" value="{{ old($key . '.unit_cost', $line->unit_cost) }}">
-                                </td>
-                                <td>
-                                    <input type="text" maxlength="255" class="form-control form-control-sm"
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label class="form-label small mb-1">Lot/Batch</label>
+                                    <input type="text" maxlength="255" class="form-control"
                                         name="lines[{{ $line->id }}][batch_no]" value="{{ old($key . '.batch_no', $line->batch_no) }}">
-                                </td>
-                                <td>
-                                    <input type="date" class="form-control form-control-sm"
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label class="form-label small mb-1">Expiry</label>
+                                    <input type="date" class="form-control"
                                         name="lines[{{ $line->id }}][expiration_date]" value="{{ old($key . '.expiration_date', $line->expiration_date?->toDateString()) }}">
-                                </td>
-                                <td>
-                                    <input type="text" maxlength="255" class="form-control form-control-sm"
+                                </div>
+                            </div>
+                            <div class="row g-2 mt-1">
+                                <div class="col-12">
+                                    <label class="form-label small mb-1">Remarks</label>
+                                    <input type="text" maxlength="255" class="form-control"
                                         name="lines[{{ $line->id }}][remarks]" value="{{ old($key . '.remarks', $line->remarks) }}">
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
             </div>
             <div class="card-body">
                 <label for="reviseReason" class="form-label">Reason</label>

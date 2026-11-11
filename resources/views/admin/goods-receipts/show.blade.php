@@ -3,6 +3,19 @@
 @section('title', 'Goods Receipt ' . $goodsReceipt->gr_no)
 
 @section('content')
+    @php
+        $totalInvoicedQty = (int) $goodsReceipt->items->sum(fn ($line) => (int) $line->invoiced_qty);
+        $allLinesInvoiced = $goodsReceipt->items->isNotEmpty()
+            && $goodsReceipt->items->every(fn ($line) => (int) $line->invoiced_qty >= (int) $line->qty);
+        $invoiceStatus = $totalInvoicedQty <= 0
+            ? 'NOT INVOICED'
+            : ($allLinesInvoiced ? 'INVOICED' : 'PARTIALLY INVOICED');
+        $invoiceStatusColor = [
+            'NOT INVOICED' => 'secondary',
+            'PARTIALLY INVOICED' => 'warning text-dark',
+            'INVOICED' => 'success',
+        ][$invoiceStatus];
+    @endphp
     <div class="d-flex justify-content-between align-items-center mt-3 mb-3 no-print">
         <a href="{{ route('goods-receipts.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Goods Receipts
@@ -50,6 +63,9 @@
                         <span class="badge bg-{{ $goodsReceipt->isDraft() ? 'secondary' : 'success' }}">
                             {{ \App\Models\GoodsReceipt::STATUSES[$goodsReceipt->status] ?? $goodsReceipt->status }}
                         </span>
+                        @unless($goodsReceipt->isDraft())
+                            <span class="badge bg-{{ $invoiceStatusColor }}">{{ $invoiceStatus }}</span>
+                        @endunless
                     </p>
                 </div>
                 <div class="col-md-3">
@@ -88,14 +104,35 @@
         </div>
     </div>
 
+    @if(!$goodsReceipt->isDraft())
+        <form action="{{ url('/admin/goods-receipts/' . $goodsReceipt->id . '/create-purchase-invoice') }}"
+            method="POST" id="createPurchaseInvoiceForm" class="no-print">
+            @csrf
+    @endif
     <div class="card no-print">
-        <h5 class="card-header">Received Items</h5>
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0">Received Items</h5>
+            @if(!$goodsReceipt->isDraft())
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="sortBySupplierBtn">
+                    Sort by Supplier
+                </button>
+            @endif
+        </div>
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
                     <tr class="table-header-bg">
+                        @if(!$goodsReceipt->isDraft())
+                            <th class="no-print"></th>
+                        @endif
                         <th>Item</th>
+                        <th>Supplier</th>
                         <th class="text-end">Qty Received</th>
+                        @if(!$goodsReceipt->isDraft())
+                            <th class="text-end">Invoiced</th>
+                            <th>Invoice Status</th>
+                            <th class="text-end no-print" style="width: 130px;">Qty to Invoice</th>
+                        @endif
                         <th>Unit</th>
                         <th class="text-end">Unit Cost</th>
                         <th>Batch No.</th>
@@ -105,9 +142,42 @@
                 </thead>
                 <tbody>
                     @foreach ($goodsReceipt->items as $line)
-                        <tr>
+                        @php
+                            $lineQty = (int) $line->qty;
+                            $lineInvoicedQty = (int) $line->invoiced_qty;
+                            $lineRemainingQty = max(0, $lineQty - $lineInvoicedQty);
+                            $fullyInvoiced = $lineRemainingQty <= 0;
+                            $lineInvoiceStatus = $lineInvoicedQty <= 0
+                                ? 'Not Invoiced'
+                                : ($fullyInvoiced ? 'Invoiced' : 'Partially Invoiced');
+                            $lineInvoiceStatusColor = [
+                                'Not Invoiced' => 'secondary',
+                                'Partially Invoiced' => 'warning text-dark',
+                                'Invoiced' => 'success',
+                            ][$lineInvoiceStatus];
+                            $lineSupplierName = $line->supplier_not_determined
+                                ? 'Not Determined'
+                                : ($line->supplier?->supplier_name ?? '—');
+                        @endphp
+                        <tr data-supplier="{{ mb_strtolower($lineSupplierName) }}">
+                            @if(!$goodsReceipt->isDraft())
+                                <td class="no-print">
+                                    <input type="checkbox" class="form-check-input invoice-line-checkbox"
+                                        name="line_ids[]" value="{{ $line->id }}" {{ $fullyInvoiced ? 'disabled' : '' }}>
+                                </td>
+                            @endif
                             <td>{{ $line->productBatch?->product?->display_description ?? $line->product?->display_description ?? '—' }}</td>
+                            <td>{{ (bool) $line->supplier_not_determined ? 'Not Determined' : ($line->supplier?->supplier_name ?? '—') }}</td>
                             <td class="text-end">{{ $line->qty ?? '—' }}</td>
+                            @if(!$goodsReceipt->isDraft())
+                                <td class="text-end">{{ $lineInvoicedQty }}</td>
+                                <td><span class="badge bg-{{ $lineInvoiceStatusColor }}">{{ $lineInvoiceStatus }}</span></td>
+                                <td class="no-print">
+                                    <input type="number" name="qty[{{ $line->id }}]" value="{{ $lineRemainingQty }}"
+                                        min="1" max="{{ $lineRemainingQty }}" class="form-control form-control-sm text-end"
+                                        {{ $fullyInvoiced ? 'disabled' : '' }}>
+                                </td>
+                            @endif
                             <td>{{ $line->unit ?? '—' }}</td>
                             <td class="text-end">{{ $line->unit_cost !== null ? number_format($line->unit_cost, 2) : '—' }}</td>
                             <td>{{ $line->batch_no ?? '—' }}</td>
@@ -118,7 +188,17 @@
                 </tbody>
             </table>
         </div>
+        @if(!$goodsReceipt->isDraft())
+            <div class="card-body pt-0">
+                <button type="submit" class="btn btn-primary" id="createPurchaseInvoiceBtn" disabled>
+                    <i class="bx bx-receipt"></i> Create Purchase Invoice
+                </button>
+            </div>
+        @endif
     </div>
+    @if(!$goodsReceipt->isDraft())
+        </form>
+    @endif
     </div>
 
     <div class="card gr-print-only" id="printableGoodsReceiptSheet">
@@ -251,3 +331,33 @@
     }
 </style>
 @endsection
+
+@if(!$goodsReceipt->isDraft())
+@section('scripts')
+    <script>
+        const invoiceLineCheckboxes = document.querySelectorAll('.invoice-line-checkbox');
+        const createPurchaseInvoiceBtn = document.getElementById('createPurchaseInvoiceBtn');
+
+        function refreshCreatePurchaseInvoiceButton() {
+            createPurchaseInvoiceBtn.disabled = document.querySelectorAll('.invoice-line-checkbox:checked').length === 0;
+        }
+
+        invoiceLineCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', refreshCreatePurchaseInvoiceButton);
+        });
+
+        let supplierSortAscending = true;
+        document.getElementById('sortBySupplierBtn').addEventListener('click', function () {
+            const tbody = document.querySelector('#createPurchaseInvoiceForm table tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort((a, b) => {
+                const comparison = a.dataset.supplier.localeCompare(b.dataset.supplier);
+                return supplierSortAscending ? comparison : -comparison;
+            });
+            rows.forEach(row => tbody.appendChild(row));
+            supplierSortAscending = !supplierSortAscending;
+            this.textContent = supplierSortAscending ? 'Sort by Supplier' : 'Sort by Supplier (reverse)';
+        });
+    </script>
+@endsection
+@endif

@@ -193,6 +193,7 @@
                         <th class="text-end">Qty</th>
                         <th class="text-end">Price</th>
                         <th class="text-end">Advance Qty</th>
+                        <th class="text-end">Reserved</th>
                         <th class="text-end">Delivered</th>
                         <th class="text-end">Remaining</th>
                         <th class="text-end">Amount</th>
@@ -218,6 +219,16 @@
                             <td class="text-end">{{ $item->qty ?? '—' }}</td>
                             <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
                             <td class="text-end">{{ $item->advance_order_qty }}</td>
+                            <td class="text-end">
+                                @php
+                                    // Reserved qty = qty in draft DRs linked to this SO line
+                                    $reserved = 0;
+                                    if (! empty($returnedBySoItem) && isset($returnedBySoItem[$item->id])) {
+                                        $reserved = $returnedBySoItem[$item->id]['qty'];
+                                    }
+                                    echo $reserved;
+                                @endphp>
+                            </td>
                             <td class="text-end">{{ $item->delivered_qty }}</td>
                             <td class="text-end">
                                 <span class="badge bg-{{ $item->remaining_qty > 0 ? 'warning' : 'success' }}">
@@ -230,8 +241,19 @@
                 </tbody>
                 <tfoot>
                     <tr class="table-info fw-bold">
-                        <td colspan="8">TOTAL</td>
+                        <td colspan="10">TOTAL</td>
                         <td class="text-end">{{ number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2) }}</td>
+                        <td class="text-end">
+                            @php
+                                $reservedTotal = 0;
+                                if (! empty($returnedBySoItem)) {
+                                    foreach ($returnedBySoItem as $itemId => $data) {
+                                        $reservedTotal += $data['qty'];
+                                    }
+                                }
+                                echo $reservedTotal;
+                            @endphp>
+                        </td>
                     </tr>
                 </tfoot>
             </table>
@@ -452,6 +474,7 @@
                             <th class="text-end" style="width: 7%;">Qty</th>
                             <th class="text-end" style="width: 10%;">Unit Cost</th>
                             <th class="text-end" style="width: 12%;">Amount</th>
+                            <th class="text-end" style="width: 8%;">Reserved</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -467,8 +490,7 @@
                                 <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $item->qty ?? '—' }}</td>
                                 <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
-                                <td class="text-end">{{ ($item->qty !== null && $item->price !== null) ? number_format($item->qty * $item->price, 2) : '—' }}</td>
-                            </tr>
+                                <td class="text-end"></td>
                         @endforeach
                     </tbody>
                 </table>
@@ -555,6 +577,7 @@
                             <th class="text-end" style="width: 8%;">Adv</th>
                             <th class="text-end" style="width: 9%;">Balance</th>
                             <th>Remarks</th>
+                            <th class="text-end" style="width: 8%;">Reserved</th>
                             <th class="text-end" style="width: 8%;">Qty</th>
                         </tr>
                     </thead>
@@ -570,7 +593,6 @@
                                 <td class="text-end">{{ $item->remaining_qty }}</td>
                                 <td style="white-space: pre-line;">{{ $item->remarks ?? '—' }}</td>
                                 <td class="text-end"></td>
-                            </tr>
                         @endforeach
                     </tbody>
                 </table>

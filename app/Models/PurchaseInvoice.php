@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseInvoice extends Model
 {
@@ -54,5 +55,10 @@ class PurchaseInvoice extends Model
     public function preparedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'prepared_by');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoiceItem::class);
     }
 }

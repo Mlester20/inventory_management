@@ -3,12 +3,16 @@
 namespace App\Services;
 
 use App\Models\GoodsReceipt;
+use App\Models\GoodsReceiptItem;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\ProductBatch;
+use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoiceItem;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\StockMovement;
+use App\Models\Taxes;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -47,7 +51,7 @@ class GoodsReceiptService
     {
         return DB::transaction(function () use ($data, $userId) {
             $goodsReceipt = GoodsReceipt::create([
-                'supplier_id' => $data['supplier_id'],
+                'supplier_id' => $data['supplier_id'] ?? null,
                 'purchase_order_id' => $data['purchase_order_id'] ?? null,
                 'gr_no' => $this->generateGrNo(),
                 'receipt_date' => $data['receipt_date'],
@@ -58,6 +62,124 @@ class GoodsReceiptService
             $this->applyItems($goodsReceipt, $data['items'], $userId);
 
             return $goodsReceipt;
+        });
+    }
+
+    /**
+     * Create a posted Purchase Invoice from selected Goods Receipt lines.
+     *
+     * @param array<int,int|string> $lineIds
+     * @param array<int|string,int|string> $qtyToInvoice keyed by Goods Receipt item id
+     */
+    public function createPurchaseInvoiceFromLines(
+        GoodsReceipt $goodsReceipt,
+        array $lineIds,
+        array $qtyToInvoice,
+        ?int $userId = null
+    ): PurchaseInvoice {
+        return DB::transaction(function () use ($goodsReceipt, $lineIds, $qtyToInvoice, $userId) {
+            $gr = GoodsReceipt::lockForUpdate()->findOrFail($goodsReceipt->id);
+            if ($gr->isDraft()) {
+                throw ValidationException::withMessages([
+                    'line_ids' => 'A draft Goods Receipt cannot be invoiced.',
+                ]);
+            }
+
+            $selectedIds = array_map('intval', $lineIds);
+            if ($selectedIds === [] || count($selectedIds) !== count(array_unique($selectedIds))) {
+                throw ValidationException::withMessages([
+                    'line_ids' => 'Select one or more distinct Goods Receipt lines to invoice.',
+                ]);
+            }
+
+            $lines = GoodsReceiptItem::query()
+                ->where('goods_receipt_id', $gr->id)
+                ->whereIn('id', $selectedIds)
+                ->with(['supplier', 'purchaseInvoiceItems', 'productBatch.product', 'product'])
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            if ($lines->count() !== count($selectedIds)) {
+                throw ValidationException::withMessages([
+                    'line_ids' => 'One or more selected lines do not belong to this Goods Receipt.',
+                ]);
+            }
+
+            $supplierIds = [];
+            $invoiceLines = [];
+            $amount = 0;
+            $vatAmount = 0;
+            $vatRate = Taxes::activeRate();
+
+            foreach ($selectedIds as $lineId) {
+                /** @var GoodsReceiptItem $line */
+                $line = $lines->get($lineId);
+                $qty = (int) ($qtyToInvoice[$lineId] ?? 0);
+                $remainingQty = (int) $line->qty - (int) $line->invoiced_qty;
+
+                if ($qty <= 0 || $qty > $remainingQty) {
+                    throw ValidationException::withMessages([
+                        'qty' => "Invalid invoice quantity for line {$lineId}: {$qty} (only {$remainingQty} remaining to invoice).",
+                    ]);
+                }
+
+                if (! $line->supplier_not_determined) {
+                    if ($line->supplier_id === null) {
+                        throw ValidationException::withMessages([
+                            'line_ids' => "Assign a supplier or mark it Supplier Not Determined for line {$lineId}.",
+                        ]);
+                    }
+
+                    $supplierIds[] = (int) $line->supplier_id;
+                }
+
+                $product = $line->product ?? $line->productBatch?->product;
+                if (! $product) {
+                    throw ValidationException::withMessages([
+                        'line_ids' => "Product information is missing for Goods Receipt line {$lineId}.",
+                    ]);
+                }
+
+                $lineAmount = $qty * (float) $line->unit_cost;
+                $amount += $lineAmount;
+
+                if ($product->taxClassification() === 'vatable') {
+                    $lineNet = round($lineAmount / (1 + $vatRate / 100), 2);
+                    $vatAmount += round($lineAmount - $lineNet, 2);
+                }
+
+                $invoiceLines[] = ['line' => $line, 'qty' => $qty];
+            }
+
+            $supplierIds = array_values(array_unique($supplierIds));
+            if (count($supplierIds) > 1) {
+                throw ValidationException::withMessages([
+                    'line_ids' => 'Selected lines must have the same supplier. Lines marked Supplier Not Determined may be included.',
+                ]);
+            }
+
+            $purchaseInvoice = PurchaseInvoice::create([
+                'supplier_id' => $supplierIds[0] ?? null,
+                'goods_receipt_id' => $gr->id,
+                'invoice_date' => now()->toDateString(),
+                'amount' => round($amount, 2),
+                'vat_amount' => round($vatAmount, 2),
+                'prepared_by' => $userId,
+                'status' => 'draft',
+            ]);
+
+            foreach ($invoiceLines as ['line' => $line, 'qty' => $qty]) {
+                PurchaseInvoiceItem::create([
+                    'purchase_invoice_id' => $purchaseInvoice->id,
+                    'goods_receipt_item_id' => $line->id,
+                    'qty' => $qty,
+                ]);
+                $line->increment('invoiced_qty', $qty);
+            }
+
+            return $purchaseInvoice;
         });
     }
 
@@ -96,6 +218,8 @@ class GoodsReceiptService
 
                 $goodsReceipt->items()->create([
                     'purchase_order_item_id' => $line['purchase_order_item_id'] ?? null,
+                    'supplier_id' => ! empty($line['supplier_not_determined']) ? null : ($line['supplier_id'] ?? null),
+                    'supplier_not_determined' => (bool) ($line['supplier_not_determined'] ?? false),
                     'product_id' => $line['product_id'],
                     'product_batch_id' => $line['product_batch_id'] ?? null,
                     'qty' => $line['qty'] ?? null,
@@ -204,6 +328,8 @@ class GoodsReceiptService
 
             $goodsReceipt->items()->create([
                 'purchase_order_item_id' => $purchaseOrderItem?->id,
+                'supplier_id' => ! empty($line['supplier_not_determined']) ? null : ($line['supplier_id'] ?? null),
+                'supplier_not_determined' => (bool) ($line['supplier_not_determined'] ?? false),
                 'product_id' => $product->id,
                 'product_batch_id' => $batch->id,
                 'qty' => $qty,
@@ -257,7 +383,7 @@ class GoodsReceiptService
 
     /**
      * Correct a posted Goods Receipt: quantity, unit cost, lot/batch, expiry, remarks on each line, and the date,
-     * Prepared By and (for a direct receipt) the supplier. The Warehouse stock follows what changed, and every move
+     * Prepared By. Supplier is stored per receipt line. The Warehouse stock follows what changed, and every move
      * is a Stock Movement of this receipt, so Product History shows it.
      *
      * - A quantity change adds or takes the difference. Taking stock out is refused when the Warehouse no longer has
@@ -268,8 +394,8 @@ class GoodsReceiptService
      *   order still expects.
      * - Lines cannot be added or removed, and the Purchase Order of a receipt cannot be changed.
      *
-     * @param array{receipt_date?:mixed,prepared_by?:mixed,supplier_id?:mixed} $header
-     * @param array<int,array{qty?:mixed,unit_cost?:mixed,batch_no?:mixed,expiration_date?:mixed,remarks?:mixed}> $lines goods receipt item id => new values
+     * @param array{receipt_date?:mixed,prepared_by?:mixed} $header
+     * @param array<int,array{qty?:mixed,unit_cost?:mixed,batch_no?:mixed,expiration_date?:mixed,remarks?:mixed,supplier_id?:mixed,supplier_not_determined?:mixed}> $lines goods receipt item id => new values
      * @return array<int,string> what changed, one sentence each
      */
     public function reviseGoodsReceipt(GoodsReceipt $goodsReceipt, array $header, array $lines, ?int $userId = null): array
@@ -285,28 +411,6 @@ class GoodsReceiptService
             $changes = [];
             $affectedOrders = [];
             $hasPurchaseInvoice = $gr->purchaseInvoices()->exists();
-            $supplierChanged = ! $gr->purchase_order_id
-                && ! empty($header['supplier_id'])
-                && (int) $header['supplier_id'] !== (int) $gr->supplier_id;
-
-            if ($supplierChanged) {
-                if ($hasPurchaseInvoice) {
-                    throw ValidationException::withMessages([
-                        'revise' => 'This supplier cannot be changed because a Purchase Invoice is linked to this Goods Receipt.',
-                    ]);
-                }
-
-                foreach ($gr->items()->with('productBatch')->get() as $receiptItem) {
-                    if ($receiptItem->productBatch) {
-                        $this->guardNoLaterStockMovement(
-                            $gr,
-                            $receiptItem->productBatch,
-                            'This supplier cannot be changed because a batch from this Goods Receipt has later stock movements.'
-                        );
-                    }
-                }
-            }
-
             foreach ($gr->items()->with(['product', 'productBatch', 'purchaseOrderItem.purchaseOrder'])->orderBy('id')->lockForUpdate()->get() as $item) {
                 if (! array_key_exists($item->id, $lines)) {
                     continue;
@@ -321,8 +425,23 @@ class GoodsReceiptService
                 $newLot = array_key_exists('batch_no', $in) ? trim((string) $in['batch_no']) : trim((string) $item->batch_no);
                 $newExpiry = array_key_exists('expiration_date', $in) ? ($in['expiration_date'] ?: null) : $item->expiration_date?->toDateString();
                 $newRemarks = array_key_exists('remarks', $in) ? ($in['remarks'] !== '' ? $in['remarks'] : null) : $item->remarks;
+                $newSupplierId = array_key_exists('supplier_id', $in) && $in['supplier_id'] !== ''
+                    ? (int) $in['supplier_id']
+                    : null;
+                $oldSupplierId = $item->supplier_id !== null ? (int) $item->supplier_id : null;
+                $newSupplierNotDetermined = (bool) ($in['supplier_not_determined'] ?? false);
+                $oldSupplierNotDetermined = (bool) $item->supplier_not_determined;
+                if ($newSupplierNotDetermined) {
+                    $newSupplierId = null;
+                }
                 $note = "Goods Receipt {$gr->gr_no} edited";
                 $lineChanges = [];
+
+                if ($newSupplierId !== $oldSupplierId && $hasPurchaseInvoice) {
+                    throw ValidationException::withMessages([
+                        'revise' => 'A line supplier cannot be changed because a Purchase Invoice is linked to this Goods Receipt.',
+                    ]);
+                }
 
                 if ($newQty < 1) {
                     throw ValidationException::withMessages(['revise' => "{$name}: the quantity must be at least 1. A line cannot be removed from a posted receipt."]);
@@ -394,8 +513,16 @@ class GoodsReceiptService
                 if ($newRemarks !== $item->remarks) {
                     $lineChanges[] = 'remarks';
                 }
+                if ($newSupplierId !== $oldSupplierId) {
+                    $lineChanges[] = 'supplier changed';
+                }
+                if ($newSupplierNotDetermined !== $oldSupplierNotDetermined) {
+                    $lineChanges[] = 'supplier determination changed';
+                }
 
                 $item->update([
+                    'supplier_id' => $newSupplierId,
+                    'supplier_not_determined' => $newSupplierNotDetermined,
                     'product_batch_id' => $newBatch->id,
                     'qty' => $newQty,
                     'unit_cost' => $newCost,
@@ -417,10 +544,6 @@ class GoodsReceiptService
             if (array_key_exists('prepared_by', $header) && (int) $header['prepared_by'] !== (int) $gr->prepared_by && ! empty($header['prepared_by'])) {
                 $headerUpdate['prepared_by'] = $header['prepared_by'];
                 $changes[] = 'prepared by changed';
-            }
-            if ($supplierChanged) {
-                $headerUpdate['supplier_id'] = $header['supplier_id'];
-                $changes[] = 'supplier changed';
             }
             if ($headerUpdate) {
                 $gr->update($headerUpdate);

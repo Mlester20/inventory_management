@@ -199,7 +199,14 @@ class PurchaseInvoiceController extends Controller
             return $blocked;
         }
 
-        $purchaseInvoice->load('supplier', 'purchaseOrder', 'goodsReceipt', 'preparedBy');
+        $purchaseInvoice->load(
+            'supplier',
+            'purchaseOrder',
+            'goodsReceipt',
+            'preparedBy',
+            'items.goodsReceiptItem.product',
+            'items.goodsReceiptItem.productBatch.product'
+        );
 
         return view('admin.purchase-invoices.show', compact('purchaseInvoice'));
     }
@@ -221,7 +228,31 @@ class PurchaseInvoiceController extends Controller
             return redirect()->route('purchase-invoices.show', $purchaseInvoice);
         }
 
-        return view('admin.purchase-invoices.create', $this->formData() + ['editingPurchaseInvoice' => $purchaseInvoice]);
+        $purchaseInvoice->load(
+            'supplier',
+            'items.goodsReceiptItem.product',
+            'items.goodsReceiptItem.productBatch.product'
+        );
+
+        $data = $this->formData();
+
+        if ($purchaseInvoice->goods_receipt_id) {
+            $found = collect($data['goodsReceipts'])->contains('id', $purchaseInvoice->goods_receipt_id);
+            if (! $found) {
+                $gr = GoodsReceipt::with('items')->find($purchaseInvoice->goods_receipt_id);
+                if ($gr) {
+                    $data['goodsReceipts'][] = [
+                        'id' => $gr->id,
+                        'gr_no' => $gr->gr_no,
+                        'supplier_id' => $gr->supplier_id,
+                        'purchase_order_id' => $gr->purchase_order_id,
+                        'total' => (float) $gr->items->sum(fn ($item) => $item->qty * $item->unit_cost),
+                    ];
+                }
+            }
+        }
+
+        return view('admin.purchase-invoices.create', $data + ['editingPurchaseInvoice' => $purchaseInvoice]);
     }
 
     /**

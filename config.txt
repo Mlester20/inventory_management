@@ -1,13 +1,85 @@
-APP_NAME="Sales and Inventory Management"
-APP_ENV=production
-APP_KEY=base64:xerma+n7c0zA5mFVnmUGf1NTlDaejSlf8Bfat1goq+I=
-APP_DEBUG=false
-APP_URL=http://localhost
-APP_TIMEZONE=Asia/Manila
+I've read both files fully. Here is my analysis and plan.
 
-DB_CONNECTION=mysql
-DB_HOST=mysql.railway.internal
-DB_PORT=3306
-DB_DATABASE=railway
-DB_USERNAME=root
-DB_PASSWORD=AwOttQBTDEbYbnOAEXPlDXImRWgGReOt
+---
+
+## Current State Analysis
+
+### `create.blade.php`
+- **Supplier field** (lines 27–48): The `$supplierNotDetermined` condition **already exists** at lines 28–37:
+  ```php
+  $supplierNotDetermined = $editingPurchaseInvoice
+      && $editingPurchaseInvoice->goods_receipt_id !== null
+      && $editingPurchaseInvoice->supplier_id === null;
+  ```
+  And line 36 already uses it: `value="{{ $supplierNotDetermined ? 'Not Determined' : old('supplier_search', $editingPurchaseInvoice?->supplier?->supplier_name) }}"`. The logic looks correct.
+- **Invoiced Items table** (lines 151–183): Currently a **separate card** (`<div class="card mb-4">`) sitting between Remarks (line 149) and Save buttons (lines 185–191).
+
+### `show.blade.php`
+- **Details card** (lines 28–95): Contains invoice header info, Remarks at lines 88–93.
+- **Invoiced Items table** (lines 97–129): Currently a **separate card** below the details card.
+
+---
+
+## Plan of Changes
+
+### 1. `create.blade.php` — Move Invoiced Items table inside header card
+
+| Step | Change |
+|------|--------|
+| a | Cut lines 151–183 (the entire `<div class="card mb-4">` wrapping "Invoiced Items" table) |
+| b | Paste it inside the main card, immediately after line 149 (closing `</div>` of Remarks field) and before line 185 (Save buttons `div.mt-3`) |
+| c | Remove `mb-4` from the moved card's class (optional, for visual consistency since it's now nested) |
+| d | Verify `$supplierNotDetermined` condition — already present and correct; no change needed |
+
+### 2. `show.blade.php` — Merge Invoiced Items into details card
+
+| Step | Change |
+|------|--------|
+| a | Cut lines 97–129 (the entire separate "Invoiced Items" card) |
+| b | Paste it inside the existing details card, immediately after line 93 (Remarks row closing `</div>`) and before line 94 (`</div>` closing card-body) |
+| c | Remove `mb-4` from the moved card's class (optional) |
+
+### 3. `$supplierNotDetermined` verification
+
+The condition at lines 28–32 already correctly covers the case: editing a draft Purchase Invoice that has `goods_receipt_id` set but `supplier_id` null. Value renders as "Not Determined" and input is readonly. This matches the requirement. **No code change needed** — but I will flag it for your confirmation.
+
+---
+
+## Risks & Manual Verification
+
+1. **Visual nesting**: Moving a card inside another card may affect Bootstrap styling (borders, padding, shadow). May need to remove `card`/`mb-4` classes from the moved section to avoid double borders.
+2. **JavaScript**: No JS references the "Invoiced Items" card directly, so moving it shouldn't break anything.
+3. **Supplier field**: Confirm `$supplierNotDetermined` actually triggers in the edit-draft-with-GR scenario. Test: open a draft Purchase Invoice with `goods_receipt_id` set and `supplier_id` null — the input should show "Not Determined" and be readonly.
+
+---
+
+## Recommended Implementation Order
+
+1. Edit `create.blade.php` — move Invoiced Items inside header card
+2. Edit `show.blade.php` — merge Invoiced Items into details card
+3. Verify `$supplierNotDetermined` works (no code change expected)
+4. Show diff, wait for your review
+
+---
+
+## Conflicts with Current Code
+
+None identified. The changes are purely presentational (DOM reordering within Blade templates). No controller, model, or migration changes involved.
+
+---
+
+## Questions Needing Clarification
+
+1. **Should I strip `card mb-4` classes from the moved "Invoiced Items" section?** When nested inside another card, having `card` class creates a card-inside-a-card look. Recommended: change to a plain `<div>` or keep `card` but remove `mb-4`. Default: keep structure minimal (remove `card` wrapper, keep table-responsive directly).
+2. **Is the `$supplierNotDetermined` fix already acceptable, or do you want me to change the condition?** It already covers `goods_receipt_id !== null && supplier_id === null`. Default: leave as-is.
+
+---
+
+## Branch & Commit
+
+- **Branch**: `feature/gr-per-line-supplier-invoice` (already exists per git branch listing)
+- **Commit message**: `feat(purchase-invoices): merge Invoiced Items table into header card`
+
+---
+
+I am in **Plan mode only** — I have not made any edits. Please confirm this plan and any answers to the questions above, then I'll switch to Act mode and apply the changes.

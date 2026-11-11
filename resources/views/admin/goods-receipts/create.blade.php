@@ -88,21 +88,6 @@
 
                 <!-- Direct Receipt Tab -->
                 <div id="direct_tab" class="gr-tab">
-                    <div class="row">
-                        <div class="col-12 mb-3">
-                            <label for="direct_supplier_search" class="form-label">Supplier</label>
-                            <input type="text" name="supplier_search" id="direct_supplier_search" class="form-control"
-                                list="direct_supplier_datalist" placeholder="Search supplier..." autocomplete="off"
-                                value="{{ old('supplier_search', $editingGoodsReceipt?->supplier?->supplier_name) }}">
-                            <datalist id="direct_supplier_datalist">
-                                @foreach ($suppliers as $supplier)
-                                    <option value="{{ $supplier->supplier_name }}"></option>
-                                @endforeach
-                            </datalist>
-                            <input type="hidden" name="supplier_id" id="direct_supplier_id" value="{{ old('supplier_id', $editingGoodsReceipt?->supplier_id) }}">
-                        </div>
-                    </div>
-
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">Received Items</h6>
                         <div class="d-flex gap-2 align-items-center">
@@ -175,13 +160,13 @@
     const DIRECT_PREFILL_LINES = @json($directPrefillLines);
     const PO_PREFILL_LINES = @json($poPrefillLines);
 
-    // Supplier is a searchable text field (native <datalist>, same
-    // technique as the Item picker below) rather than a long <select> —
-    // matched back to the real supplier_id via a hidden input.
+    // Per-line Supplier dropdown options.
     const SUPPLIERS = @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->supplier_name])->values());
 
-    function findSupplierByName(name) {
-        return SUPPLIERS.find(s => s.name === name) || null;
+    function supplierOptions(selectedId = '') {
+        return '<option value="">-- No Supplier --</option>' + SUPPLIERS.map(supplier =>
+            `<option value="${escapeAttr(supplier.id)}" ${String(supplier.id) === String(selectedId) ? 'selected' : ''} title="${escapeAttr(supplier.supplier_name)}">${escapeHtml(supplier.name)}</option>`
+        ).join('');
     }
 
     let directRowIndex = 0;
@@ -198,6 +183,11 @@
         // inputs can't silently block native HTML5 validation on submit.
         document.querySelectorAll('#direct_tab input, #direct_tab select').forEach(el => el.disabled = !directVisible);
         document.querySelectorAll('#purchase_order_tab input, #purchase_order_tab select').forEach(el => el.disabled = directVisible);
+        document.querySelectorAll('#directLineItemsBody .line-item-card').forEach(card => {
+            const supplierSelect = card.querySelector('.line-supplier-select');
+            const notDetermined = card.querySelector('.supplier-not-determined');
+            supplierSelect.disabled = !directVisible || notDetermined.checked;
+        });
         // ...but a PO line the receiver unticked must stay out of the form even while this tab is shown.
         document.querySelectorAll('#poLineItemsBody .line-item-card').forEach(applyPoCardState);
 
@@ -209,17 +199,6 @@
     }
 
     // ---------- Direct Receipt tab ----------
-
-    function currentDirectSupplierId() {
-        return document.getElementById('direct_supplier_id').value;
-    }
-
-    document.getElementById('direct_supplier_search').addEventListener('input', function () {
-        const match = findSupplierByName(this.value);
-        const hidden = document.getElementById('direct_supplier_id');
-        hidden.value = match ? match.id : '';
-        hidden.dispatchEvent(new Event('change'));
-    });
 
     // Item is a searchable text field with its own JS-built suggestion
     // dropdown (see renderItemSuggestions below) rather than a long <select>
@@ -233,19 +212,8 @@
         return item.name;
     }
 
-    // Not actually scoped by supplier: a Product's own supplier_id records
-    // who it's *normally* sourced from, but the same item can legitimately
-    // arrive from a different supplier too — filtering the picker down to
-    // an exact supplier_id match made those receipts impossible to encode
-    // (the item just never appeared). The chosen Supplier here still
-    // records who physically delivered this shipment; it no longer
-    // constrains which items can be received from them.
-    function itemsForSupplier(supplierId) {
-        return ITEMS;
-    }
-
     function findItemByLabel(label) {
-        return itemsForSupplier(currentDirectSupplierId()).find(i => itemLabel(i) === label);
+        return ITEMS.find(i => itemLabel(i) === label);
     }
 
     function escapeHtml(str) {
@@ -333,6 +301,23 @@
                 </div>
             </div>
             <div class="row g-2 mt-1">
+                <div class="col-12">
+                    <label class="form-label small mb-1">Supplier (optional)</label>
+                    <select name="items[${index}][supplier_id]" class="form-select line-supplier-select"
+                        title="${prefill && prefill.supplier_name ? escapeAttr(prefill.supplier_name) : 'Select a supplier'}"
+                        onchange="this.title=this.options[this.selectedIndex].text">
+                        ${supplierOptions(prefill ? prefill.supplier_id : '')}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-2 d-flex align-items-end pb-2">
+                    <div class="form-check">
+                        <input type="checkbox" name="items[${index}][supplier_not_determined]" value="1"
+                            class="form-check-input supplier-not-determined" ${prefill && prefill.supplier_not_determined ? 'checked' : ''}>
+                        <label class="form-check-label small">Supplier Not Determined</label>
+                    </div>
+                </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label small mb-1">Qty</label>
                     <input type="number" name="items[${index}][qty]" class="form-control qty-input" min="1" value="1" required>
@@ -363,6 +348,13 @@
             </div>
         `;
         document.getElementById('directLineItemsBody').appendChild(card);
+
+        const supplierSelect = card.querySelector('.line-supplier-select');
+        const supplierNotDetermined = card.querySelector('.supplier-not-determined');
+        supplierNotDetermined.addEventListener('change', function () {
+            if (this.checked) supplierSelect.value = '';
+            supplierSelect.disabled = this.checked || document.getElementById('direct_tab').style.display === 'none';
+        });
 
         const itemSearchInput = card.querySelector('.item-search-input');
         const suggestionsBox = card.querySelector('.item-suggestions');
@@ -395,13 +387,13 @@
             // programmatically (see below) without focusing the field first —
             // only paint the dropdown for an actual, focused keystroke.
             if (document.activeElement === this) {
-                renderItemSuggestions(suggestionsBox, itemsForSupplier(currentDirectSupplierId()), this.value);
+                renderItemSuggestions(suggestionsBox, ITEMS, this.value);
             }
             applyDirectItem(findItemByLabel(this.value));
         });
 
         itemSearchInput.addEventListener('focus', function () {
-            renderItemSuggestions(suggestionsBox, itemsForSupplier(currentDirectSupplierId()), this.value);
+            renderItemSuggestions(suggestionsBox, ITEMS, this.value);
         });
 
         // A short delay so a click on a suggestion (below) registers before
@@ -465,6 +457,7 @@
         // before this initial row gets created) — keep it disabled in that case.
         const directVisible = document.getElementById('direct_tab').style.display !== 'none';
         card.querySelectorAll('input, select').forEach(el => el.disabled = !directVisible);
+        supplierSelect.disabled = !directVisible || supplierNotDetermined.checked;
     }
 
     // Not addEventListener('click', addDirectRow) directly — that passes the
@@ -502,22 +495,6 @@
             e.preventDefault();
             generateDirectLines();
         }
-    });
-
-    // The item list itself no longer depends on which supplier is chosen
-    // (see itemsForSupplier() above), so this is now just a safety net in
-    // case that ever changes again — it drops a selection that no longer
-    // resolves, without otherwise affecting normal use.
-    document.getElementById('direct_supplier_id').addEventListener('change', function () {
-        document.querySelectorAll('#directLineItemsBody .line-item-card').forEach(card => {
-            const itemSearchInput = card.querySelector('.item-search-input');
-            const itemIdInput = card.querySelector('.item-id-input');
-
-            if (itemIdInput.value && !findItemByLabel(itemSearchInput.value)) {
-                itemSearchInput.value = '';
-                itemIdInput.value = '';
-            }
-        });
     });
 
     // ---------- Against Purchase Order tab ----------
@@ -569,10 +546,15 @@
     function applyPoCardState(card) {
         const tabHidden = document.getElementById('purchase_order_tab').style.display === 'none';
         const checkbox = card.querySelector('.receive-checkbox');
+        const supplierSelect = card.querySelector('.line-supplier-select');
+        const supplierNotDetermined = card.querySelector('.supplier-not-determined');
         checkbox.disabled = tabHidden;
         card.classList.toggle('opacity-50', !checkbox.checked);
         card.querySelectorAll('input, select').forEach(el => {
-            if (el !== checkbox) el.disabled = tabHidden || !checkbox.checked;
+            if (el !== checkbox) {
+                el.disabled = tabHidden || !checkbox.checked
+                    || (el === supplierSelect && supplierNotDetermined.checked);
+            }
         });
     }
 
@@ -692,6 +674,23 @@
                 </div>
             </div>
             <div class="row g-2 mt-1">
+                <div class="col-12">
+                    <label class="form-label small mb-1">Supplier (optional)</label>
+                    <select name="items[${index}][supplier_id]" class="form-select line-supplier-select"
+                        title="${prefill && prefill.supplier_name ? escapeAttr(prefill.supplier_name) : 'Select a supplier'}"
+                        onchange="this.title=this.options[this.selectedIndex].text">
+                        ${supplierOptions(prefill ? prefill.supplier_id : '')}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-2 mt-1">
+                <div class="col-md-2 d-flex align-items-end pb-2">
+                    <div class="form-check">
+                        <input type="checkbox" name="items[${index}][supplier_not_determined]" value="1"
+                            class="form-check-input supplier-not-determined" ${prefill && prefill.supplier_not_determined ? 'checked' : ''}>
+                        <label class="form-check-label small">Supplier Not Determined</label>
+                    </div>
+                </div>
                 <div class="col-md-3">
                     <label class="form-label small mb-1">Unit</label>
                     <input type="text" name="items[${index}][unit]" class="form-control" readonly value="${escapeAttr(line.unit || '')}">
@@ -705,6 +704,13 @@
             <input type="hidden" name="items[${index}][purchase_order_item_id]" value="${line.purchase_order_item_id}">
         `;
         body.appendChild(card);
+
+        const supplierSelect = card.querySelector('.line-supplier-select');
+        const supplierNotDetermined = card.querySelector('.supplier-not-determined');
+        supplierNotDetermined.addEventListener('change', function () {
+            if (this.checked) supplierSelect.value = '';
+            applyPoCardState(card);
+        });
 
         const qtyInput = card.querySelector('.qty-input');
         qtyInput.addEventListener('input', function () {
