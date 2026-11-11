@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\ReturnItem;
+use App\Models\SalesOrder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -42,6 +43,7 @@ class InventoryAdjustmentService
             ]);
 
             $this->applyLines($adjustment, $data['lines'], $userId);
+            $this->reopenSalesOrderOfReturn($adjustment);
 
             return $adjustment;
         });
@@ -119,6 +121,7 @@ class InventoryAdjustmentService
 
             $draft->lines()->delete();
             $this->applyLines($draft, $data['lines'], $userId);
+            $this->reopenSalesOrderOfReturn($draft);
 
             return $draft;
         });
@@ -164,6 +167,17 @@ class InventoryAdjustmentService
      * delivered minus what already came back against it (Return Items that were not rejected, and other posted
      * "Returned by Customer" adjustments). Checked when the stock actually moves, so a draft can still be saved.
      */
+    /** Goods a customer sent back from a Delivery Receipt reopen the Sales Order it was delivered against. */
+    protected function reopenSalesOrderOfReturn(InventoryAdjustment $adjustment): void
+    {
+        if (! $adjustment->isCustomerReturn() || ! $adjustment->delivery_receipt_id) {
+            return;
+        }
+
+        $salesOrderId = DeliveryReceipt::whereKey($adjustment->delivery_receipt_id)->value('sales_order_id');
+        SalesOrder::find($salesOrderId)?->syncStatus();
+    }
+
     protected function guardCustomerReturn(array $data): void
     {
         if (($data['adjustment_type'] ?? null) !== InventoryAdjustment::CUSTOMER_RETURN || empty($data['delivery_receipt_id'])) {

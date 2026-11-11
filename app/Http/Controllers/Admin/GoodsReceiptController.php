@@ -345,6 +345,73 @@ class GoodsReceiptController extends Controller
     }
 
     /**
+     * The Edit page of a posted Goods Receipt (full admin only): the lines' quantity, cost, lot, expiry and remarks, plus
+     * the date, Prepared By and, for a direct receipt, the supplier. See GoodsReceiptService::reviseGoodsReceipt.
+     */
+    public function revise(GoodsReceipt $goodsReceipt)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Editing a posted Goods Receipt is restricted to full admin accounts.');
+            return redirect()->route('goods-receipts.show', $goodsReceipt);
+        }
+
+        if ($goodsReceipt->isDraft()) {
+            return redirect()->route('goods-receipts.edit', $goodsReceipt);
+        }
+
+        $goodsReceipt->load('supplier', 'purchaseOrder', 'items.productBatch.product', 'items.product');
+
+        return view('admin.goods-receipts.revise', [
+            'goodsReceipt' => $goodsReceipt,
+            'suppliers' => Supplier::orderBy('supplier_name')->get(),
+            'preparers' => User::preparers($goodsReceipt->prepared_by)->get(),
+        ]);
+    }
+
+    public function applyRevision(Request $request, GoodsReceipt $goodsReceipt)
+    {
+        if (auth()->user()->role !== 'admin') {
+            Alert::error('Not allowed', 'Editing a posted Goods Receipt is restricted to full admin accounts.');
+            return redirect()->route('goods-receipts.show', $goodsReceipt);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:255',
+            'receipt_date' => 'required|date',
+            'prepared_by' => 'nullable|exists:users,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'lines' => 'required|array',
+            'lines.*.qty' => 'required|integer|min:1',
+            'lines.*.unit_cost' => 'nullable|numeric|min:0',
+            'lines.*.batch_no' => 'nullable|string|max:255',
+            'lines.*.expiration_date' => 'nullable|date',
+            'lines.*.remarks' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $changes = $this->goodsReceiptService->reviseGoodsReceipt(
+                $goodsReceipt,
+                ['receipt_date' => $validated['receipt_date'], 'prepared_by' => $validated['prepared_by'] ?? null, 'supplier_id' => $validated['supplier_id'] ?? null],
+                $validated['lines'],
+                Auth::id()
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        ActivityLog::record(
+            module: 'GoodsReceipt',
+            action: 'revised',
+            loggable: $goodsReceipt,
+            description: "Edited Goods Receipt {$goodsReceipt->gr_no}: " . implode('; ', $changes) . " — {$validated['reason']}",
+            metadata: ['reason' => $validated['reason'], 'changes' => $changes],
+        );
+
+        Alert::success('Updated', "{$goodsReceipt->gr_no} updated.");
+        return redirect()->route('goods-receipts.show', $goodsReceipt);
+    }
+
+    /**
      * A draft never touched stock or PO balances, so deleting it outright
      * is safe. A posted receipt can never be deleted — same policy as
      * everywhere else.

@@ -76,16 +76,37 @@ class SalesOrder extends Model
         return $this->status === 'closed';
     }
 
-    /** completed / partially_delivered / open, as the delivered and advance quantities say. */
+    /**
+     * completed / partially_delivered / open, as the delivered and advance quantities say. Goods the client sent
+     * back (an approved Product Return or a customer-return adjustment) no longer count as delivered here, so an
+     * order whose delivery was returned goes back to Open. Delivered keeps the original quantity (with its asterisk),
+     * and Remaining goes back up by what came back (SalesOrderItem::getRemainingQtyAttribute).
+     */
     public function deliveryStatus(): string
     {
         $items = $this->items()->get();
+        $returned = $this->returnedByItem();
+        $net = fn (SalesOrderItem $item) => max(0, (int) $item->delivered_qty - (int) ($returned[$item->id]['qty'] ?? 0));
 
         return match (true) {
-            $items->isNotEmpty() && $items->every(fn (SalesOrderItem $item) => $item->remaining_qty <= 0) => 'completed',
-            $items->contains(fn (SalesOrderItem $item) => $item->delivered_qty > 0) => 'partially_delivered',
+            $items->isNotEmpty() && $items->every(fn (SalesOrderItem $item) => (int) $item->qty - (int) $item->advance_order_qty - $net($item) <= 0) => 'completed',
+            $items->contains(fn (SalesOrderItem $item) => $net($item) > 0) => 'partially_delivered',
             default => 'open',
         };
+    }
+
+    /** Bring the stored status in line with the deliveries and returns. A closed or cancelled order stays as it is. */
+    public function syncStatus(): void
+    {
+        if ($this->isClosed() || $this->isCancelled()) {
+            return;
+        }
+
+        $status = $this->deliveryStatus();
+
+        if ($this->status !== $status) {
+            $this->update(['status' => $status]);
+        }
     }
 
     public function isArchived(): bool

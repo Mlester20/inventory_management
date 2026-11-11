@@ -62,12 +62,13 @@ class SearchController extends Controller
                 });
             }
             $items = $itemsQuery->limit(5)
-                ->get(['id', 'item_name', 'unit_price'])
+                ->get(['id', 'item_name', 'description', 'unit_price'])
                 ->map(function($item) {
                     return [
                         'type' => 'item',
                         'id' => $item->id,
-                        'title' => $item->item_name,
+                        // The full Item Description, so two items with the same Generic (Brand) label tell apart.
+                        'title' => $item->display_description,
                         'subtitle' => 'Stock: ' . (int) ($item->location_stocks_sum_qty ?? 0) . ' | ₱' . number_format($item->unit_price, 2),
                         'url' => route('admin.items.show', $item->id),
                         'icon' => 'bx-package'

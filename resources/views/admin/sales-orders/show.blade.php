@@ -9,6 +9,9 @@
         </a>
         <div class="d-flex gap-2">
             @if($salesOrder->isDraft())
+                <button type="button" class="btn btn-outline-primary" onclick="printSalesOrderList()">
+                    <i class="bx bx-printer"></i> Print Packing List
+                </button>
                 <a href="{{ route('sales-orders.edit', $salesOrder) }}" class="btn btn-primary">
                     <i class="bx bx-edit-alt"></i> Continue Editing
                 </a>
@@ -85,6 +88,9 @@
                             </form>
                         @endif
                         @if(Auth::user()->role === 'admin' && $salesOrder->isClosed())
+                            <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#orderInvoiceModal">
+                                <i class="bx bx-receipt"></i> Create Invoice
+                            </button>
                             <form action="{{ route('sales-orders.reopen', $salesOrder) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="dropdown-item">
@@ -156,6 +162,13 @@
     </div>
 
     @php
+        // ?sort=generic lists the lines A-Z by Generic Description (screen and both prints); the line numbers follow the order shown.
+        $sortedByGeneric = request('sort') === 'generic';
+        $lineItems = $sortedByGeneric
+            ? $salesOrder->items->sortBy(fn ($line) => mb_strtolower((string) ($line->genericName->generic_name ?? '')), SORT_NATURAL)->values()
+            : $salesOrder->items;
+        // The Item Description under the generic, when the line has been matched to a product.
+        $itemDescription = fn ($line) => $line->product ? ($line->product->description ?: ($line->product->brand_name ?: $line->product->item_name)) : null;
         $returnedBySoItem = $salesOrder->returnedByItem();
         $returnedNote = collect($returnedBySoItem)->map(fn ($row, $itemId) => [
             'name' => $salesOrder->items->firstWhere('id', $itemId)?->genericName?->generic_name ?? '—',
@@ -164,11 +177,17 @@
         ])->values()->all();
     @endphp
     <div class="card mb-4">
-        <h5 class="card-header">Line Items</h5>
+        <h5 class="card-header d-flex justify-content-between align-items-center">
+            <span>Line Items</span>
+            <a href="{{ route('sales-orders.show', array_merge(['sales_order' => $salesOrder->id], $sortedByGeneric ? [] : ['sort' => 'generic'])) }}" class="btn btn-sm btn-outline-secondary no-print">
+                <i class="bx bx-sort-a-z"></i> {{ $sortedByGeneric ? 'Original order' : 'Sort by Generic Description' }}
+            </a>
+        </h5>
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
                     <tr class="table-header-bg">
+                        <th style="width: 40px;">#</th>
                         <th>Generic Description</th>
                         <th>Item Description</th>
                         <th class="text-end">Qty</th>
@@ -180,8 +199,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($salesOrder->items as $item)
+                    @foreach ($lineItems as $item)
                         <tr>
+                            <td class="text-muted">{{ $loop->iteration }}</td>
                             <td>
                                 {{ $item->genericName->generic_name ?? '—' }} ({{ $item->genericName->unit ?? '—' }}){{ isset($returnedBySoItem[$item->id]) ? ' *' : '' }}
                                 @if($item->remarks)
@@ -210,7 +230,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="table-info fw-bold">
-                        <td colspan="7">TOTAL</td>
+                        <td colspan="8">TOTAL</td>
                         <td class="text-end">{{ number_format($salesOrder->items->sum(fn($i) => ($i->qty ?? 0) * ($i->price ?? 0)), 2) }}</td>
                     </tr>
                 </tfoot>
@@ -350,6 +370,53 @@
         </div>
     @endif
 
+    @if(Auth::user()->role === 'admin' && $salesOrder->isClosed())
+        <div class="modal fade no-print" id="orderInvoiceModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form action="{{ route('sales-orders.create-invoice', $salesOrder) }}" method="POST">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Create Invoice — {{ $salesOrder->so_no }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">
+                                One invoice for everything this order delivered that is not yet invoiced, from all its Delivery Receipts
+                                (cancelled receipts, goods the customer sent back, and what is already invoiced are left out).
+                                Each line is priced at its Sales Order price.
+                            </p>
+                            <div class="mb-3">
+                                <label for="orderInvoicePo" class="form-label">Customer P.O. #</label>
+                                <input type="text" id="orderInvoicePo" name="po_no" class="form-control" maxlength="255" value="{{ $salesOrder->po_no }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="orderInvoiceWt" class="form-label">Withholding Tax (₱)</label>
+                                <input type="number" id="orderInvoiceWt" name="less_wt" class="form-control" min="0" step="0.01" placeholder="Optional">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="personal_use" value="1" id="orderInvoicePersonal">
+                                    <label class="form-check-label small" for="orderInvoicePersonal">Personal use (not covered by withholding tax)</label>
+                                </div>
+                            </div>
+                            <div class="mb-0">
+                                <label for="orderInvoicePrepared" class="form-label">Prepared By</label>
+                                <select id="orderInvoicePrepared" name="prepared_by" class="form-select">
+                                    @foreach($preparers as $preparer)
+                                        <option value="{{ $preparer->id }}" @selected($preparer->id === $salesOrder->prepared_by)>{{ $preparer->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create Invoice</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
     <div class="card so-print-only" id="printableSalesOrderSheet">
         <div class="card-body p-4 so-sheet">
 
@@ -380,6 +447,7 @@
                         <tr>
                             <th style="width: 4%;">#</th>
                             <th>Generic Description</th>
+                            <th>Item Description</th>
                             <th style="width: 7%;">Unit</th>
                             <th class="text-end" style="width: 7%;">Qty</th>
                             <th class="text-end" style="width: 10%;">Unit Cost</th>
@@ -387,15 +455,15 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($salesOrder->items as $item)
+                        @foreach ($lineItems as $item)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
-                                <td>
-                                    {{ $item->genericName->generic_name ?? '—' }}{{ isset($returnedBySoItem[$item->id]) ? ' *' : '' }}
+                                <td>{{ $item->genericName->generic_name ?? '—' }}{{ isset($returnedBySoItem[$item->id]) ? ' *' : '' }}
                                     @if($item->remarks)
                                         <div class="print-item-remarks" style="white-space: pre-line;">{{ $item->remarks }}</div>
                                     @endif
                                 </td>
+                                <td>@if($item->product){{ $item->product->description ?: ($item->product->brand_name ?: $item->product->item_name) }}@else—@endif</td>
                                 <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $item->qty ?? '—' }}</td>
                                 <td class="text-end">{{ $item->price !== null ? number_format($item->price, 2) : '—' }}</td>
@@ -481,6 +549,7 @@
                         <tr>
                             <th style="width: 4%;">#</th>
                             <th>Generic Description</th>
+                            <th>Item Description</th>
                             <th style="width: 8%;">Unit</th>
                             <th class="text-end" style="width: 9%;">Order Qty</th>
                             <th class="text-end" style="width: 8%;">Adv</th>
@@ -490,10 +559,11 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($salesOrder->items as $item)
+                        @foreach ($lineItems as $item)
                             <tr>
                                 <td class="text-center">{{ $loop->iteration }}</td>
                                 <td>{{ $item->genericName->generic_name ?? '—' }}</td>
+                                <td>@if($item->product){{ $item->product->description ?: ($item->product->brand_name ?: $item->product->item_name) }}@else—@endif</td>
                                 <td class="text-center">{{ $item->genericName->unit ?? '—' }}</td>
                                 <td class="text-end">{{ $item->qty ?? '—' }}</td>
                                 <td class="text-end">{{ $item->advance_order_qty }}</td>

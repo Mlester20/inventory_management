@@ -61,10 +61,30 @@ class SalesOrderItem extends Model
     /**
      * What a Delivery Receipt can still deliver. Advance Qty was already handed over in advance
      * (it will never get a DR from this order — a DR would deduct that stock a second time), so
-     * it counts as covered, the same as a delivered quantity.
+     * it counts as covered, the same as a delivered quantity. Goods the client sent back are
+     * owed again: they come off the delivered quantity here, so a replacement DR can be made.
+     * The Delivered column itself keeps the original quantity.
      */
     public function getRemainingQtyAttribute(): int
     {
-        return max(0, (int) $this->qty - (int) $this->advance_order_qty - (int) $this->delivered_qty);
+        $netDelivered = max(0, (int) $this->delivered_qty - $this->returnedQty());
+
+        return max(0, (int) $this->qty - (int) $this->advance_order_qty - $netDelivered);
+    }
+
+    /** How many approved returned units were allocated to this SO line through its Delivery Receipt lines. */
+    public function returnedQty(): int
+    {
+        $lines = $this->deliveryReceiptItems()
+            ->with('deliveryReceipt')
+            ->get();
+
+        $returned = $lines->sum(function (DeliveryReceiptItem $line) {
+            $allocation = $line->deliveryReceipt?->approvedReturnAllocations() ?? [];
+
+            return (int) ($allocation[$line->id] ?? 0);
+        });
+
+        return min((int) $this->delivered_qty, (int) $returned);
     }
 }

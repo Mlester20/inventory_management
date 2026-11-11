@@ -23,9 +23,16 @@
                 @endif
             </div>
         @else
-            <button type="button" class="btn btn-outline-primary" onclick="window.print()">
-                <i class="bx bx-printer"></i> Print
-            </button>
+            <div class="d-flex gap-2">
+                @if(Auth::user()->role === 'admin')
+                    <a href="{{ route('goods-receipts.revise', $goodsReceipt) }}" class="btn btn-outline-secondary">
+                        <i class="bx bx-edit-alt"></i> Edit
+                    </a>
+                @endif
+                <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                    <i class="bx bx-printer"></i> Print
+                </button>
+            </div>
         @endif
     </div>
 

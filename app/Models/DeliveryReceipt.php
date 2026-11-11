@@ -172,6 +172,51 @@ class DeliveryReceipt extends Model
     /** @var array<int,int>|null line id => quantity already sent back, computed once per receipt */
     protected ?array $returnAllocation = null;
 
+    /** @var array<int,int>|null line id => approved returned quantity */
+    protected ?array $approvedReturnAllocations = null;
+
+    /**
+     * Allocate approved return quantities to this receipt's lines, latest line first.
+     * Unlike the invoice allocator below, pending Return Items do not reduce SO balances.
+     *
+     * @return array<int,int> line id => approved returned quantity
+     */
+    public function approvedReturnAllocations(): array
+    {
+        if ($this->approvedReturnAllocations !== null) {
+            return $this->approvedReturnAllocations;
+        }
+
+        $remainingByProduct = [];
+        foreach ($this->returnedByProduct() as $productId => $returned) {
+            $remainingByProduct[$productId] = (int) $returned['qty'];
+        }
+
+        if ($remainingByProduct === []) {
+            return $this->approvedReturnAllocations = [];
+        }
+
+        $allocation = [];
+        $lines = $this->items()->with('productBatch')->get()->sortByDesc('id');
+
+        foreach ($lines as $line) {
+            $productId = $line->productBatch?->product_id;
+            $left = $remainingByProduct[$productId] ?? 0;
+
+            if (! $productId || $left <= 0) {
+                continue;
+            }
+
+            $take = min($left, max(0, (int) $line->qty));
+            if ($take > 0) {
+                $allocation[$line->id] = $take;
+                $remainingByProduct[$productId] -= $take;
+            }
+        }
+
+        return $this->approvedReturnAllocations = $allocation;
+    }
+
     /**
      * How much of this line was sent back (or is on its way back), so it can no longer be invoiced.
      * Returns are per product on the receipt; when the same item sits on several lines they are taken
