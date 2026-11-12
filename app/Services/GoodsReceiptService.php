@@ -260,7 +260,7 @@ class GoodsReceiptService
             }
 
             $draft->fill([
-                'supplier_id' => $data['supplier_id'],
+                'supplier_id' => $data['supplier_id'] ?? null,
                 'purchase_order_id' => $data['purchase_order_id'] ?? null,
                 'receipt_date' => $data['receipt_date'],
                 'prepared_by' => $data['prepared_by'] ?? null,
