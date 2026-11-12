@@ -303,6 +303,15 @@ class GoodsReceiptService
             $product = Product::findOrFail($line['product_id']);
             $qty = (int) $line['qty'];
 
+            $supplierNotDetermined = (bool) ($line['supplier_not_determined'] ?? false);
+            $supplierId = $line['supplier_id'] ?? null;
+
+            if (! $supplierNotDetermined && empty($supplierId)) {
+                throw ValidationException::withMessages([
+                    'items' => "Please select a supplier or check 'Supplier Not Determined' for item {$product->item_name}.",
+                ]);
+            }
+
             $purchaseOrderItem = null;
             if (! empty($line['purchase_order_item_id'])) {
                 $purchaseOrderItem = PurchaseOrderItem::with('purchaseOrder')->findOrFail($line['purchase_order_item_id']);
