@@ -302,8 +302,9 @@ class SalesOrderController extends Controller
         $vatPreview = $this->buildVatPreview($salesOrder->items);
         $customers = Customer::orderBy('customer_name')->get();
         $preparers = User::preparers($salesOrder->prepared_by)->get();
+        $reservedBySoItem = $salesOrder->reservedByItem();
 
-        return view('admin.sales-orders.show', compact('salesOrder', 'vatPreview', 'customers', 'preparers'));
+        return view('admin.sales-orders.show', compact('salesOrder', 'vatPreview', 'customers', 'preparers', 'reservedBySoItem'));
     }
 
     /**

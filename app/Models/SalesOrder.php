@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class SalesOrder extends Model
 {
@@ -69,6 +70,21 @@ class SalesOrder extends Model
         }
 
         return $out;
+    }
+
+    public function reservedByItem(): array
+    {
+        return DeliveryReceiptItem::query()
+            ->join('delivery_receipts', 'delivery_receipts.id', '=', 'delivery_receipt_items.delivery_receipt_id')
+            ->where('delivery_receipts.sales_order_id', $this->id)
+            ->where('delivery_receipts.is_draft', true)
+            ->where('delivery_receipts.status', '!=', 'cancelled')
+            ->whereNotNull('delivery_receipt_items.sales_order_item_id')
+            ->groupBy('delivery_receipt_items.sales_order_item_id')
+            ->get(['delivery_receipt_items.sales_order_item_id', DB::raw('SUM(delivery_receipt_items.qty) as qty')])
+            ->pluck('qty', 'sales_order_item_id')
+            ->map(fn ($qty) => (int) $qty)
+            ->all();
     }
 
     public function isClosed(): bool

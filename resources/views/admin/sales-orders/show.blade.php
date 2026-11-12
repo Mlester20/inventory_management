@@ -223,11 +223,11 @@
                                 @php
                                     // Reserved qty = qty in draft DRs linked to this SO line
                                     $reserved = 0;
-                                    if (! empty($returnedBySoItem) && isset($returnedBySoItem[$item->id])) {
-                                        $reserved = $returnedBySoItem[$item->id]['qty'];
+                                    if (! empty($reservedBySoItem) && isset($reservedBySoItem[$item->id])) {
+                                        $reserved = $reservedBySoItem[$item->id];
                                     }
                                     echo $reserved;
-                                @endphp>
+                                @endphp
                             </td>
                             <td class="text-end">{{ $item->delivered_qty }}</td>
                             <td class="text-end">
@@ -246,13 +246,11 @@
                         <td class="text-end">
                             @php
                                 $reservedTotal = 0;
-                                if (! empty($returnedBySoItem)) {
-                                    foreach ($returnedBySoItem as $itemId => $data) {
-                                        $reservedTotal += $data['qty'];
-                                    }
+                                if (! empty($reservedBySoItem)) {
+                                    $reservedTotal = array_sum($reservedBySoItem);
                                 }
                                 echo $reservedTotal;
-                            @endphp>
+                            @endphp
                         </td>
                     </tr>
                 </tfoot>
